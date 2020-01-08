@@ -1,0 +1,529 @@
+---
+title : Automatic differentiation
+author : Michiel Stock
+date: 2019-2020
+---
+
+```julia; echo=false
+using Plots, BenchmarkTools
+using STMO
+```
+
+![](Figures/logo.png)
+
+# Motivation
+
+TODO: complete!
+
+# Definition of a derivative
+
+$$
+\frac{\text{d}f(x)}{\text{d}x} = f'(x) = \lim _{h\to 0}{\frac {f(x+h)-f(x)}{h}}.
+$$
+
+When we work with function of several variables, we use *partial derivatives* (e.g. $\frac{\partial f(x, y)}{\partial x}$), indicating we keep all variables but $x$ fixed.
+
+Our running example:
+
+$$
+f(x) = \log x + \frac{\sin x}{x}
+$$
+
+```julia
+f(x) = log(x) + sin(x) / x;
+```
+
+# Symbolic differentiation
+
+Computing derivatives as you have seen in basic calculus courses.
+
+By hand or automatically:
+- Maple
+- Sympy (python)
+- Mathematica
+- Maxima
+
+Differentiation is *easy* compared to *integration* or *sampling*.
+
+Advantages:
+- exact derivatives!
+- gives the formula for different evaluations.
+- no hyperparameters or tweaking: just works!
+
+Disadvantages:
+- some software not flexible enough (gradients, arrays, for-loops...)
+- sometimes explosion of terms: *expression swell*
+- not always numerically optimal!
+
+```julia
+using SymEngine
+```
+
+```julia
+@vars x  # define variable
+```
+
+```julia
+df = diff(f(x), x)
+```
+
+```julia
+df(2.0)
+```
+
+```julia; echo=false
+plot(f, 1:0.01:5, label="f(x)", xlabel=:x, lw=2, color=mygreen)
+plot!(df, 1:0.01:5, label="f'(x)", lw=2, color=myorange)
+```
+
+# Numerical differentiation
+
+Finite difference approximation of the derivative/gradient based on a number of function evaluations.
+
+Often based on the limit definition of a derivative. Theoretical analysis using Taylor approximation:
+
+$$
+f(x + h) = f(x) + \frac{h}{1!}f'(x) + \frac{h^2}{2!}f''(x) + \frac{h^3}{3!}f^{(3)}(x)+\ldots
+$$
+
+**Divided difference**
+
+$$
+f'(x)\approx \frac{f(x+h) - f(x)}{h}
+$$
+
+**Center difference**
+
+$$
+f'(x)\approx \frac{f(x+h) - f(x-h)}{2h}
+$$
+
+**Complex step method**
+
+$$
+f'(x)\approx \frac{\text{Im} (f(x +ih))}{h}
+$$
+
+```julia
+diff_divdiff(f, x; h=1e-10) = (f(x + h) - f(x)) / h;
+diff_centdiff(f, x; h=1e-10) = (f(x + h) - f(x - h)) / 2h;
+diff_complstep(f, x; h=1e-10) = imag(f(x + im * h)) / h;
+```
+
+```julia
+@btime diff_divdiff($f, 2.0)
+```
+
+```julia
+@btime diff_centdiff($f, 2.0)
+```
+
+```julia
+@btime diff_complstep($f, 2.0)
+```
+
+**First sin of numerical analysis**:
+
+> *thou shalt not add small numbers to big numbers*
+
+**second sin of numerical analysis**:
+
+> *thou shalt not subtract numbers which are approximately equal*
+
+```julia; echo=false
+fexamp(x) = 64x*(1-x)*(1-2x)^2*(1-8x+8x^2)^2
+dfexamp = diff(fexamp(x), x)
+error(diff, h; x=1.0) = max(abs(Float64(dfexamp(x)) - diff(fexamp, x, h=h)), 1e-50);
+```
+
+```julia; echo=false
+stepsizes = map(t->10.0^t, -20:0.1:-1);
+plot(stepsizes, error.(diff_divdiff, stepsizes), label="divided difference",
+    xscale=:log10, yscale=:log10, lw=2, legend=:bottomright, color=myblue)
+plot!(stepsizes, error.(diff_centdiff, stepsizes), label="center difference", lw=2,
+            color=myred)
+plot!(stepsizes, error.(diff_complstep, stepsizes), label="complex step", lw=2,
+            color=myyellow)
+#xlims!(1e-15, 1e-1)
+xlabel!("stepsize h")
+ylabel!("absolute error")
+```
+
+Advantages of numerical differentiation:
+- easy to implement
+- general, no assumptions needed
+
+Disadvantages:
+- not numerically stable (round-off errors)
+- not efficient for gradients ($\mathcal{O}(n)$ evaluations for $n$-dimensional vectors)
+
+
+## Approximations of multiplications with gradients
+
+**Gradient-vector approximation**
+
+$$
+\nabla f(\mathbf{x})^\intercal \mathbf{d} \approx \frac{f(\mathbf{x}+h\cdot\mathbf{d}) - f(\mathbf{x}-h\cdot\mathbf{d})}{2h}
+$$
+
+**Hessian-vector approximation**
+
+$$
+\nabla^2 f(\mathbf{x}) \mathbf{d} \approx \frac{\nabla f(\mathbf{x}+h\cdot\mathbf{d}) - \nabla f(\mathbf{x}-h\cdot\mathbf{d})}{2h}
+$$
+
+```julia
+grad_vect(f, x, d; h=1e-10) = (f(x + h * d) - f(x - h * d)) / (2h)
+```
+
+```julia
+dvect = randn(10) / 10
+xvect = 2rand(10)
+
+A = randn(10, 10)
+A = A * A' / 100
+
+#g(x) = exp(- x' * A * x)  # adjoint does not play with Zygote
+g(x) = exp(- sum(x .* (A * x)))
+
+# correct gradient and Hessian (by hand)
+Dg(x) = -2g(x) * A * x
+D²g(x) = -2g(x) * A - 2A * x * Dg(x)'
+```
+
+```julia
+g(xvect)
+```
+
+```julia
+Dg(xvect)
+```
+
+```julia
+Dg(xvect)' * dvect
+```
+
+```julia
+grad_vect(g, xvect, dvect)
+```
+
+```julia
+D²g(xvect) * dvect
+```
+
+```julia
+h = 1e-10
+(Dg(xvect + h * dvect) - Dg(xvect - h * dvect)) / 2h
+```
+
+# Forward differentiation
+
+Accumulation of the gradients along the *computational graph*.
+
+<img src="Figures/compgraph.png" alt="drawing" width="400"/>
+
+Forward differentiation computes the gradient from the inputs to the outputs.
+
+## Differentiation rules
+
+**Sum rule**:
+
+$$
+\frac{\partial (f(x)+g(x))}{\partial x} =  \frac{\partial f(x)}{\partial x} + \frac{\partial f(x)}{\partial x}
+$$
+
+**Product rule**:
+
+$$
+\frac{\partial (f(x)g(x))}{\partial x} =  f(x)\frac{\partial g(x)}{\partial x} + g(x)\frac{\partial f(x)}{\partial x}
+$$
+
+**Chain rule**:
+
+$$
+\frac{\partial (g(f(x))}{\partial x} =  \frac{\partial g(u)}{\partial u}\mid_{u=f(x)} \frac{\partial f(x)}{\partial x}
+$$
+
+## Example of the forward differentiation
+
+<img src="Figures/forwarddiff.png" alt="drawing" width="600"/>
+
+## Dual numbers
+
+Forward differentiation can be viewed as evaluating function using *dual numbers*, which can be viewed as truncated Taylor series:
+
+$$
+v + \dot{v}\epsilon\,,
+$$
+
+where $v,\dot{v}\in\mathbb{R}$ and $\epsilon$ a nilpotent number, i.e. $\epsilon^2=0$. For example, we have
+
+$$
+(v + \dot{v}\epsilon) + (u + \dot{u}\epsilon) = (v+u) + (\dot{v} +\dot{u})\epsilon
+$$
+
+
+$$
+(v + \dot{v}\epsilon)(u + \dot{u}\epsilon) = (vu) + (v\dot{u} +\dot{v}u)\epsilon\,.
+$$
+
+
+These dual numbers can be used as
+
+$$
+f(v+\dot{v}\epsilon) = f(v) + f'(v)\dot{v}\epsilon\,.
+$$
+
+```julia
+struct Dual
+    v
+    vdot
+end
+```
+
+```julia
+Base.:+(a::Dual, b::Dual) = Dual(a.v + b.v, a.vdot + b.vdot)
+Base.:*(a::Dual, b::Dual) = Dual(a.v * b.v, a.v * b.vdot + b.v * a.vdot)
+Base.:*(v::Real, b::Dual) = Dual(v, 0.0) * b
+Base.:sin(a::Dual) = Dual(sin(a.v), cos(a.v) * a.vdot)
+Base.:log(a::Dual) = Dual(log(a.v), 1.0 / a.v * a.vdot)
+Base.:/(a::Dual, b::Dual) = Dual(a.v / b.v, (a.vdot * b.v - a.v * b.vdot) / b.v^2)
+```
+
+```julia
+@btime f(Dual(2.0, 1.0))
+```
+
+```julia
+myforwarddiff(f, x) = f(Dual(x, 1.0)).vdot
+
+@btime myforwarddiff($f, 2.0)
+```
+
+This directly works for vectors!
+
+```julia
+q(x) = 10.0 * x[1] * x[2] + x[1] * x[1] + sin(x[1]) / x[2]
+```
+
+```julia
+q([1, 2])
+```
+
+```julia
+q(Dual.([1, 2], [1, 0]))  # partial wrt x1
+```
+
+```julia
+q(Dual.([1, 2], [0, 1]))  # partial wrt x2
+```
+
+```julia
+using ForwardDiff
+```
+
+```julia
+@btime ForwardDiff.derivative($f, 2.0)
+```
+
+```julia
+@btime ForwardDiff.gradient($g, $xvect)
+```
+
+```julia
+ForwardDiff.gradient(q, [1, 2])
+```
+
+Forward differentiation:
+
+- exact gradients!
+- computational complexity scales with **number of inputs**
+- used when you have more outputs than inputs
+
+# Reverse differentiation
+
+Compute the gradient from the output toward the inputs using the chain rule.
+
+<img src="Figures/reversediff.png" alt="drawing" width="600"/>
+
+Reverse differentiation:
+
+- also exact!
+- main workhorse for training artificial neural networks.
+- efficient when more inputs than outputs (machine learning: thousands of parameters vs. one loss)
+
+```julia
+using Zygote
+```
+
+```julia
+@btime f'(2.0)  # that's it
+```
+
+```julia
+@btime g'(xvect)
+```
+
+Multi-layer perceptron.
+
+<img src="Figures/ANN_example.png" alt="drawing" width="200"/>
+
+Reverse differentation or backpropagation.
+
+<img src="Figures/Forwardprop.png" alt="drawing" width="500"/>
+
+
+Reverse differentation or backpropagation.
+
+<img src="Figures/Backprop.png" alt="drawing" width="500"/>
+
+Returns effect of changing layer output on the loss. Can be related directly to the parameters!
+
+## Exercise: logistic regression
+
+Recall logistic regression on a training set $S=\{(\mathbf{x}_i, y_i)\mid i=1,\ldots,n\}$ with $y\in\{0,1\}$.
+
+Prediction:
+
+$$
+f(\mathbf{x}) = \sigma(\mathbf{w}^\intercal\mathbf{x})\,,
+$$
+
+with $\sigma(t) = 1 /(1+exp(t))$.
+
+To find the parameter vector $\mathbf{w}$, we minimize the cross-entropy:
+
+$$
+L(\mathbf{w};S)= \sum_{i=1}^n = - y_i \log(f(\mathbf{x})) - (1-y_i)\log(1-f(\mathbf{x}))\,.
+$$
+
+
+```julia
+# artificial data
+X = [randn(50, 2); randn(50, 2) .+ [-1.0 2.4]];
+y = [i <= 50 ? 0 : 1 for i in 1:100];
+n = length(y);
+
+scatter(X[:,1], X[:,2], color=y)
+```
+
+```julia
+σ(t) = 1.0 / (1.0 + exp(t))
+f(x, w) = σ(sum(x .* w))
+L(w; X=X, y=y) = sum(- y .* log.(σ.(X * w)) - (1.0 .- y) .* log.(σ.(1. .- X * w)))
+```
+
+```julia
+w = [0.1, 0.1]
+L(w)
+```
+
+**Assignments**
+
+1. Compute the gradient of $L$ wrt. $\mathbf{w}$ using
+    - numerical method
+    - forward differentiation
+    - backward differentiation
+2. (optional) Implement a simple gradient descent to find  $\mathbf{w}^\star$.
+3. Add a bias to the prediction function.
+
+
+# Differentiating ODE
+
+Automatic differentiation can be used beyond machine learning and optimization:
+
+- [physical engines](https://arxiv.org/abs/1611.01652) to learn robot control
+- differentiating [protein](https://github.com/lupoglaz/TorchProteinLibrary) [structures](https://www.cell.com/cell-systems/fulltext/S2405-4712(19)30076-6)
+- Sinkhorn algorithm
+- [dynamic programming](https://arxiv.org/abs/1802.03676)
+- [differential equations](https://julialang.org/blog/2019/01/fluxdiffeq)
+
+Everything is computed by some straightforward and differentiable functions!
+
+## Short introduction to differential equations
+
+Ordinary differential equations describe dynamical processes through the *rate of change*:
+
+$$
+\dot{\mathbf{x}} = f(\mathbf{x}, t; \theta)\,,
+$$
+
+with $\theta$ some parameters. To obtain a unique solution, we depart from some initial vector for $\mathbf{x}$ at the starting time.
+
+Usually solved using an iterative algorithm, for example using Euler's method:
+
+$$
+\mathbf{x}_{t+1} = \mathbf{x}_{t} + \alpha_t f(\mathbf{x}_{t}, t)\,.
+$$
+
+with $\alpha_t$ a stepsize (does this remind you of something?).
+
+## Example an auto-catalytic process
+
+Consider a chemical reaction where some molecule $X$ combines reversibly with a molecule $A$ to form two molecules $X$:
+
+$$
+X+A	\rightleftharpoons 2X\,.
+$$
+
+We assume that there is a large and inexhaustible supply of $A$. Based on the *law of mass action* for chemical kinetics, the concentration of $X$ is given by
+
+$$
+\dot{x} = k_1ax - k_{-1} x^2\,,
+$$
+
+with
+-  $x$ the concentration of $X$;
+-  $a$ the concentration of $A$;
+-  $k_1$ and $k_{-1}$ the forward and backward kinetic parameters.
+
+```julia
+function eulersolve(f, x0, (t0, tend), θ, α=0.1)
+    tsteps = t0:α:tend
+    # demonstration for didactical purposes
+    # Any arrays are generally a bad idea!
+    sol = Array{eltype(x0)}(undef, length(tsteps), length(x0))
+    x = x0
+    for (i, t) in enumerate(tsteps)
+        sol[i, :] .= x
+        x += α * f(x, t, θ)
+    end
+    return sol
+end
+```
+
+```julia
+fautocat(x, t, (a, k₁, k₋₁)) = k₁ * a * x - k₋₁ * x.^2
+```
+
+```julia
+solution = eulersolve(fautocat, [10.0], (0.0, 10.0), (5, 0.1, 0.01))
+tsteps = 0:0.1:10
+plot(tsteps, solution, label="x", lw=2)
+```
+
+**Assignments**
+
+1. Given $x_0=10$ and $(a, k_1, k_{-1}) = (5, 0.1, 0.01)$, compute the gradient of $x(t)$ w.r.t. $x_0$ (e.g. sensitivity for initial conditions.
+2. Given these parameters, use gradient descent to tune $x_0$ such that $x(10) = 20$.
+3. Given a vector of measured concentrations with $x_0=10$, find the parameters of the process through gradient descent.
+
+```julia
+# for the first two questions
+xfromx0(x0) = eulersolve(fautocat, x0, (0.0, 10.0), (5, 0.1, 0.01))
+x10fromx0(x0) = xfromx0(x0)[end]
+```
+
+```julia
+
+```
+```julia
+
+```
+```julia
+
+```
+# References
+
+- Gunes et. al. (2015) *Automatic differentiation in machine learning: a survey*
+- Kochenderfer, M. J. and Wheeler, T., '*Algorithms for Optimization*'. MIT Press (2019)
