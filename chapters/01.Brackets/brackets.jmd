@@ -5,7 +5,7 @@ date: 2019-2020
 ---
 
 ```julia; echo=false
-using Plots
+using Plots, LaTeXStrings
 using STMO: myred, myblue, mygreen, myyellow, myorange,myblack
 ```
 
@@ -32,10 +32,10 @@ g(x) = tanh(sin(x))
 
 a, b = -0.75, 1.2
 
-plot(g, -pi/2:0.1:pi/2, label="g(x)", lw=2, color=myblue, xlabel=:x, legend=:left)
+plot(g, -pi/2:0.1:pi/2, label="\$g(x)\$", lw=2, color=myblue, xlabel="\$ x\$", legend=:left)
 scatter!([a], [g(a)], color=myorange, label=:a)
 scatter!([b], [g(b)], color=mygreen, label=:b)
-vline!([(b+a)/2], color=myred, label="midpoint", lw=2)
+vline!([(b+a)/2], color=myred, label="\$x = (b-a)/2\$", lw=2)
 hline!([0], label="", color=myblack, ls=:dash)
 title!("Illustration of the bisection method")
 ```
@@ -153,10 +153,10 @@ x = quadratic_fit_min(a, b, c, ya, yb, yc)
 ```
 
 ```julia
-plot(f, -5:0.1:7, label="f(x)", lw=2, xlabel=:x, color=myblue)
-scatter!([a, b, c], [ya, yb, yc], label="a, b, c", color=myorange)
-plot!(quadratic_fit(a, b, c, ya, yb, yc), -5:0.1:7, label="quadratic fit", lw=2, color=mygreen)
-vline!([x], label="x", lw=2, color=myred)
+plot(f, -5:0.1:7, label="\$f(x)\$", lw=2, xlabel="\$x\$", color=myblue)
+scatter!([a, b, c], [ya, yb, yc], label="\$a, b, c\$", color=myorange)
+plot!(quadratic_fit(a, b, c, ya, yb, yc), -5:0.1:7, label="quadratic fit \$q(x)\$", lw=2, color=mygreen)
+vline!([x], label="\$x\$", lw=2, color=myred)
 ```
 
 Given the minimizer $x^\star$ of the quadratic approximation, we can update the interval closer to this value. The quadratic fit search repeats this approach $n$ times. The pseudocode is given below.

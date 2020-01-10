@@ -5,15 +5,15 @@ fquad(x::Vector, P::Matrix, q::Vector, r::Real=0.0) = 0.5x' * P * x + q' * x + r
 
 """Plot a 1-D quadratic function."""
 function plot_quadratic(p::Real, q::Real, r::Real, (xl, xu), stepsize=0.1; kwargs...)
-    return plot(x -> p*x^2 + q*x+r, xl:stepsize:xu, xlabel="x"; kwargs...)
+    return plot(x -> p*x^2 + q*x+r, xl:stepsize:xu, xlabel="\$x\$"; kwargs...)
 end
 
 """Plot a 2-D quadratic function."""
 function plot_quadratic(P::AbstractMatrix, q::AbstractVector, r::Real,
                             (x1l, x1u), (x2l, x2u), stepsize=0.1; kwargs...)
     fun = (x1, x2) -> [x1,x2] |> x -> 0.5x' * P * x + q' * x + r
-    return contour(x1l:stepsize:x1u, x2l:stepsize:x2u, fun, xlabel="x1",
-                                            ylabel="x2"; kwargs...)
+    return contour(x1l:stepsize:x1u, x2l:stepsize:x2u, fun, xlabel="\$x_1\$",
+                                            ylabel="\$x_2\$"; kwargs...)
 end
 
 

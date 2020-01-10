@@ -5,14 +5,13 @@ date: 2019-2020
 ---
 
 ```julia; echo=false
-using Plots
+using Plots, LaTeXStrings
 using LinearAlgebra
 using STMO: path!, path, plotobj, plotobj!, myred, mygreen, myblue, myorange, myblack, myyellow
 using STMO: PathTrack
 import STMO
 ```
 
-![](Figures/logo.png)
 
 # Motivation
 
@@ -44,7 +43,17 @@ Most convex optimization problems do not have a closed-form solution, with the q
 > - dom($f$) is convex
 > - for any $\mathbf{x}, \mathbf{x}' \in \text{dom}(f)$ and any $\theta \in [0, 1]$, it holds that $f(\theta \mathbf{x} + (1-\theta)\mathbf{x}') \leq\theta f(\mathbf{x}) +(1-\theta)f(\mathbf{x}')$.
 
-![A line connecting two points of a convex function always lies above the function.](Figures/convex_function_illustration.png)
+Below is an example of a convex function.
+
+```julia; echo=false
+f(x) = 0.1x^4 - 2x + x^2
+
+plot(f, -4:0.1:4, xlabel="\$f(x)\$", color=myblue, lw=2)
+
+x, x′ = -3.5, 2.75
+scatter!([x, x′], f.([x, x′]), label="\$x, x'\$", color=mygreen)
+plot!([x, x′], f.([x, x′]), label="\$(1-\\theta)f(x)+\\theta f(x')\$", color=myred, lw=2)
+```
 
 ![Some convex (A & C) and non-convex functions (B).](Figures/convex_functions.png)
 
@@ -117,12 +126,13 @@ hess_fnonquadr(x) = Zygote.hessian(fnonquadr, x);
 ```
 
 ```julia; echo=false
-pq = contour(-10:0.1:10, -5:0.1:5, (x1, x2) -> fquadr((x1, x2)), xlabel="x1", ylabel="x2", title="quadratic", fill=true)
+pq = contour(-10:0.1:10, -5:0.1:5, (x1, x2) -> fquadr((x1, x2)), xlabel="\$ x_1 \$",
+                ylabel="\$ x_2 \$", title="quadratic", fill=true)
 ```
 ```julia; echo=false
-pnq = contour(-2:0.1:2, -1:0.1:1, (x1, x2) -> fnonquadr((x1, x2)), xlabel="x1", ylabel="x2", title="non-quadratic", fill=true)
+pnq = contour(-2:0.1:2, -1:0.1:1, (x1, x2) -> fnonquadr((x1, x2)), xlabel="\$ x_1 \$",
+                ylabel="\$ x_2 \$", title="non-quadratic", fill=true)
 ```
-![A quadratic and a non-quadratic two-dimensional function.](Figures/example_functions.png)
 
 ## General descent methods (recap)
 
@@ -215,17 +225,17 @@ function backtracking_line_search(f, x, Δx, grad_f; α::Real=0.1,
                         β::Real=0.7)
     @assert 0 < α < 0.5 && 0 < β < 1 "incorrect values for α and/or β"
     t = 1.0
-    while f(x + t * Δx) > f(x) + α * t * grad_f(x)' * Δx
-        t *= β
+    while ...  # complete
+        ...  # complete
     end
     return t
 end
 ```
 
 ```julia; eval=false
-fun(x) = x^2 - 2x - 5
-grad_fun(x) = 2x - 2
-backtracking_line_search(fun, 0.0, 10.0, grad_fun)
+fun(x) = ...
+grad_fun(x) = ...
+backtracking_line_search(...)
 ```
 
 **Question 1**
@@ -299,12 +309,12 @@ function gradient_descent(f, x₀, grad_f; α::Real=0.2, β::Real=0.7,
     x = x₀  # initial value
     Δx = similar(x)
     while true
-        Δx .= -grad_f(x) # choose direction
-        if norm(Δx) < ν
+        ... # choose direction
+        if ...
             break  # converged
         end
-        t = backtracking_line_search(f, x, Δx, grad_f, α=α, β=β)
-        x .+= t * Δx  # do a step
+        t = ...
+        ... # do a step
         trace(tracker, x)
     end
     return x
@@ -346,8 +356,10 @@ path!(trackernqgd, label="GD")
 ```
 
 ```julia; echo=false
-p1 = plotobj(fquadr, trackerqgd, label="GD", yscale=:log10, ylabel="abs error", title="quadratic");
-p2 = plotobj(nonquadrerr, trackernqgd, label="GD", yscale=:log10, ylabel="error", title="non-quadratic");
+p1 = plotobj(fquadr, trackerqgd, label="GD", yscale=:log10, ylabel="\$ f(x) - f(x^\\star)\$",
+                    title="quadratic");
+p2 = plotobj(nonquadrerr, trackernqgd, label="GD", yscale=:log10, ylabel="\$ f(x) - f(x^\\star)\$",
+    title="non-quadratic");
 plot(p1, p2)
 ```
 
@@ -473,14 +485,13 @@ function coordinate_descent(f, x₀::Vector, grad_f; α::Real=0.2, β::Real=0.7,
     x = x₀  # initial value
     Δx = zero(x)
     while true
-        i, δx = -grad_f(x) |> (d -> (argmin(d), minimum(d)))   # choose direction
-        Δx[i] = δx
-        if abs(δx) < ν
+        ...   # choose direction
+
+        if ...
             break  # converged
         end
-        t = backtracking_line_search(f, x, Δx, grad_f, α=α, β=β)  # BLS for optimal step size
-        x .+= t * Δx  # do a step
-        Δx[i] = zero(δx)  # reset
+        ...  # BLS for optimal step size
+        ...  # do a step
         trace(tracker, x)
     end
     return x
@@ -515,10 +526,10 @@ path!(trackernqcd, label="CD", color=myblue)
 ```
 
 ```julia; echo=false
-p1 = plotobj(fquadr, trackerqgd, label="GD", yscale=:log10, ylabel="abs error",
+p1 = plotobj(fquadr, trackerqgd, label="GD", yscale=:log10, ylabel="\$ f(x) - f(x^\\star)\$",
                                         title="quadratic")
 plotobj!(fquadr, trackerqcd, color=myblue, label="CD")
-p2 = plotobj(nonquadrerr, trackernqgd, label="GD", yscale=:log10, ylabel="error",
+p2 = plotobj(nonquadrerr, trackernqgd, label="GD", yscale=:log10, ylabel="\$ f(x) - f(x^\\star)\$",
                                                         title="non-quadratic");
 plotobj!(nonquadrerr, trackernqcd, color=myblue, label="CD");
 plot(p1, p2)
@@ -638,10 +649,10 @@ path!(trackernqnm, label="Newton", color=mygreen)
 The following figure shows the convergence of Newton's algorithm on the quadratic and non-quadratic functions. Note that the quadratic problem is solved exactly in one step.
 
 ```julia; echo=false
-p1 = plotobj(fquadr, trackerqgd, label="GD", yscale=:log10, ylabel="abs error", title="quadratic", ylim=(1e-15, 10));
+p1 = plotobj(fquadr, trackerqgd, label="GD", yscale=:log10, ylabel="\$ f(x) - f(x^\\star)\$", title="quadratic", ylim=(1e-15, 10));
 plotobj!(fquadr, trackerqcd, color=myblue, label="CD");
 plotobj!(fquadr, trackerqnm, color=mygreen, label="Newton");
-p2 = plotobj(nonquadrerr, trackernqgd, label="GD", yscale=:log10, ylabel="error", title="non-quadratic", ylim=(1e-15, 10));
+p2 = plotobj(nonquadrerr, trackernqgd, label="GD", yscale=:log10, ylabel="\$ f(x) - f(x^\\star)\$", title="non-quadratic", ylim=(1e-15, 10));
 plotobj!(nonquadrerr, trackernqcd, color=myblue, label="CD");
 plotobj!(fquadr, trackernqnm, color=mygreen, label="Newton");
 plot(p1, p2)
@@ -661,40 +672,46 @@ After a sufficiently large number of iterations, the number of correct digits do
 1. Complete the code for Newton's method.
 2. Find the minima of the two toy problems. Use the same starting points as for gradient descent.
 
-```python
-def newtons_method(f, x0, grad_f, hess_f, alpha=0.3,
-                beta=0.8, epsilon=1e-3, trace=False):
-    '''
-    Newton's method for minimizing functions.
-    Inputs:
-        - f: function to be minimized
-        - x0: starting point
-        - grad_f: gradient of the function to be minimized
-        - hess_f: hessian matrix of the function to be minimized
-        - alpha: parameter for btls
-        - beta: parameter for btls
-        - nu: parameter to determine if the algorithm is converged
-        - trace: (bool) store the path that is followed?
-    Outputs:
-        - xstar: the found minimum
-        - x_steps: path in the domain that is followed (if trace=True)
-        - f_steps: image of x_steps (if trace=True)
-    '''
-    x = x0  # initial value
-    if trace: x_steps = [x.copy()]
-    if trace: f_steps = [f(x0)]
-    while True:
-        # ...
-        if # ...  # stopping criterion
+```julia; eval=false
+"""
+    newtons_method(f, x₀, Df, DDf; α::Real=0.2, β::Real=0.7,
+        ϵ::Real=1e-7, tracker::Tracker=notrack)
+
+General Newton method.
+
+Inputs:
+    - f: function to be minimized
+    - x₀: starting point
+    - Df: gradient of the function to be minimized
+    - DDf: Hessian of the function to be minimized
+    - α: parameter for btls
+    - β: parameter for btls
+    - ϵ: parameter to determine if the algorithm is converged
+    - tracker: (bool) store the path that is followed?
+
+Outputs:
+    - xstar: the found minimum
+"""
+function newtons_method(f, x₀, Df, DDf; α::Real=0.2, β::Real=0.7,
+      ϵ::Real=1e-5, tracker::Tracker=notrack)
+
+    x = x₀  # initial values
+    # preallocation
+    Δx = similar(x)
+    Dfx = similar(x)
+    while true
+        ... # choose direction
+        λ² = ...  # newton decrement
+        if λ² < ϵ
             break  # converged
-        # ...
-        if trace: x_steps.append(x.copy())
-        if trace: f_steps.append(f(x))
-    if trace: return x, x_steps, f_steps
-    else: return x
+        end
+        ...
+        ...  # do a step
+        trace(tracker, x)
+    end
+    return x
+end
 ```
-
-
 
 ### Summary Newton's method
 

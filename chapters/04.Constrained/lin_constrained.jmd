@@ -4,8 +4,6 @@ author : Michiel Stock
 date: 2019-2020
 ---
 
-![](Figures/logo.png)
-
 ```julia; echo=false
 using Plots
 using LinearAlgebra
@@ -150,6 +148,21 @@ $$
 $$
  \text{subject to }  x_1 + 3x_2 = 0
 $$
+
+```julia; echo=false
+fquadr((x1, x2); γ=10.0) = 0.5(x1^2 + γ * x2^2);
+grad_fquadr((x1, x2); γ=10.0) = [x1, γ * x2];
+hess_fquadr((x1, x2); γ=10.0) = [1 0; 0 γ];
+```
+
+```julia; echo=false
+import Zygote  # NOT doing this by hand!
+
+fnonquadr((x1, x2)) = log(exp(x1+3x2-0.1) + exp(x1-3x2-0.1)+exp(-x1-0.1));
+grad_fnonquadr(x) = Zygote.gradient(fnonquadr, x)[1];
+hess_fnonquadr(x) = Zygote.hessian(fnonquadr, x);
+```
+
 
 ![The two toy functions each with a linear constraint.](Figures/example_functions.png)
 

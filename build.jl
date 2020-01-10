@@ -11,11 +11,12 @@ Build all the notebooks and stuff. Based on a file by Bram De Jaegher.
 using Weave
 
 
-dirs = [#"01.Brackets",
-        #"02.Quadratic",
-        #"03.Unconstrained",
-        #"04.Constrained",
-        "05.AutoDiff"]
+dirs = ["01.Brackets",
+        "02.Quadratic",
+        "03.Unconstrained",
+        "04.Constrained",
+        #"05.AutoDiff"
+        ]
 
 
 function cleanTemps(filename, dir; exts=[".out", ".log", ".aux"])
