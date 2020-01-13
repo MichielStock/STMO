@@ -15,4 +15,7 @@ export generate_noisy_measurements, make_bookkeeping, make_connection_matrix, si
 
 include("unconstrained.jl")
 export gradient_descent, coordinate_descent, newtons_method, backtracking_line_search
+
+include("testfuns.jl")
+export TestFuns
 end # module
