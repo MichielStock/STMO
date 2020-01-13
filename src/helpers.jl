@@ -11,7 +11,7 @@ General stuff.
 # COLORS
 # ------
 
-myblue = "#264653"
+myblue = "#304da5"
 mygreen = "#2a9d8f"
 myyellow = "#e9c46a"
 myorange = "#f4a261"
