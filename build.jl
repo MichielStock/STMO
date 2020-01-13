@@ -11,11 +11,12 @@ Build all the notebooks and stuff. Based on a file by Bram De Jaegher.
 using Weave
 
 
-dirs = ["01.Brackets",
+dirs = ["00.Introduction",
+        "01.Brackets",
         "02.Quadratic",
         "03.Unconstrained",
         "04.Constrained",
-        #"05.AutoDiff"
+        "05.AutoDiff"
         ]
 
 
@@ -37,3 +38,8 @@ for dir in dirs
     convert_doc(dir * filename * ".jmd", dir * filename * ".ipynb")
   end
 end
+
+
+# FIGURES
+
+include("scripts/maketestfigs.jl")

@@ -28,5 +28,5 @@ function flower(x; a=1, b=1, c=4)
     return a * norm(x) + b * sin(c*atan(x[2], x[1]))
 end
 
-export branin, rosenbrock, rastrigine, flower
+export branin, rosenbrock, rastrigine, flower, booth
 end  # module TestFuns
