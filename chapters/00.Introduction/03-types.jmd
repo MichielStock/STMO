@@ -1,0 +1,416 @@
+---
+title : The type system and multiple dispatch
+author : Michiel Stock, Bram De Jaegher, Daan Van Hauwermeiren
+date: 2019-2020
+---
+
+# Everything has a type
+
+All Julia objects, both those already defined as well as those you might make yourself, have a type. The type system is the secret sauce, allowing Julia to be fast because code can be specialized for a particular combination of types. It is also supremely useful in conjunction with *multiple dispatch*, in which functions work differently depending on which types you feed into them.
+
+# Checking the type
+
+The type of objects can be assessed using the function `typeof`. For collections, `eltype` gives the types of individual elements. Try the following examples. Note that types are always capitalized!
+
+```julia; term=true
+a = 42; s = "mice"; n = 0.9; A = [1 2; 3 4];
+```
+```julia; term=true
+typeof(a)
+```
+```julia; term=true
+typeof(s)
+```
+```julia; term=true
+typeof(n)
+```
+```julia; term=true
+typeof(A)
+```
+These are all *concrete types*. Julia types are part of a hierarchical type system, forming a single, fully connected type graph. The concrete types are the leaves of this tree, whereas the inner nodes are *abstract types*. As hinted by the name, these are abstract and cannot be instantiated. They, however, help with conceptually ordering the type system.
+
+We can find the supertype of a concrete or abstract type using the function `supertype`.
+
+```julia; term=true
+supertype(Int8)
+```
+```julia; term=true
+supertype(Float64)
+```
+```julia; term=true
+supertype(AbstractFloat)
+```
+```julia; term=true
+supertype(Real)
+```
+```julia; term=true
+supertype(Number)
+```
+```julia; term=true
+supertype(Any)
+```
+See how all the numbers are hierarchically represented? Note that any type is always a subtype of `Any`. We can check if an object is (sub)type using the function `isa`.
+
+```julia; term=true
+a isa Int  # Int is concrete type Int64
+```
+```julia; term=true
+a isa Integer  # Integer is abstract
+```
+```julia; term=true
+a isa Int8
+```
+```julia; term=true
+a isa Number
+```
+
+Concrete types always have a fixed representation whereas abstract types can be anything. Concrete subtypes of `AbstractFloat` can be 16 bits (`Float16`), 32 bits (`Float32`), 64 bits (`Float64`) or arbitrary large (`BigFloat`).
+
+We can check if one type is a subtype of the second one using the binary operator `<:`.
+
+```julia; term=true
+Float64 <: AbstractFloat
+```
+```julia; term=true
+Float16 <: AbstractFloat
+```
+```julia; term=true
+AbstractFloat <: Number
+```
+```julia; term=true
+Int <: Number
+```
+```julia; term=true
+Int <: AbstractFloat
+```
+```julia; term=true
+Integer <: Int
+```
+
+# Methods and dispatch
+
+When a function is run for the first time with a particular combination of type inputs, it gets compiled by the LLVM compiler. Such a specific function is referred to as a `method`. Every time a function is run with a new combination of types of arguments, a suitable method is compiled. This is noticeable when measuring the running time. Compare
+
+```julia; term=true
+mynewfun(x) = x^2 + x
+
+A = [1 2; 3 4];
+```
+```julia; term=true
+# first run
+@time mynewfun(A)
+```
+```julia; term=true
+# second run
+@time mynewfun(A)
+```
+```julia; term=true
+# now with a float
+@time mynewfun(1)
+```
+```julia; term=true
+# new value, same type
+@time mynewfun(12)
+```
+
+The known methods can be found using the function `methods`. For example, check how many methods there are associated with the humble multiplication operator `*`.
+
+```julia; eval=false
+methods(*)
+```
+
+The arguments a function can take can be restricted using the `::`-operator. Here, if we limit a function as `f(x::T)`, this means that `x` can be any type `<: T`. Can you explain the reasoning behind the following code? How does it process numbers? What does it do with strings?
+
+```julia; term=true
+twice(x::Number) = 2x;
+twice(x::String) = x * x;
+```
+
+So why use dispatch?
+
+1. Controls the **scope** of functions. For some types, there is no method, and we want an error if we use the wrong type.
+2. Because we wish functions to **behave differently** depending on the types you feed into them.
+
+Note that, generally seen, typing the functions is **not** needed to improve the performance of the functions.
+
+> **Exercise** Consider the following methods. Can you predict the outcome of the lines of code below it?
+
+```julia
+f(x, y) = println("No life forms present");
+f(x::T, y::T) where {T} = x * y;  # short for {T <: Any}
+f(x::Integer, y::Real) = 2x + y;
+f(x::Int, y::Int) = 2x + 2y;
+f(x::Integer, y::Float64) = x + 2y;
+f(x::Float64, y::Real) = x - y;
+f(x::Float64, y::Float64) = 2x - y;
+```
+
+Gives
+
+```julia; eval=false
+f(1, 2.0)
+```
+```julia; eval=false
+f(1.0, 2)
+```
+```julia; eval=false
+f(Int8(1), Int8(2))
+```
+```julia; eval=false
+f(1.0, 2.0)
+```
+```julia; eval=false
+f("one", 2)
+```
+```julia; eval=false
+f("one", "two")
+```
+```julia; eval=false
+f(1, Float32(2.0))
+```
+```julia; eval=false
+f(1, 2)
+```
+```julia; eval=false
+f([1 1; 1 1], [2.0 2.0; 2.0 2.0])
+```
+```julia; eval=false
+f([1 1; 1 1], [2 2; 2 2])
+```
+
+# Defining types
+
+## Abstract types
+
+Abstract types are defined using the following simple syntax:
+
+```
+abstract type «name» end
+abstract type «name» <: «supertype» end
+```
+
+## Primitive types
+
+*Primitive types* exist of simple bits. Examples are `Float64` and `Int16`. You can declare your own types, though this is likely not something many often do in practice.
+
+## Composite types
+
+*Composite types* (records, structs, or objects) are more exciting. They are often containers for several objects set to behave in a certain way. Take the following small example of defining an abstract type `Pet`, which two concrete structs for cats and dogs, each has `name` as a sole attribute.
+
+```julia
+abstract type Pet end
+
+struct Cat <: Pet
+  name
+end
+
+struct Dog <: Pet
+  name
+end
+
+# overload the method for showing the pets
+Base.show(io::IO, pet::Pet) = print("pet $(pet.name)")
+
+# what kind of sound does the pet make?
+calls(cat::Cat) = println("miaaw")
+calls(dog::Dog) = println("woof")
+```
+```julia
+mycat = Cat("Appa");
+hisdog = Dog("Storm");
+```
+```julia; term=true
+calls(mycat)
+```
+```julia; term=true
+calls(hisdog)
+```
+
+Using dispatch, we can have custom behavior for the pets.
+
+```julia
+meets(pet1::Cat, pet2::Dog) = println("$(pet1.name) hisses at $(pet2.name)");
+meets(pet1::Dog, pet2::Cat) = println("$(pet1.name) barks at $(pet2.name)");
+meets(pet1::Cat, pet2::Cat) = println("$(pet1.name) ignores $(pet2.name)");
+meets(pet1::Dog, pet2::Dog) = println("$(pet1.name) sniffs the but of $(pet2.name)");
+```
+```julia; term=true
+meets(mycat, hisdog)
+```
+
+```julia; term=true
+meets(hisdog, mycat)
+```
+
+## Union types
+
+Two or more types can be combined into an `Union` type. For example, `Union{Cat, Dog}` would relate to either a cat or a dog.
+
+## Parametric types
+
+Julia allows for more control of the types. For example, consider a 2-dimensional coordinate:
+
+```julia
+struct Point{T}
+    x::T
+    y::T
+end
+```
+So here, each coordinate of the type `Point` has two attributes, `x` and `y`, of the same type. These so-called *parametric types* allow for processing the structures the right way.
+
+```julia; term=true
+p = Point(1.0, 2.0)
+```
+```julia; term=true
+Point(1, 2)
+```
+
+But what will happen if you evaluate `Point(1, 2.0)`?
+
+```julia; eval=false
+Point(1, 2.0)
+```
+
+Parametric types can be used in dispatch. For example, if we want to compute the norm of a Point, this would only make sense if Point is of type real.
+
+```julia; term=true
+norm(p::Point{T} where {T<:Real}) = sqrt(p.x^2 + p.y^2);
+```
+```julia; term=true
+norm(p)
+```
+
+
+# Constructors
+
+## Outer constructors
+
+Constructors are functions that create new objects. We have already seen that when creating a new `struc`, this immediately initiates the constructor (e.g., `Point(1.0, 2.0)`). These can also be made explicitly:
+
+```julia
+Point(x::T, y::T) where {T<:Real} = Point{T}(x,y);
+```
+
+Constructors, however, allow us to have custom behavior when initializing types. For example, we have seen that `Point(1, 2.0)` won't work, because the two inputs are of the same type. In this case, we can make the rule that one of the inputs has to be promoted to a more general type.
+
+
+```julia; term=true
+Point(x::Real, y::Real) = Point(promote(x, y)...);
+```
+
+```julia
+Point(1, 2.0)
+```
+
+Or, suppose that we want that if only one input is provided, it just uses this twice, e.g. `Point(1)` behaves as `Point(1, 1)`:
+
+```julia; term=true
+Point(x) = Point(x, x);
+
+Point(1)
+```
+
+## Inner constructors
+
+The above examples show *outer constructors*. These are defined outside the structure. We can also use *inner constructors*, which are declared within the definition of the type. These make use of the keyword `new`. For example, let us define an ordered pair.
+
+```julia
+struct OrderedPair
+  x
+  y
+  function OrderedPair(x, y)
+    if x < y
+      new(x, y)
+    else
+      new(y, x)
+    end
+  end
+end
+```
+```julia; term=true
+OrderedPair(18, 23)
+```
+```julia; term=true
+OrderedPair(8, 2)
+```
+# Exercises
+
+## Case study: the Strang matrix
+
+The Strang matrix is a tridiagonal matrix with -2 at the diagonal and above and below the diagonal.
+
+$$
+\begin{pmatrix}
+  -2 & 1& \cdots & 0 & 0 \\
+  1 & -2& \cdots & 0 & 0\\
+  \vdots  & \vdots  & \ddots & \vdots  \\
+  0 &0 & \cdots & -2 & 1\\
+0 &0 & \cdots & 1 & -2
+ \end{pmatrix}
+$$
+
+The specific structure makes computing with this matrix often more straightforward than for general matrices. Let us implement a `Strang` matrix type to work with this!
+
+```julia;
+struct Strang <: AbstractMatrix{Int}
+  n::Int
+  function Strang(n::Integer)
+    @assert n > 0 throw(AssertionError("n should be positive, got $n"))
+    new(n)
+  end
+end
+```
+
+```julia
+Base.eltype(S::Strang) = Int
+Base.size(S::Strang) = (S.n, S.n)
+Base.getindex(S::Strang, i, j) = i==j ? -2 : (abs(i-j)==1 ? 1 : 0)
+```
+
+> **Optional assignment** Before running the code, modify the `struct` such that `Strang` is paramterically typed, with a constructor, for example, `Strang(Int, n)` generates an $n \times n$ Strang matrix with `Int` elements. The default version of `Strang(n)` generates a Strang matrix of type `Strang{Float64}`.
+
+That's it! Now, we have our own implementation of the Strang matrix. We have also given Julia just enough information such that it can also represent this nicely!
+
+```julia; term=true
+S = Strang(5)
+```
+
+Note that much other functionality just magically appears.
+
+```julia; term=true
+sum(S)
+```
+```julia; term=true
+v = [2.3, 1.4, 6.0, 9.0 , 1.7]
+S * v
+```
+
+> **Assignment** Though multiplication works, it is quite slow, because Julia has no sense of the particular structure of Strang matrices. Overload the `*` function in Julia to provide efficient multiplication.
+
+```julia; eval=false
+function Base.:*(S::Strang, v::Vector)
+  x = similar(v)
+  ...
+  return x
+end
+```
+
+## Wizarding currency
+
+The British wizarding world uses Galleons, Sickles, and Knuts as a currency. There are 17 Sickles in a Galleon, and 29 Knuts in a Sickle, meaning there are 493 Knuts to a Galleon. We will make a structure `WizCur` to represent wizarding currency. This structure has three integer-valued fields: `galleons`, `sickles`, and `knuts`. The constructor should always create tidy representations, meaning that, for example, if the number of knuts is 29 or more, it just adds an appropriate number of sickles such that the number knuts is less than 29 (it's magical money). The same applies to the sickles, which can also never exceed 17.
+
+Overload `Base.show` such that Julia prints your currency as, for example, `7G, 2S, 9K`.
+
+Also, overload the function `+` to add two instances of `WizCur` and the `>` and `<` operators to compare two instances of wizarding currency.
+
+The piggy bank with Ron's life savings contains 19 Sickles and 732 Knuts. Harry has 3 Galleons, 1 Sickle, and 7 Knuts pocket change. Who has the most money? How many do they have together?
+
+HINT: you might find `%` and `div` useful here.
+
+```julia; eval=false
+struct WizCur
+  ...
+end
+
+...
+```

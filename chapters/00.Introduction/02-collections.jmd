@@ -1,0 +1,446 @@
+---
+title : Collections
+author : Michiel Stock, Bram De Jaegher, Daan Van Hauwermeiren
+date: 2019-2020
+---
+
+# Arrays
+Let us start with `Array`s. It is very similar to lists in Python, though it can have more than one dimension. An `Array` is defined as follows,
+
+```julia
+A = []            # empty array
+```
+
+```julia
+X = [1, 3, -5, 7] # array of integers
+```
+
+## Indexing and slicing
+Let's start by eating the frog. Julia uses 1-based indexing...
+
+```julia
+names = ["Arthur", "Ford", "Zaphod", "Marvin", "Trillian", "Eddie"]
+```
+
+```julia;eval=false
+names[0]        # this does not work, sorry Pythonista's
+```
+
+```julia
+ names[1]        # hell yeah!
+```
+```julia
+ names[end]      # last element
+```
+```julia
+ names[end-1]    # second to last element
+```
+
+Slicing arrays is intuitive,
+```julia
+names[3:6]
+```
+
+and slicing with assignment too.
+```julia
+  names[end-1:end] = ["Slartibartfast","The Whale and the Bowl of Petunias"]
+```
+
+```julia
+  names
+```
+
+## Types
+Julia arrays can be of mixed type.
+
+```julia
+Y = [42, "Universe", []]
+```
+
+The type of the array changes depending on the elements that make up the array.
+
+```julia
+typeof(A)
+```
+
+```julia
+typeof(X)
+```
+
+```julia
+typeof(Y)
+```
+
+When the elements of the arrays are mixed, the type is promoted to the closest common ancestor. For `Y` this is `Any`.  But an array of an integer and a float becomes an...
+
+```julia
+B = [1.1, 1]
+typeof(B)
+```
+
+```julia
+eltype(B)   # gives the type of the elements
+```
+
+... array of floats.
+
+Julia allows the flexibility of having mixed types, though this will hinder performance, as the compiler can no longer optimize for the type. If you process an array of `Any`s, your code will be as slow as Python.
+
+To create an array of a particular type, just use `Type[]`.
+
+```julia
+Float64[1, 2, 3]
+```
+
+## Initialisation
+Arrays can be initialized in all the classic, very Pythonesque ways.
+
+```julia
+C = []  # empty
+
+zeros(5)      # row vector of 5 zeroes
+```
+
+```julia
+ones(3,3)     # 3X3 matrix of 1's, will be discussed later on
+```
+
+```julia
+fill(0.5, 10) # in case you want to fill a matrix with a specific value
+```
+
+```julia
+rand(2)    # row vector of 2 random floats [0,1]
+```
+
+```julia
+randn(2)   # same but normally-distributed random numbers
+```
+Sometimes it is better to provide a specific type for initialization. `Float64` is often the default.
+
+```julia
+zeros(Int8, 5)
+```
+
+## Comprehensions and list-like operations
+
+Comprehensions are a concise and powerful way to construct arrays and are very loved by the Python community.
+
+```julia
+Y = [1, 2, 3, 4, 5, 6, 8, 9, 8, 6, 5, 4, 3, 2, 1]
+t = 0.1
+dY = [Y[i-1] - 2*Y[i] + Y[i+1] for i=2:length(Y)-1] # central difference
+```
+
+General $N$-dimensional arrays can be constructed using the following syntax:
+
+```
+[ F(x,y,...) for x=rx, y=ry, ... ]
+```
+
+Note that this is similar to using set notation. For example:
+
+```julia
+[i * j for i in 1:4, j in 1:5]
+```
+
+## Pushing, appending and popping
+
+Arrays behave like a stack. Elements can be added to the back of the array,
+
+```julia
+push!(names, "Eddie") # add a single element
+```
+
+```julia
+append!(names, ["Sam", "Gerard"]) # add an array
+```
+
+"Eddie" was appended as the final element of the Array along with "Sam" and "Gerard". Remember, a "!" is used to indicate an in-place function. `pop()` is used to return and remove the final element of an array
+
+```julia
+pop!(names)
+```
+
+# Matrices
+
+Let's add a dimension and go to 2D Arrays, matrices. It is all quite straightforward,
+
+```julia
+ Z = [0 1 1; 2 3 5; 8 13 21; 34 55 89]
+```
+
+```julia
+ Z[3,2]  # indexing
+```
+
+```julia
+ Z[1,:]  # slicing
+```
+
+It is important to know that arrays and other collections are copied by reference.
+
+```julia
+R = Z
+```
+
+```julia
+Z
+```
+
+```julia
+R
+```
+
+```julia
+R[1,1] = 42
+```
+
+```julia
+Z
+```
+`deepcopy()` can be used to make a wholly dereferenced object.
+
+## Concatenation
+Arrays can be constructed and also concatenated using the following functions,
+
+```julia
+Z = [0 1 1; 2 3 5; 8 13 21; 34 55 89]
+Y = rand(4,3)
+```
+
+```julia
+cat(Z, Y, dims=2)                # concatenation along a specified dimension
+```
+
+```julia
+cat(Z, Y, dims=1) == vcat(Z,Y) == [Z;Y]   # vertical concatenation
+```
+
+```julia
+cat(Z,Y,dims=2) == hcat(Z,Y) == [Z Y]   # horizontal concatenation
+```
+
+Note that `;` is an operator to use `vcat`, e.g.
+
+```julia
+[zeros(2, 2) ones(2, 1); ones(1, 3)]
+```
+
+This simplified syntax can lead to strange behaviour. Explain the following difference.
+
+```julia; term = true
+[1  2-3]
+```
+
+```julia
+[1 2 -3]
+```
+
+Sometimes, `vcat` and `hcat` are better used to make the code unambiguous.
+
+## Vector operations
+
+By default, the `*` operator is used for matrix-matrix multiplication
+
+```julia
+A = [2 4 3; 3 1 5]
+B = [ 3 10; 4 1 ;7 1]
+
+A * B
+```
+
+This is the Julian way since functions act on the objects, and element-wise operatios are done with "dot" operations. For every function or binary operation like `^` there is a "dot" operation `.^` to perform element-by-element exponentiation on arrays.
+
+```julia
+Y = [10 10 10; 20 20 20]
+Y.^2
+```
+
+Under the hood, Julia is looping over the elements of `Y`. So a sequence of dot-operations is fused into a single loop.
+```julia
+Y.^2 .+ cos.(Y)
+```
+
+Did you notice that dot-operations are also applicable to functions, even user-defined functions? As programmers, we are by lazy by definition and all these dots are a lot of work. The `@.` macro does this for us.
+
+```julia
+Y.^2 .+ cos.(Y) == @. Y^2 + cos(Y)
+```
+
+# Higher dimensional arrays
+
+Matrices can be generalized to multiple dimensions.
+
+```julia
+X = rand(3, 3, 3)
+```
+
+# Ranges
+
+The colon operator `:` can be used to construct unit ranges, e.g., from 1 to 20:
+
+```julia
+ur = 1:20
+```
+
+Or by increasing in steps:
+
+```julia
+str = 1:3:20
+```
+
+Similar to the `range` function in Python, the object that is created is not an array, but an iterator. This is actually the term used in Python. Julia has many different types and structs, which behave a particular way. Types of `UnitRange` only store the beginning and end value (and stepsize in the case of `StepRange`). But functions are overloaded such that it acts as arrays.
+
+```julia; term=true
+for i in ur
+  println(i)
+end
+
+str[3]
+
+length(str)
+```
+
+All values can be obtained using `collect`:
+
+```julia
+collect(str)
+```
+
+Such implicit objects can be processed much smarter than naive structures. Compare!
+
+```julia; term=true
+@time sum((i for i in 1:100_000_000))
+```
+
+```julia; term=true
+@time sum(1:100_000_000)
+```
+
+`StepRange` and `UnitRange` also work with floats.
+
+```julia
+0:0.1:10
+```
+
+# Other collections
+
+Some of the other collections include tuples, dictionaries, and others.
+
+```julia
+tupleware = ("tuple", "ware") # tuples
+```
+
+```julia
+scores = Dict("humans" => 2, "vogons" => 1) # dictionaries
+```
+
+```julia
+scores["humans"]
+```
+
+# Exercises
+
+## Vandermonde matrix
+
+Write a function to generate an $n \times m$ [Vandermonde matrix](https://en.wikipedia.org/wiki/Vandermonde_matrix) for a given vector $\alpha=[\alpha_1,\alpha_2,\ldots,\alpha_m]^T$. This matrix is defined as follows
+
+$$
+{\displaystyle V={\begin{bmatrix}1&\alpha _{1}&\alpha _{1}^{2}&\dots &\alpha _{1}^{n-1}\\1&\alpha _{2}&\alpha _{2}^{2}&\dots &\alpha _{2}^{n-1}\\1&\alpha _{3}&\alpha _{3}^{2}&\dots &\alpha _{3}^{n-1}\\\vdots &\vdots &\vdots &\ddots &\vdots \\1&\alpha _{m}&\alpha _{m}^{2}&\dots &\alpha _{m}^{n-1}\end{bmatrix}},}
+$$
+
+or
+
+$$
+V = [\alpha_i^{j-1}] .
+$$
+
+Write a one-liner function `vandermonde` to generate this matrix. This function takes as a vector `α` and `m`, the number of powers to compute.
+
+```julia; eval=false
+vandermonde(α, m) = ...
+```
+
+## Determinant
+
+Write a function `mydet` to compute the determinant of a square matrix. Remember, for a $2 \times 2$ matrix, the determinant is computed as
+
+$$
+{\displaystyle|A|={\begin{vmatrix}a&b\\c&d\end{vmatrix}}=ad-bc.}
+$$
+
+
+For larger matrices, there is a recursive way of computing the determinant based on the minors, i.e. the determinants of the submatrices. See [http://mathworld.wolfram.com/Determinant.html](http://mathworld.wolfram.com/Determinant.html).
+
+Write a function to compute the determinant of a general square matrix.
+
+```julia; eval=false
+function mydet(A)
+  size(A,1) != size(A,2) && throw(DimensionMismatch)
+  ...
+end
+```
+
+## Ridge regression
+
+Ridge regression can be seen as an extension of ordinary least squares regression,
+
+$$\beta X =b\, ,$$
+
+where a matrix $\beta$ is sought which minimizes the sum of squared residuals between the model and the observations,
+
+$$SSE(\beta) = (y - \beta X)^T (y - \beta X)$$
+
+In some cases it is adviceable to add a regularisation term to this objective function,
+
+$$SSE(\beta) = (y - \beta X)^T (y - \beta X) + \lambda \left\lVert X \right\rVert^2_2 \, , $$
+
+this is known as ridge regression. The matrix $\beta$ that minimises the objective function can be computed analytically.
+
+$$\beta = \left(X^T X + \lambda I \right)^{-1}X^T y$$
+
+Let us look at an example. We found some data on the evolution of human and dolphin intelligence.
+
+```julia
+using Plots
+
+blue = "#8DC0FF"
+red = "#FFAEA6"
+
+t = collect(0:10:3040)
+ϵ₁ = randn(length(t))*15     # noise on Dolphin IQ
+ϵ₂ = randn(length(t))*20     # noise on Human IQ
+
+Y₁ = dolphinsIQ = t/12 + ϵ₁
+Y₂ = humanIQ = t/20 + ϵ₂
+
+scatter(t,Y₁; label="Dolphins", color=blue,
+  ylabel="IQ (-)", xlabel ="Time (year BC)", legend=:topleft)
+scatter!(t,Y₂; label="Humans", color=red)
+
+```
+
+> "For instance, on the planet Earth, man had always assumed that he was more intelligent than dolphins because he had achieved so much - the wheel, New York, wars and so on - whilst all the dolphins had ever  done was muck about in the water having a good time. But conversely, the dolphins had always believed that they were far more intelligent than man - for precisely the same reasons."
+>
+> *Hitchhikers guide to the galaxy*
+
+**Assignment:** Plot the trend of human vs. dolphin intelligence by implementing the analytical solution for ridge regression. For this, you need the uniform scaling operator `I`, found in the `LinearAlgebra` package. Use $\lambda=0.01$.
+
+```julia;eval = false
+
+using LinearAlgebra
+
+β₁ = #...
+β₂ = #...
+
+Y₁ = β₁*t
+Y₂ = β₂*t
+
+```
+
+# References
+- [Julia Documentation](https://juliadocs.github.io/Julia-Cheat-Sheet/)
+- [Introduction to Julia UCI data science initiative](http://ucidatascienceinitiative.github.io/IntroToJulia/)
+- [Month of Julia](https://github.com/DataWookie/MonthOfJulia)
+- [Why I love Julia, Next Journal](https://nextjournal.com/kolia/why-i-love-julia)
