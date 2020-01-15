@@ -1,13 +1,15 @@
 module STMO
 
-include("helpers.jl")
+
 
 
 using Plots, LinearAlgebra
 
+include("helpers.jl")
 export myred, mygreen, myyellow, myblue, myblack, myorange, mycolors
 export trace, notrack, PathTrack, nsteps
 export path, path!, plotobj, plotobj!
+export dist
 
 include("quadratic.jl")
 export fquad, quadratic, solve_quadratic, quadratic_ls, gradient_descent, plot_quadratic

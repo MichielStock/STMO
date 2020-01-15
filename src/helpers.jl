@@ -57,3 +57,18 @@ plotobj(f::Function, tracker::PathTrack; kwargs...) = plot(0:nsteps(tracker), f.
                                                  lw=2, color=myorange, xlabel="iteration"; kwargs...)
 plotobj!(f::Function, tracker::PathTrack; kwargs...) = plot!(0:nsteps(tracker), f.(tracker.xsteps);
                                                  lw=2,color=mygreen, kwargs...)
+
+# FUNCTIONS
+# --------
+"""
+Compute Euclidean distance between two vectors.
+"""
+dist(x::AbstractVector, y::AbstractVector) = sqrt(sum((x .- y).^2))
+"""
+Compute Euclidean distance matrix between two matrices.
+"""
+dist(X::AbstractMatrix, Y::AbstractMatrix) = [dist(X[i,:], Y[j,:]) for i in 1:size(X,1), j in 1:size(Y,1)]
+"""
+Compute Euclidean distance matrix.
+"""
+dist(X::AbstractMatrix) = dist(X::AbstractMatrix, X::AbstractMatrix)
