@@ -1,6 +1,7 @@
 ## Not for sync
 *.pdf
 Manifest.toml
+figures/*
 
 ## Core latex/pdflatex auxiliary files:
 *.aux
