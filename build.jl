@@ -8,6 +8,8 @@ michielfmstock@gmail.com
 Build all the notebooks and stuff. Based on a file by Bram De Jaegher.
 =#
 
+t₀ = time()
+
 using Weave
 
 
@@ -16,7 +18,8 @@ dirs = ["00.Introduction",
         "02.Quadratic",
         "03.Unconstrained",
         "04.Constrained",
-        "05.AutoDiff"
+        "05.AutoDiff",
+        "06.OptimalTransport"
         ]
 
 
@@ -43,3 +46,9 @@ end
 # FIGURES
 
 include("scripts/maketestfigs.jl")
+
+tₑ = time()
+
+t = Int(round(tₑ - t₀))
+
+println("Building took $(div(t, 60))m$(t % 60)s")
