@@ -56,7 +56,12 @@ path!(tracker::PathTrack; kwargs...) = plot!(getx(tracker)...; color=myorange, l
 plotobj(f::Function, tracker::PathTrack; kwargs...) = plot(0:nsteps(tracker), f.(tracker.xsteps),
                                                  lw=2, color=myorange, xlabel="iteration"; kwargs...)
 plotobj!(f::Function, tracker::PathTrack; kwargs...) = plot!(0:nsteps(tracker), f.(tracker.xsteps);
-                                                 lw=2,color=mygreen, kwargs...)
+                                                lw=2,color=mygreen, kwargs...)
+
+using Colors
+colorscatter(colors; kwargs...) = scatter(red.(colors), green.(colors), blue.(colors),
+                        xlabel="red", ylabel="green", zlabel="blue", color=colors, label="")
+
 
 # FUNCTIONS
 # --------
