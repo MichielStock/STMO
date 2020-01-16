@@ -10,7 +10,7 @@ Just some plots of the testing functions
 
 using STMO, Plots, LaTeXStrings
 
-using STMO.TestFuns: branin, rosenbrock, rastrigine, flower
+using STMO.TestFuns: branin, rosenbrock, rastrigine, flower, booth
 
 cmap = :speed
 
