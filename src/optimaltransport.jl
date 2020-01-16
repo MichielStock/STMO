@@ -49,4 +49,26 @@ end
 
 export X1, X2, monge_brute_force
 
+
+# SINKHORN
+# -------
+
+using LinearAlgebra
+
+function sinkhorn(C::Matrix, a::Vector, b::Vector; λ=1.0, ϵ=1e-8)
+    n, m = size(C)
+    @assert n == length(a) && m == length(b) throw(DimensionMismatch("a and b do not match"))
+    @assert sum(a) ≈ sum(b) "a and b don't have equal sums"
+    u, v = copy(a), copy(b)
+    M = exp.(-λ * C)
+    # normalize this matrix
+    while maximum(abs.(a .- Diagonal(u) * (M * v))) > ϵ
+        u .= a ./ (M * v)
+        v .= b ./ (M' * u)
+      end
+    return Diagonal(u) * M * Diagonal(v)
+  end
+
+export sinkhorn
+
 end

@@ -9,8 +9,9 @@ using Plots, LaTeXStrings
 using STMO
 using Images, Colors
 ```
+# Motivation
 
-### Motivating example: a party in the research group
+# Motivating example: a party in the research group
 
 Let's have a party in our research unit! Pastries and party hats for everyone! We ask Tinne, our laboratory manager, to make some desserts: an airy merveilleux, some delicious eclairs, a big bowl of dark chocolate mousse, a sweet passion fruit-flavored bavarois and moist carrot cake (we got to have our vegetables). If we mentally cut all these sweets into portions, we have twenty portions.
 
@@ -22,12 +23,11 @@ desserts = ["merveilleux", "eclair", "chocolate mousse", "bavarois", "carrot cak
 Since this is academia, we respect the hierarchy: people higher on the ladder are allowed to take more dessert. The professors, Bernard, Jan and Willem each get three pieces each, our senior post-doc Hilde will take four portions (one for each of her children) and the teaching assistants are allowed two portions per person. Since Wouter is a shared teaching assistant with the Biomath research group, he can only take one (sorry Wouter).
 
 
-
 ```julia
 # portions per person
-a = [3, 3, 3, 4, 2, 2, 2, 1]
+a = [3.0, 3, 3, 4, 2, 2, 2, 1]
 # quantities of each dessert
-b = [4, 2, 6, 4, 4]
+b = [4.0, 2, 6, 4, 4]
 ```
 
 ```julia; echo=false
@@ -37,8 +37,6 @@ hb = bar(b, color=myorange, title="desserts");
 xticks!(1:5, desserts)
 plot(ha, hb)
 ```
-
-![Quantities of every dessert and how much every person can take.](Figures/dessert_distributions.png)
 
 As engineers and mathematicians, we pride ourselves in doing things the optimal way. So how can we divide the desserts to make everybody as happy as possible? As I am preparing a course on optimization, I went around and asked which of those treats they liked. On a scale between -2 and 2, with -2 being something they hated and 2 being their absolute favorite, the desert preferences of the teaching staff is given below (students: take note!).
 
@@ -65,7 +63,25 @@ See how most people like eclairs and chocolate mousse, but merveilleus are a mor
 
 The task is clear: divide these desserts in such a way that people get their portions of the kinds they like the most!
 
-## Cell tracking
+# The Monge problem
+
+The original version of optimal transport was formulated by Gaspard Monge in 1781. Here, $n=m$ and the goal is to connect $n$ sources with $n$ sinks to minimize a cost:
+$$
+\min_{\sigma\in\text{Perm(n)}} \frac{1}{n}\sum_{i=1}^nC_{i,\sigma(i)}\,,
+$$
+with $\text{Perm(n)}$ the set of all permutation of $n$ elements.
+
+> **Example**: There are $n$ mines mining iron ore and a collection of $n$ factories. Given a distance between every mine and every factory, select one factory for every mine such that the total cost (=transportation distance) is minimized.
+
+The **Monge problem** is a *discrete combinatorial optimization problem*:
+
+- The size of the search space is $n!$, for $n=70$, there are more than $10^{100}$ permutations!
+- Can be solved using the [Hungarian algorithm](https://en.wikipedia.org/wiki/Hungarian_algorithm).
+- Restrictive: two sets to match must be of same size. How to deal with different weights?
+
+For working with probability distributions, we require a way to perform *soft-matching*.
+
+## Exercise: cell tracking
 
 In a microscopy imaging experiment we monitor ten moving cells at time $t_1$ and some time later at time $t_2$. Between these times, the cells have moved. An image processing algorithm determined the coordinates of every cell in the two images. We want to know which cell in the first corresponds to the second image. To this end, search the assignment that minimizes the sum of the squared Euclidian distances between cells from the first image versus the corresponding cell of the second image.
 
@@ -73,31 +89,10 @@ In a microscopy imaging experiment we monitor ten moving cells at time $t_1$ and
 2. Complete the function `monge_brute_force` to use brute-force search for the best permutation. You might find the function `permutations` from the `Combinatorics` library useful.
 3. Make a plot connecting the cells.
 
-```julia; echo=false
-X1 = [-3.334062779243765 -0.4501346178106358;
--17.089568765347632 13.122166467239909;
--14.347484681558905 -6.733978925249632;
-4.023051337264342 -9.962304692857852;
--8.463617750898711 -7.272060919414795;
-4.411632356371395 18.33766410251966;
-0.33231514398722767 -8.943403560908134;
-4.312466564646311 -4.769277598451736;
--0.1530439721692118 9.400009756002328;
--5.9829675943508995 0.07220200778660099]
-
-X2 = [-15.776290315139038 -5.26704453200824;
-5.035133784625716 6.388525577583841;
--1.302878737641465 -14.087978411169559;
--17.05014605333986 10.189492174622178;
--10.102710138685817 1.6112603598816224;
--17.880416477734084 -5.15108311036524;
--18.49092111472347 -5.193032093476489;
-1.2972905950753137 34.72586483583929;
-1.3580992685186684 7.334727533023157;
--7.482909025521323 6.326317440680775]
-```
 
 ```julia; echo=false
+using STMO.OptimalTransport: X1, X2
+
 scatter(X1[:,1], X1[:,2], color=myorange, label="location cells at t1")
 xlabel!("\$x\$")
 ylabel!("\$y\$")
@@ -143,7 +138,7 @@ best_perm, best_cost = monge_brute_force(C)
 # make a plot with the connections of the cells
 ```
 
-## The optimal transport problem
+# The optimal transport problem
 
 Let us introduce some notation so we can formally state this as an optimization problem. Let $\mathbf{a}$ be the vector containing the amount of dessert every person may eat. In this case $\mathbf{a} = [3,3,3,4,2,2,2,1]^\intercal$ (in general the dimension of $\mathbf{r}$ is $n$). Similarly, $\mathbf{c}$ denotes the vector of how much there is of every dessert, i.e. $\mathbf{b}=[4, 2, 6, 4, 4]^\intercal$ (in general the dimension of $\mathbf{b}$ is $m$). Often $\mathbf{a}$ and $\mathbf{b}$ represent marginal probability distributions, hence their values are nonzero sum to one.
 
@@ -167,12 +162,12 @@ This is called the *optimal transport* between $\mathbf{a}$ and $\mathbf{b}$. It
 
 The optimum, $d_C(\mathbf{a}, \mathbf{b})$, is called the *Wasserstein metric*. It is basically a distance between two probability distributions. It is sometimes also called the *earth mover distance* as it can be interpreted as how much 'dirt' you have to move to change one 'landscape' (distribution) in another.
 
-## Choosing a bit of everything
+# Choosing a bit of everything
 
 Consider a slightly modified form of the optimal transport:
 
 $$
-d_C^\lambda(\mathbf{a}, \mathbf{b}) = \min_{P\in U(\mathbf{a}, \mathbf{b})}\, \sum_{i,j}P_{ij}C_{ij} - \frac{1}{\lambda}h(P)\,,
+d_C^\lambda(\mathbf{a}, \mathbf{b}) = \min_{P\in U(\mathbf{a}, \mathbf{b})}\, \sum_{i,j}P_{ij}C_{ij} - \frac{1}{\lambda}H(P)\,,
 $$
 
 in which the minimizer $d^\lambda_C(\mathbf{a}, \mathbf{b})$ is called the *Sinkhorn distance*. Here, the extra term
@@ -210,11 +205,11 @@ with $\alpha_1,\ldots,\alpha_n$ and $\beta_1,\ldots,\beta_n$ some constants that
 2. Solve the dessert problem, once for $\lambda=0.1$ and once for $\lambda=10$.
 
 ```julia; eval=false
-function optimal_transport(C::Matrix, a::Vector, b::Vector; λ=1.0, ϵ=1e-8)
+function sinkhorn(C::Matrix, a::Vector, b::Vector; λ=1.0, ϵ=1e-8)
     n, m = size(C)
     @assert n == length(a) && m == length(b) throw(DimensionMismatch("a and b do not match"))
-    @assert sum(a) == sum(b) "a and b don't have equal sums"
-    u, v = similar(a), similar(b)
+    @assert sum(a) ≈ sum(b) "a and b don't have equal sums"
+    u, v = copy(a), copy(b)
     M = ...  # complete this
     # normalize this matrix
     while maximum(abs.(a .- Diagonal(u) * (M * v))) > ϵ
@@ -239,15 +234,15 @@ function optimal_transport(C::Matrix, a::Vector, b::Vector; λ=1.0, ϵ=1e-8)
 
 Using this algorithm, we can compute the optimal distribution of desserts, shown below.
 
-![The solution of the dessert problem with $\lambda=10$, an excellent approximation of the unregularized problem.](../../images/2017_optimal_transport/desserts_high_lambda.png)
+![The solution of the dessert problem with $\lambda=10$, an excellent approximation of the unregularized problem.](Figures/desserts_high_lamda.png)
 
 Here, everybody only has desserts they like. Note that for example, Jan gets three pieces of carrot cake (the only thing he can eat) while Tim receives the remaining portion (he is the only person with some fondness of this dessert). If we decrease the regularization parameter $\lambda$, we encourage a more homogeneous distribution, though some people will have to try some sweets which are not their favorites...
 
-![The solution with a slightly lower $\lambda$. Clearly, a different optimal distribution is obtained.](../../images/2017_optimal_transport/desserts_low_lambda.png)
+![The solution with a slightly lower $\lambda$. Clearly, a different optimal distribution is obtained.](Figures/desserts_low_lamda.png)
 
 The optimal transport problem, with or without entropic regularization has a beautiful geometric interpretation, shown below.
 
-![A geometric view of the optimal transport problem.](../../images/2017_optimal_transport/geometry.png)
+![A geometric view of the optimal transport problem.](Figures/optimal_transport_geometric.png)
 
 The cost matrix determines a direction in which distributions are better or worse. The set $U(\mathbf{r}, \mathbf{c})$ contains all feasible distributions. In the unregularized case, the optimum $P^\star$ is usually found in one of the corners of such a set. When adding the entropic regularizer, we restrict ourselves to distributions with a minimum of entropy, lying within the smooth red curve. Because we don't have to deal with the sharp corners of $U(\mathbf{r}, \mathbf{c})$ anymore, it is easier to find the optimum. As special cases, when $\lambda\rightarrow \infty$, then $P^\star_\lambda$ will become closers to $P^\star$ (until the algorithm runs into numerical difficulties). For $\lambda\rightarrow 0$ on the other hand, only the entropic term is taken into account and $P_\lambda^\star=\mathbf{a}\mathbf{b}^\intercal$. This is bivariate distribution where the rows and columns are independent.
 
@@ -265,12 +260,12 @@ subsample(image, every=8) = image[1:every:size(image,1), 1:every:size(image,2)]
 ```
 
 ```julia
-image1 = load("Figures/butterfly3.jpg")
-image2 = load("Figures/butterfly2.jpg")
+image1 = load("chapters/06.OptimalTransport/Figures/butterfly3.jpg")
+image2 = load("chapters/06.OptimalTransport/Figures/butterfly2.jpg")
 
 plot(
-  plot(image1, title="image 1"),
-  plot(image2, title="image 2"))
+  plot(image1, title="image 1", aspect_ratio=:equal),
+  plot(image2, title="image 2", aspect_ratio=:equal))
 ```
 
 We will subsample the images, otherwise we will end up with a huge cost matrix, the dimensions determined by the total number of pixels of the images. Note that we can also randomly subsample pixels or use $k$-means clustering to reduce the problem size.
@@ -303,7 +298,7 @@ colordiff(parse(Colorant, myred), parse(Colorant, mygreen))
 colordiff(parse(Colorant, myblue), parse(Colorant, mygreen))
 ```
 
-
+Use this to compute the pairwise distances between all the colors!
 
 ```julia; eval=false
 C = ...  # compute the cost function between the pixels.
@@ -314,6 +309,8 @@ Then, we can compute the transport between the two collections of pixels. Since 
 ```julia; eval=false
 P = ...
 ```
+
+Now, each pixel of one image is soft-matched to pixels of the other picture. Recolor each pixel based on the weighted average of its assigned pixels to do the color transfer.
 
 ```julia
 """
