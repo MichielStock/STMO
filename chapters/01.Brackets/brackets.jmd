@@ -60,7 +60,7 @@ $$
 
 We can use the bisection method to find a minimum of a function $f(x0$ by finding points where the first derivative $f'(x)$ is equal to 0.
 
-> **Question**: in addition to the first derivative being equal to zero, which other criterion should hold for $x^\star$ to be a minimizer?
+> **Question**: in addition to the first derivative being equal to zero, which other criteria should hold for $x^\star$ to be a minimizer?
 
 The bisection method departs from an initial bracket $[a, b]$, where $f'(a)$ and $f'(b)$ have opposing signs. If $f'(x)$ is a continious function, the *intermediate value theorem* states that there is at least one $x\in[a,b]$ such that $f'(x)$.
 
@@ -106,7 +106,7 @@ $$
 f(x) = \log(e^{-x} + \frac{x^2}{2})
 $$
 
-Check your result graphically.
+Check your results graphically.
 
 ```julia; eval=false
 function bisection(g, a, b; ϵ=1e-3)
@@ -234,7 +234,7 @@ end
 
 ```
 
-The coming chapters will discuss the minimization of quadratic function in much greater detail.
+The coming chapters will discuss the minimization of quadratic functions in much greater detail.
 
 # Exercises
 
