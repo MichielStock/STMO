@@ -1,6 +1,6 @@
 @testset "test functions" begin
 
-    import STMO.TestFuns: branin, rosenbrock, rastrigine, flower, booth
+    import STMO.TestFuns: branin, rosenbrock, rastrigine, flower, booth, fquadr, fnonquadr
 
     for fun in [branin, rosenbrock, rastrigine, flower, booth]
 

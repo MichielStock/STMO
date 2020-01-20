@@ -29,4 +29,21 @@ function flower(x; a=1, b=1, c=4)
 end
 
 export branin, rosenbrock, rastrigine, flower, booth
+
+# functions for convex optimization
+
+fquadr((x1, x2); γ=10.0) = 0.5(x1^2 + γ * x2^2);
+grad_fquadr((x1, x2); γ=10.0) = [x1, γ * x2];
+hess_fquadr((x1, x2); γ=10.0) = [1 0; 0 γ];
+
+export fquadr, grad_fquadr, hess_fquadr
+
+import Zygote  # NOT doing this by hand!
+
+fnonquadr((x1, x2)) = log(exp(x1+3x2-0.1) + exp(x1-3x2-0.1)+exp(-x1-0.1));
+grad_fnonquadr(x) = Zygote.gradient(fnonquadr, x)[1];
+hess_fnonquadr(x) = Zygote.hessian(fnonquadr, x);
+
+export fnonquadr, grad_fnonquadr, hess_fnonquadr
+
 end  # module TestFuns
