@@ -1,8 +1,6 @@
 module STMO
 
 
-
-
 using Plots, LinearAlgebra
 
 include("helpers.jl")
@@ -12,11 +10,14 @@ export path, path!, plotobj, plotobj!, colorscatter
 export dist
 
 include("quadratic.jl")
-export fquad, quadratic, solve_quadratic, quadratic_ls, gradient_descent, plot_quadratic
-export generate_noisy_measurements, make_bookkeeping, make_connection_matrix, signalfun
+export fquad, quadratic
+export Quadratic, SignalRecovery
+#export solve_quadratic, quadratic_ls, gradient_descent, plot_quadratic
+#export generate_noisy_measurements, make_bookkeeping, make_connection_matrix, signalfun
 
 include("unconstrained.jl")
-export gradient_descent, coordinate_descent, newtons_method, backtracking_line_search
+export Unconstrained
+#export gradient_descent, coordinate_descent, newtons_method, backtracking_line_search
 
 
 include("optimaltransport.jl")

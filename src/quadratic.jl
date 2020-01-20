@@ -1,4 +1,10 @@
-using LinearAlgebra
+module Quadratic
+
+using STMO: Tracker, notrack, PathTrack, trace
+
+export fquad, plot_quadratic, solve_quadratic, quadratic_ls, gradient_descent
+
+using LinearAlgebra, Plots
 
 """Compute a quadratic function."""
 fquad(x::Vector, P::Matrix, q::Vector, r::Real=0.0) = 0.5x' * P * x + q' * x + r
@@ -80,10 +86,21 @@ end
 
 Computes the minimizes of a quadratic system using gradient descent. Optionally
 provide momentum.
+
+Inputs:
+    - P, q: the terms of the nD quadratic system
+    - x₀: starting point
+    - ϵ: convergence parameter
+    - β: momentum parameter
+    - tracker: object of the type `Tracker` to save the steps
+
+Outputs:
+    - xstar: the found minimum
 """
 function gradient_descent(P::AbstractArray, q::AbstractVector,
             x₀::AbstractVector; β::Real=0.0, ϵ::Real=1e-6,
             tracker::Tracker=notrack)
+    @assert 0 ≤ β < 1
     x = x₀  # initial value
     Δx = zero(x)  # pre-allocate a vector for the gradient
     while true
@@ -103,6 +120,9 @@ end
 
 # SIGNAL RECOVERY
 # ---------------
+
+module SignalRecovery
+using LinearAlgebra: I
 
 signalfun(x, n) = 3sin(x * 2 * pi / n) +
             2cos(x * 4 * pi / n) +
@@ -175,3 +195,11 @@ function make_bookkeeping(ind, n)
     end
     return R
 end
+
+export generate_noisy_measurements, make_connection_matrix, make_bookkeeping, signalfun
+
+end # module SignalRecovery
+
+export SignalRecovery
+
+end  # module Quadratic

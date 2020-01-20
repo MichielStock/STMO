@@ -1,5 +1,7 @@
 
 @testset "Quadratic" begin
+    using STMO.Quadratic
+    
     p, q, r = 4.0, 3.0, 1.0
 
     @test solve_quadratic(p, q, r) ≈ -q / p

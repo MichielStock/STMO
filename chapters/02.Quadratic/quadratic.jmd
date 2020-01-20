@@ -7,8 +7,8 @@ date: 2019-2020
 ```julia; echo=false
 using Plots, LaTeXStrings
 using LinearAlgebra
-using STMO: path!, path, plotobj, plotobj!, myred, mygreen, myblue, myorange, myblack, myyellow
-import STMO
+using STMO
+import STMO.Quadratic: plot_quadratic, fquad
 ```
 
 # Motivation
@@ -105,8 +105,6 @@ $$
 with $P$ an $n\times n$ symmetric matrix, $\mathbf{q}$ an $n$-dimensional vector and $r$ a scalar. Below, the contours of a two-dimensional example are shown.
 
 ```julia
-using STMO: plot_quadratic
-
 P = [4 1; 1 2]
 q = [-1; 1]
 r = -10
@@ -439,8 +437,8 @@ $$
 with $\gamma$ set to 10.
 
 ```julia; echo=false
-using STMO: plotobj, fquad, plot_quadratic
-using STMO: PathTrack
+#using STMO: plotobj, fquad, plot_quadratic
+#using STMO: PathTrack
 
 P = [1 0; 0 10]
 q = [0, 0]
@@ -449,7 +447,7 @@ x₀ = [10.0, 1.0]
 
 gdtracker = PathTrack(x₀)
 
-xstar = STMO.gradient_descent(P, q, copy(x₀), tracker=gdtracker)
+xstar = Quadratic.gradient_descent(P, q, copy(x₀), tracker=gdtracker)
 
 p1 = plotobj(x -> fquad(x, P, q, r), gdtracker, yscale=:log10, label="GD",
     ylabel="\$f(x) - f(x^\\star)\$");
@@ -586,11 +584,11 @@ x₀ = [10.0, 1.0]
 
 # without momentum
 gdtracker = PathTrack(x₀)
-xstar = STMO.gradient_descent(P, q, copy(x₀), tracker=gdtracker)
+xstar = Quadratic.gradient_descent(P, q, copy(x₀), tracker=gdtracker)
 
 # with momentum
 gdmtracker = PathTrack(x₀)
-xstar = STMO.gradient_descent(P, q, copy(x₀), β=0.4, tracker=gdmtracker)
+xstar = Quadratic.gradient_descent(P, q, copy(x₀), β=0.4, tracker=gdmtracker)
 
 p1 = plotobj(x -> fquad(x, P, q, r), gdtracker, yscale=:log10, label="GD",
     ylabel="\$f(x) - f(x^\\star)\$");
@@ -671,7 +669,7 @@ The interested reader is referred to '[An Introduction to the Conjugate Gradient
 As a practical example of minimizing quadratic systems, let us consider a simple signal recovery problem. Consider an $n$-dimensional real vector $\mathbf{x}=[x_1,\ldots,x_n]^\top$. Rather than observing this vector directly, we have $m$ noisy measurements at random indices (indices drawn randomly with replacement from $\{1,\ldots,n\}$): $\mathcal{O} = \{(i_j, y_j)\mid j=1,\ldots,m\}$. These measurements are stored in an $m$-dimensional vector $\mathbf{y}$. Can we recover $\mathbf{x}$ from $\mathbf{y}$?
 
 ```julia; echo=false
-using STMO: generate_noisy_measurements, make_connection_matrix, make_bookkeeping
+import STMO.Quadratic.SignalRecovery: signalfun, generate_noisy_measurements, make_connection_matrix, make_bookkeeping
 
 n, m = 1000, 100
 y, ind = generate_noisy_measurements(m, n);
