@@ -271,8 +271,8 @@ plot(
 We will subsample the images, otherwise we will end up with a huge cost matrix, the dimensions determined by the total number of pixels of the images. Note that we can also randomly subsample pixels or use $k$-means clustering to reduce the problem size.
 
 ```julia
-image1 = subsample(image1)
-image2 = subsample(image2)
+image1 = subsample(image1);
+image2 = subsample(image2);
 ```
 
 Take a look at the distribution of colors!
