@@ -8,6 +8,11 @@ michielfmstock@gmail.com
 Functions for unconstrained optimization.
 =#
 
+module Unconstrained
+
+import STMO: Tracker, trace, notrack
+using LinearAlgebra
+
 """
     backtracking_line_search(f, x, Δx, ∇f, α::Real=0.1,
                         β::Real=0.7)
@@ -19,8 +24,8 @@ Inputs:
     - x: initial point
     - Δx: direction to search
     - ∇f: gradient of f
-    - α
-    - β
+    - α: hyperparameter
+    - β: hyperparameter
 
 Output:
     - t: suggested stepsize
@@ -71,7 +76,7 @@ function gradient_descent(f, x₀, ∇f; α::Real=0.2, β::Real=0.7,
 end
 
 """
-    gradient_descent(f, x₀, ∇f; α::Real=0.2, β::Real=0.7,
+    coordinate_descent(f, x₀, ∇f; α::Real=0.2, β::Real=0.7,
         ν::Real=1e-3, tracker::Tracker=notrack)
 
 General coordinate descent algorithm.
@@ -146,4 +151,8 @@ function newtons_method(f, x₀, ∇f, ∇²f; α::Real=0.2, β::Real=0.7,
         trace(tracker, x)
     end
     return x
+end
+
+export gradient_descent, coordinate_descent, newtons_method, backtracking_line_search
+
 end

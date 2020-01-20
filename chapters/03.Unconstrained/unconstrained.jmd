@@ -7,9 +7,7 @@ date: 2019-2020
 ```julia; echo=false
 using Plots, LaTeXStrings
 using LinearAlgebra
-using STMO: path!, path, plotobj, plotobj!, myred, mygreen, myblue, myorange, myblack, myyellow
-using STMO: PathTrack
-import STMO
+using STMO
 ```
 
 
@@ -112,17 +110,8 @@ f(x_1, x_2) = \log(e^{x_1 +3x_2-0.1}+e^{x_1 -3x_2-0.1}+e^{-x_1 -0.1})\,.
 $$
 
 ```julia
-fquadr((x1, x2); γ=10.0) = 0.5(x1^2 + γ * x2^2);
-grad_fquadr((x1, x2); γ=10.0) = [x1, γ * x2];
-hess_fquadr((x1, x2); γ=10.0) = [1 0; 0 γ];
-```
-
-```julia
-import Zygote  # NOT doing this by hand!
-
-fnonquadr((x1, x2)) = log(exp(x1+3x2-0.1) + exp(x1-3x2-0.1)+exp(-x1-0.1));
-grad_fnonquadr(x) = Zygote.gradient(fnonquadr, x)[1];
-hess_fnonquadr(x) = Zygote.hessian(fnonquadr, x);
+import STMO.TestFuns: fquadr, grad_fquadr, hess_fquadr
+import STMO.TestFuns: fnonquadr, grad_fnonquadr, hess_fnonquadr
 ```
 
 ```julia; echo=false
@@ -326,7 +315,7 @@ end
 x0q = [9.0, 2.0];
 
 trackerqgd = PathTrack(x0q);
-xstarq = STMO.gradient_descent(fquadr, copy(x0q), grad_fquadr, tracker=trackerqgd);
+xstarq = Unconstrained.gradient_descent(fquadr, copy(x0q), grad_fquadr, tracker=trackerqgd);
 ```
 
 ```julia; echo=false
@@ -334,12 +323,12 @@ xstarq = STMO.gradient_descent(fquadr, copy(x0q), grad_fquadr, tracker=trackerqg
 x0nq = [-1.0, 0.75];
 
 trackernqgd = PathTrack(x0nq)
-xstarnq = STMO.gradient_descent(fnonquadr, copy(x0nq), grad_fnonquadr,
+xstarnq = Unconstrained.gradient_descent(fnonquadr, copy(x0nq), grad_fnonquadr,
                 tracker=trackernqgd);
 ```
 
 ```julia; echo=false
-xstarnq_exact = STMO.gradient_descent(fnonquadr, copy(x0nq), grad_fnonquadr, ν=1e-8);
+xstarnq_exact = Unconstrained.gradient_descent(fnonquadr, copy(x0nq), grad_fnonquadr, ν=1e-8);
 fnqexact = fnonquadr(xstarnq_exact);
 nonquadrerr = x -> abs(fnonquadr(x) - fnqexact) + 1e-20;
 ```
@@ -501,14 +490,14 @@ end
 ```julia; echo=false
 # quadratic function
 trackerqcd = PathTrack(x0q);
-xstarq = STMO.coordinate_descent(fquadr, copy(x0q), grad_fquadr,
+xstarq = Unconstrained.coordinate_descent(fquadr, copy(x0q), grad_fquadr,
                 tracker=trackerqcd);
 ```
 
 ```julia; echo=false
 # non-quadratic function
 trackernqcd = PathTrack(x0nq);
-xstarq = STMO.coordinate_descent(fnonquadr, copy(x0nq), grad_fnonquadr,
+xstarq = Unconstrained.coordinate_descent(fnonquadr, copy(x0nq), grad_fnonquadr,
             tracker=trackernqcd);
 ```
 
@@ -624,13 +613,13 @@ See below for the paths of Newton's algorithm on the quadratic and non-quadratic
 ```julia; echo=false
 # quadratic function
 trackerqnm = PathTrack(x0q)
-xstarq = STMO.newtons_method(fquadr, copy(x0q), grad_fquadr, hess_fquadr, tracker=trackerqnm)
+xstarq = Unconstrained.newtons_method(fquadr, copy(x0q), grad_fquadr, hess_fquadr, tracker=trackerqnm)
 ```
 
 ```julia; echo=false
 # non-quadratic function
 trackernqnm = PathTrack(x0nq)
-xstarq = STMO.newtons_method(fnonquadr, copy(x0nq), grad_fnonquadr, hess_fnonquadr, tracker=trackernqnm)
+xstarq = Unconstrained.newtons_method(fnonquadr, copy(x0nq), grad_fnonquadr, hess_fnonquadr, tracker=trackernqnm)
 ```
 
 ```julia; echo=false
