@@ -58,7 +58,7 @@ x = 2
 τ = 1 / 37  # unicode variable names are allowed
 ```
 
-unicode! In most Julia editing environments, unicode math symbols can be typed when starting with a "\ and hitting [TAB].
+unicode! In most Julia editing environments, unicode math symbols can be typed when starting with a '\\' and hitting [TAB].
 
 ```julia
 # type \alpha  and <TAB>
