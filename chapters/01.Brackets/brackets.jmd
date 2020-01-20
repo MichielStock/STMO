@@ -11,6 +11,45 @@ using STMO: myred, myblue, mygreen, myyellow, myorange,myblack
 
 As a first introduction to mathematical optimization, we will study two *bracketing methods*. Bracketing methods can be used to minimize scalar function with a single input variable. These algorithms identify an interval $[a, b]$ containing the desired minimum. We will assume that the functions are *unimodal* they contain a single minimum.
 
+# Finding an initial bracket
+
+The following function will generate from an initial $x$ an interval containing a local minimum. It works by moving one of the limits of the interval until the function value at that limit starts to decrease.
+
+```julia
+function bracket_minimum(f, x=0.0; s=1e-2, k=2.0)
+  a, ya = x, f(x)  # lower limit of the interval
+  b, yb = x, f(x + s)  #  upper limit of the interval
+  if yb > ya  # default assumes f is decreasing in a, flip if not the case
+    a, b = b, a
+    ya, yb = yb, ya
+    s = -s  # go to the left instead of right
+  end
+  while true
+    c, yc = b + s, f(b + s)
+    if yc > yb
+      return a < c ? (a, c) : (c, a)
+    end
+    a, ya = b, yb
+    b, yb = c, yc
+    s *= k
+  end
+end
+```
+
+```julia
+f(x) = x^3 - 8x^2 - 3x - 8
+
+(a, b) = bracket_minimum(f, k=1.2)
+```
+
+```julia
+plot(f, -4:0.1:9, xlabel="\$ x\$", label="\$ f(x) \$", color=myblue, lw=2)
+vline!([a, b], label="", color=myorange, lw=2)
+vline!([0], label="", color=mygreen, lw=2)
+xticks!([a, b, 0], ["a", "b", "x"])
+yticks!(:none)
+```
+
 # Bisection method
 
 The bisection method is technically not a minimization algorithm, but a *root finding method*, i.e., it can be used to find an $x$ for a given function $g: \mathbb{R}\rightarrow \mathbb{R}$ such that
@@ -23,7 +62,7 @@ We can use the bisection method to find a minimum of a function $f(x0$ by findin
 
 > **Question**: in addition to the first derivative being equal to zero, which other criterion should hold for $x^\star$ to be a minimizer?
 
-The bisection method departs from an inital bracket $[a, b]$, where $f(a)$ and $f(b)$ have opposing signs. If $f'(x)$ is a continious function, the *intermediate value theorem* states that there is at least one $x\in[a,b]$ such that $f'(x)$.
+The bisection method departs from an initial bracket $[a, b]$, where $f'(a)$ and $f'(b)$ have opposing signs. If $f'(x)$ is a continious function, the *intermediate value theorem* states that there is at least one $x\in[a,b]$ such that $f'(x)$.
 
 In every step of the bisection method, the interval it cut into half. The midpoint $x = (b-a)/2$ is computed, and a new bracket is formed from the midpoint and the side that contains zero.
 
@@ -42,13 +81,13 @@ title!("Illustration of the bisection method")
 
 The bisection procedure is repeated until the length of the interval is smaller than a small $\epsilon > 0$. This $\epsilon$ is called a *convergence parameter*, because it determines when the algorithm will halt. The pseudocode of the bisection method is given below.
 
-> **given** $f'(x)$, the derivative of a function, initial interval $[a, b]$, tollerance $\epsilon$.
+> **given** $g(x)$, the derivative of a function, initial interval $[a, b]$, tolerance $\epsilon$.
 >
 > **while** $b - a > \epsilon$
 >> 1. *Determine midpoint*. $x:=(a+b)/2$
 >> 2. *Update*.
->>> **if $f'(x)=0$**: $a:=x$, $b:=x$
->>> **else if $\text{sign}(f'(x)) = \text{sign}(f'(a))$**: $a:=x$
+>>> **if $g(x)=0$**: $a:=x$, $b:=x$
+>>> **else if $\text{sign}(g(x)) = \text{sign}(g(a))$**: $a:=x$
 >>> **else**: $b:=x$
 >
 > **Output**: $[a, b]$
@@ -56,7 +95,7 @@ The bisection procedure is repeated until the length of the interval is smaller 
 Since every step shrinks the interval with a factor two, it is easy to show that this procedure stops within
 
 $$
-\log_2(\frac{b-a}{\epsilon})
+\log_2\left(\frac{b-a}{\epsilon}\right)
 $$
 
 iterations.
@@ -70,13 +109,13 @@ $$
 Check your result graphically.
 
 ```julia; eval=false
-function bisection(f′, a, b; ϵ=1e-3)
+function bisection(g, a, b; ϵ=1e-3)
   @assert a < b, "a should be smaller than b"
 
   # a is minizer?
-  f′(a) == 0 && return a, a
+  g(a) == 0 && return a, a
   # b is minizer?
-  f′(b) == 0 && return b, b
+  g(b) == 0 && return b, b
 
   while ...
     ...
@@ -106,7 +145,7 @@ $$
 
 is trivial. The *quadratic fit search method* will approximate a function by a quadratic function and computes the minimizer of that function.
 
-Given three bracketing points $a<b<c$ and their resprective evaluations $y_a=f(a), y_b=f(b)$ and $y_c=f(c)$, we can fit a quadratic curve by solving the following system of equations for the coefficients:
+Given three bracketing points $a<b<c$ and their respective evaluations $y_a=f(a), y_b=f(b)$ and $y_c=f(c)$, we can fit a quadratic curve by solving the following system of equations for the coefficients:
 
 $$
 \begin{bmatrix}y_a\\ y_b \\ y_c\end{bmatrix} = \begin{bmatrix}1 & a & a^2 \\ 1 & b & b^2 \\ 1 & c & c^2 \end{bmatrix} \begin{bmatrix}p_1\\ p_2 \\ p_3\end{bmatrix}\,.
@@ -155,7 +194,7 @@ x = quadratic_fit_min(a, b, c, ya, yb, yc)
 ```julia
 plot(f, -5:0.1:7, label="\$f(x)\$", lw=2, xlabel="\$x\$", color=myblue)
 scatter!([a, b, c], [ya, yb, yc], label="\$a, b, c\$", color=myorange)
-plot!(quadratic_fit(a, b, c, ya, yb, yc), -5:0.1:7, label="quadratic fit \$q(x)\$", lw=2, color=mygreen)
+plot!(quadratic_fit(a, b, c, ya, yb, yc), -5:0.1:7, label="\$ q(x) \$", lw=2, color=mygreen)
 vline!([x], label="\$x\$", lw=2, color=myred)
 ```
 
@@ -164,8 +203,9 @@ Given the minimizer $x^\star$ of the quadratic approximation, we can update the 
 > **given** $f(x)$, the function to be minimized, three increasing values $a, b, c$ with $f(a) > f(b)$ and $f(c) > f(b)$, the number of steps $n$.
 >
 > **repeat** $n$ times
->> 1. *Fit quadratic*: and set $x$ as its minimizer
->> 2. *Update bracket*:
+>> 1. *Fit quadratic*
+>> 2. *Determine minimizer of $q(x)$*
+>> 3. *Update bracket*:
 >>> **if $x\in [a,b]$**: $a, b, c := a, x, b$
 >>> **else**: $a, b, c := b, x, c$
 >
@@ -195,6 +235,15 @@ end
 ```
 
 The coming chapters will discuss the minimization of quadratic function in much greater detail.
+
+# Exercises
+
+1. Find the maximum of $\sqrt[\leftroot{-2}\uproot{2}x]{x}$.
+2. Given a chemical system for which a chemical with concentration is degraded by enzymic conversion and chemical decay. The rate of removal is given by
+$$
+r(x) = -0.02 - 1.2\frac{x}{10+x}\,.
+$$
+The system receives a constant input with a concentration of 0.3. What is the steady-state concentration?
 
 # References
 
