@@ -1,19 +1,28 @@
 ---
-title : Automatic differentiation
+title : Numeric and automatic differentiation
 author : Michiel Stock
 date: 2019-2020
 ---
+
+```julia; echo=false
+using Plots, BenchmarkTools, LaTeXStrings
+using STMO
+```
+
+# Motivation
+
+Up to now, we confidently assumed that we would always be able to compute the derivative or gradient of any function. Despite differentiation being a relatively easy operation, it is frequenty not feasible (or desirable) to compute this by hand. *Numerical differentiation* can provide approximations of th derivate or gradient at a particular point. *Automatic differentiation* directly manipulates the computational graph to generate a function that computes the (exact) derivate. Such methods have advanced greatly in the last years and it is no exageration that their easy use in popular software libraries such as TenserFlow and PyTorch are a cornerstone of deep learning and other machine learning and scientific computing fields.
+
+# Definition of a derivative
 
 ```julia; echo=false
 using Plots, BenchmarkTools
 using STMO
 ```
 
-![](Figures/logo.png)
-
 # Motivation
 
-TODO: complete!
+Up to now, we confidently assumed that we would always be able to compute the derivative or gradient of any function. Despite differentiation being a relatively straightforward operation, it is frequently not feasible (or desirable) to calculate this by hand. *Numerical differentiation* can provide approximations of the derivate or gradient at a particular point. *Automatic differentiation* directly manipulates the computational graph to generate a function that computes the (exact) derivate. Such methods have advanced dramatically in the last years, and it is no exaggeration that their easy use in popular software libraries such as TensorFlow and PyTorch is a cornerstone of deep learning and other machine learning and scientific computing fields.
 
 # Definition of a derivative
 
@@ -35,7 +44,7 @@ f(x) = log(x) + sin(x) / x;
 
 # Symbolic differentiation
 
-Computing derivatives as you have seen in basic calculus courses.
+Computing derivatives, as you have seen in basic calculus courses.
 
 By hand or automatically:
 - Maple
@@ -51,7 +60,7 @@ Advantages:
 - no hyperparameters or tweaking: just works!
 
 Disadvantages:
-- some software not flexible enough (gradients, arrays, for-loops...)
+- some software not flexible enough (gradients, arrays, for-loops,...)
 - sometimes explosion of terms: *expression swell*
 - not always numerically optimal!
 
@@ -72,8 +81,8 @@ df(2.0)
 ```
 
 ```julia; echo=false
-plot(f, 1:0.01:5, label="f(x)", xlabel=:x, lw=2, color=mygreen)
-plot!(df, 1:0.01:5, label="f'(x)", lw=2, color=myorange)
+plot(f, 1:0.01:5, label="\$f(x)\$", xlabel="\$x\$", lw=2, color=mygreen)
+plot!(df, 1:0.01:5, label="\$f'(x)\$", lw=2, color=myorange)
 ```
 
 # Numerical differentiation
@@ -145,7 +154,7 @@ plot!(stepsizes, error.(diff_centdiff, stepsizes), label="center difference", lw
 plot!(stepsizes, error.(diff_complstep, stepsizes), label="complex step", lw=2,
             color=myyellow)
 #xlims!(1e-15, 1e-1)
-xlabel!("stepsize h")
+xlabel!("\$h\$")
 ylabel!("absolute error")
 ```
 
@@ -420,7 +429,7 @@ L(w)
 
 **Assignments**
 
-1. Compute the gradient of $L$ wrt. $\mathbf{w}$ using
+1. Compute the gradient of $L$ w.r.t. $\mathbf{w}$ using
     - numerical method
     - forward differentiation
     - backward differentiation
@@ -463,7 +472,7 @@ with $\alpha_t$ a stepsize (does this remind you of something?).
 Consider a chemical reaction where some molecule $X$ combines reversibly with a molecule $A$ to form two molecules $X$:
 
 $$
-X+A	\rightleftharpoons 2X\,.
+X+A    \rightleftharpoons 2X\,.
 $$
 
 We assume that there is a large and inexhaustible supply of $A$. Based on the *law of mass action* for chemical kinetics, the concentration of $X$ is given by
@@ -523,6 +532,44 @@ x10fromx0(x0) = xfromx0(x0)[end]
 ```julia
 
 ```
+
+# Exercise
+
+Consider the *Wheeler's Ridge* function:
+
+$$
+f(\mathbf{x}) = -\exp(-(x\_1 x\_2 - a)^2 -(x^2 -a)^2)\,,
+$$
+
+at the point $\mathbf{x}_0=[1.5, 1.5]^T$. We set $a=1.5$.
+
+Implement this function.
+
+```julia
+
+```
+
+Compute the gradient by hand.
+
+Find the gradient and Hessian at $\mathbf{x}_0$ by numerical differentiation.
+
+```julia
+
+```
+```julia
+
+```
+
+Compute the gradient and Hessian at $\mathbf{x}_0$ using automatic differentiation.
+
+```julia
+
+```
+
+```julia
+
+```
+
 # References
 
 - Gunes et. al. (2015) *Automatic differentiation in machine learning: a survey*
