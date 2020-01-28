@@ -86,7 +86,7 @@ dist(X::AbstractMatrix) = dist(X::AbstractMatrix, X::AbstractMatrix)
 EdgeList{T} = Array{Tuple{T,T},1}
 WeightedEdgeList{R,T} = Array{Tuple{R,T,T},1}
 Vertices{T} = Array{T,1}
-AdjList{R,T} = Dict{T, Array{Tuple{R,T},1}}
+AdjList{R,T} = Dict{T,Array{Tuple{R,T},1}}
 
 function edges2adjlist(edges::WeightedEdgeList{R,T}; double=true)  where {R<:Real,T}
     adjlist = AdjList{R,T}()
@@ -99,12 +99,5 @@ function edges2adjlist(edges::WeightedEdgeList{R,T}; double=true)  where {R<:Rea
     return adjlist
 end
 
-function adjlist2edges(adjlist::AdjList{R,T}) where {R<:Real, T}
-    edges = WeightedEdgeList{R,T}
-    for (v, neighbors) in adjlist
-        for (w, n) in neighbors
-            push!(edges, (w, v, n))
-        end
-    end
-    return edges
-end
+adjlist2edges(adjlist::AdjList{R,T}) where {R<:Real, T} =
+            [(w, v, n) for (v, neighbors) in adjlist for (w, n) in neighbors]
