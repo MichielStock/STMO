@@ -14,7 +14,7 @@ using DataStructures
 
 using STMO
 
-export prim
+export prim, kruskal
 
 """
     prim(vertices::Vertices{T}, edges::WeightedEdgeList{R,T},
@@ -25,6 +25,7 @@ Prim's algorithm for finding the minimum spanning tree. Inputs the vertices
 """
 function prim(vertices::Vertices{T}, edges::WeightedEdgeList{R,T},
                 start::T) where {R<:Real, T}
+    u = start
     adjlist = edges2adjlist(edges)
     mst_edges = eltype(edges)[]
     mst_vertices = Set{T}([u])
@@ -53,8 +54,35 @@ end
 Prim's algorithm for finding a minimum spanning tree, chooses a reandom starting
 node.
 """
-prim(vertices::Vertices{T}, edges::WeightedEdgeList{R,T}) = prim(vertices, edges, rand(vertices))
+prim(vertices::Vertices{T}, edges::WeightedEdgeList{R,T})  where {R<:Real, T} =
+                prim(vertices, edges, rand(vertices))
 
 
+"""
+    kruskal(vertices::Vertices{T}, edges::WeightedEdgeList{R,T}) where {R<:Real, T}
+
+Kruskal's algorithm for finding the minimum spanning tree. Inputs the vertices
+(`vertices`) and a list of weighted edges (`vertices`).
+"""
+function kruskal(vertices::Vertices{T}, edges::WeightedEdgeList{R,T}) where {R<:Real, T}
+    usf = DisjointSets(vertices)
+    mst_edges = eltype(edges)[]
+    mst_vertices = Set{T}()
+    sort!(edges)
+    cost = zero(R)
+    for (w, u, v) in edges
+        if !in_same_set(usf, u, v)
+            push!(mst_edges, (w, u, v))
+            union!(usf, u, v)
+            push!(mst_vertices, u)
+            push!(mst_vertices, v)
+            cost += w
+            if length(mst_vertices) == length(vertices)
+                break
+            end
+        end
+    end
+    return mst_edges, cost
+end
 
 end  # module MST

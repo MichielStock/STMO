@@ -8,6 +8,7 @@ export myred, mygreen, myyellow, myblue, myblack, myorange, mycolors
 export trace, notrack, PathTrack, nsteps
 export path, path!, plotobj, plotobj!, colorscatter
 export dist
+export EdgeList, WeightedEdgeList, Vertices, AdjList, edges2adjlist, adjlist2edges
 
 include("quadratic.jl")
 export fquad, quadratic
@@ -22,6 +23,9 @@ export Unconstrained
 
 include("optimaltransport.jl")
 export OptimalTransport
+
+include("mst.jl")
+export MST
 
 include("testfuns.jl")
 export TestFuns

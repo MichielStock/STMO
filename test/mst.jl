@@ -15,4 +15,8 @@
    @test (4, :B, :D) ∉ mst_prim && (4, :D, :B) ∉ mst_prim
 
    @test prim(vertices, edges)[2] == 6
+
+   mst_kruskal, ckruskal = kruskal(vertices, edges)
+   @test ckruskal == 6
+   @test (4, :B, :D) ∉ mst_kruskal && (4, :D, :B) ∉ mst_kruskal
 end
