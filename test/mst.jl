@@ -13,4 +13,6 @@
    mst_prim, cprim = prim(vertices, edges, :A)
    @test cprim == 6
    @test (4, :B, :D) ∉ mst_prim && (4, :D, :B) ∉ mst_prim
+
+   @test prim(vertices, edges)[2] == 6
 end

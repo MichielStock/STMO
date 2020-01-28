@@ -25,11 +25,6 @@ Prim's algorithm for finding the minimum spanning tree. Inputs the vertices
 """
 function prim(vertices::Vertices{T}, edges::WeightedEdgeList{R,T},
                 start::T) where {R<:Real, T}
-    if start isa Nothing
-        u = rand(vertices)
-    else
-        u = start
-    end
     adjlist = edges2adjlist(edges)
     mst_edges = eltype(edges)[]
     mst_vertices = Set{T}([u])
@@ -54,7 +49,11 @@ function prim(vertices::Vertices{T}, edges::WeightedEdgeList{R,T},
     return mst_edges, cost
 end
 
-
+"""
+Prim's algorithm for finding a minimum spanning tree, chooses a reandom starting
+node.
+"""
+prim(vertices::Vertices{T}, edges::WeightedEdgeList{R,T}) = prim(vertices, edges, rand(vertices))
 
 
 
