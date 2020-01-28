@@ -8,7 +8,7 @@ date: 2019-2020
 
 # Outline
 
-In this project, we will study reversible polymerization of proteins using the principle of *Gibbs free energy minimization*.
+In this project, we will study the reversible polymerization of proteins using the principle of *Gibbs free energy minimization*.
 
 ## Homopolymerization
 
@@ -38,7 +38,7 @@ $$
 
 This vector representation can only represent systems of polymers where the longest polymer is of length $n$, whereas the polymers can be of (theoretically) arbitrary size. **The dimension of $\mathbf{x}$ thus represents the quality of the approximation of the system.**
 
-Though it is obvious, the code below generates all possible polymers up to length $n$.
+Though it is evident, the code below generates all possible polymers up to length $n$.
 
 ```julia
 """
@@ -51,7 +51,7 @@ allApolymers(n) = ["A"^i for i in 1:n]
 allApolymers(5)
 ```
 
-This concentration vector has some phyical constraints. Fistly, concentrations are nonnegative, i.e., $x_i\geq 0$ for all $i$. Furthermore, the system is subjected to a *conservation law*. The concentrations that are possible are constrained by the initial quantity $c_A$ that is introduced to the system, as no new proteins $A$ are formed, nor do any disappear from the system. So, any concentration vector should satify the following linear constraint:
+This concentration vector has some physical constraints. Firstly, concentrations are nonnegative, i.e., $x_i\geq 0$ for all $i$. Furthermore, the system is subjected to a *conservation law*. The concentrations that are possible are constrained by the initial quantity $c_A$ that is introduced to the system. No new proteins $A$ are formed, nor do any disappear from the system. So, any concentration vector should satisfy the following linear constraint:
 
 $$
 \sum_{i=1}^n ix_i = c_A\,,
@@ -59,15 +59,15 @@ $$
 
 meaning that the total number of copies of $A$ in all polymers together is equal to $c_A$.
 
-Polymerization is facilitated by non-covalent energetically favorable bonds. Every bond results in a binding enthalpy change of $\Delta H=1$[^39b98177]. Hence, the enthalpy $H(\mathbf{x})$ of a given concentration vector is given by
+Non-covalent energetically favorable bonds facilitate polymerization. Every formed bond results in a binding enthalpy change of $\Delta H=1$. In this project, we will dispense with all units of energy, concentration, or temperature. Likewise, all constants are helpful round numbers to keep the focus on optimization. A simple rescaling would make the units in this toy example realistic. The enthalpy $H(\mathbf{x})$ of a given concentration vector is given by
 
 $$
 H(\mathbf{x}) = -\sum_{i=1}^n(i-1)x_i\,.
 $$
 
-By minimizing the enthalpy, the system will tend to a concentration vector with as long polymers as possible. Let $\mathbf{h}$ be the vector containing the enthalpy values of the $n$ species. So $HH(\mathbf{x})$ = -\mathbf{h}^T \mathbf{x}$.
+By minimizing the enthalpy, the system will tend to a concentration vector with as long polymers as possible. Let $\mathbf{h}$ be the vector containing the enthalpy values of the $n$ species. So $H(\mathbf{x}) = -\mathbf{h}^T \mathbf{x}$.
 
-The equilibrium is also influenced, by a second, opposing force. The systems also tends to larger *entropy*, computed as
+The equilibrium is also influenced, by a second, opposing force. The systems also tend to larger *entropy*, computed as
 
 $$
 S(\mathbf{x}) = -\sum_{i=1}^nx_i\log x_i\,.
@@ -77,15 +77,15 @@ $$
 S(x::AbstractVector) = sum([xᵢ == 0.0 ? 0.0 : - xᵢ * log(xᵢ) for xᵢ in x])
 ```
 
-Maximizing the entropy means more free particles (more disorder or 'chaos').
+Maximizing entropy means more free particles (more disorder or 'chaos').
 
-As a whole, the system will try to minize its Gibbs free energy, containing both the enthalpy as well as the entropy[^2e788f85]:
+As a whole, the system will try to minimize its Gibbs free energy, containing both the enthalpy as well as the entropy:
 
 $$
 G(\mathbf{x}) = H(\mathbf{x}) - T\cdot S(\mathbf{x})\,,
 $$
 
-where $T$ is the temperature of the system. Here, the temperature is dimensionless with 0 meaning the absolute zero. The equilibrium concentration vector $\mathbf{x}^\star$ minimizes the Gibbs free energy.
+where $T$ is the temperature of the system. Here, the temperature is dimensionless with 0, meaning the absolute zero. The equilibrium concentration vector $\mathbf{x}^\star$ minimizes the Gibbs free energy.
 
 The quantity of interest is the average length $L$ of the polymers in the system:
 
@@ -93,11 +93,11 @@ $$
 L(\mathbf{x}) = \frac{\sum_{i=1}^nix_i}{\sum_{i=1}^nx_i}\,.
 $$
 
-It should be clear that $L^\star$ is both a function of the temperature $T$ and the amount of proteins $c_A$ in the system.
+It should be clear that $L^\star$ is both a function of the temperature $T$ and the amount of protein $c_A$ in the system.
 
 ## Heteropolymerization
 
-In a next phase, we introduce a protein $B$ in the system. This molecule can bind with $A$, or a polymer of $A$, but **only at the endpoints**. The protein $B$ basically caps of the polymers of $A$ off. The following piece of code generates all polymers up to length $n$ in lexicographical order.
+In a next phase, we introduce a protein $B$ in the system. This molecule can bind with $A$, or a polymer of $A$, but **only at the endpoints**. The protein $B$ caps of the polymers of $A$ off. The following piece of code generates all polymers up to length $n$ in lexicographical order.
 
 
 ```julia
@@ -122,10 +122,9 @@ end
 poly5 = allABpolymers(5)
 ```
 
-For $B$ there is of course also a conservation law. Total quantity of $B$ in the system is fixed to $c_B$. Furthermore, the bond between a molecule $A$ and a molecule $B$ is larger, though still reversible. The binding affinity is $\Delta H=h_B3$.
+For $B$ there is, of course, also a conservation law. The total quantity of $B$ in the system is fixed to $c_B$. Furthermore, the bond between a molecule $A$ and a molecule $B$ is larger, though still reversible. The binding affinity is $\Delta H=h_B3$.
 
-Basically, the equilibrium is also determined by Gibbs free enegy minimization, though here the vector $\mathbf{h}$ containing the forming enthalpies are different. For example, the enthalpy of `BAA` is $h_B + h_A + h_A$ = 5$.
-
+The equilibrium is also determined by Gibbs free energy minimization, though here the vector $\mathbf{h}$ containing the forming enthalpies are different. For example, the enthalpy of `BAA` is $h_B + h_A + h_A$ = 5$.
 
 
 # Project assignments
@@ -148,42 +147,42 @@ const hA = 1.0
 const hAB = 3.0
 ```
 
-1. Formally write the Gibbs free energy minization problem as a general constrained optimization problem. Show that it is convex. Discus the constraints for the homo- and heteropolymerization case.
-2. Complete the functions to compute the Gibbs free energy, its gradient and its Hessian. **These are general functions that work for general chemical systems.
-3. Complete the function `equilibrium`, which uses a descent method to find the equilibrium concentations of given dimenion. Its inputs are an initial feasible $x_0$, $T$ and the linear constraints determined by the conservation laws.
-5. For the homopolymerization case, generate an initial feasible starting vector and compute the equilibrium concentration of the different species. Compute the average length of the agents.
-6. For the homopolymerization case, make a phase diagram showing how the average polymer length changes with the temperature and $c_A$. Make a heatmap for the values of $T \in [0.1, 100]$ and $c_A \in [0.001, 100]$.
-7. For the heteropolymerization case, complete the function `enthalpy`. This has the string of a species as input and returns the enthalpy.
-8. For the heteropolymerization case, compute the equilibrium concentration and average length of the agents.
-9. With $C_A = 1$, make a phase diagram showing the average length for $T \in [0.1, 100]$ and $c_B \in [0.0001, 2]$
+1. Formally write the Gibbs free energy minimization problem as a general constrained optimization problem. Show that it is convex. Discus the constraints for the homo- and heteropolymerization case.
+2. Complete the functions to compute the Gibbs free energy, its gradient, and its Hessian. **These are general functions that work for general chemical systems.
+3. Complete the function `equilibrium`, which uses a decent method to find the equilibrium concentrations of given dimension. Its inputs are an initial feasible $x_0$, $T$, and the linear constraints determined by the conservation laws.
+4. For the homopolymerization case, generate an initial feasible starting vector and compute the equilibrium concentration of the different species. Compute the average length of the agents.
+5. For the homopolymerization case, make a phase diagram showing how the average polymer length changes with the temperature and $c_A$. Make a heatmap for the values of $T \in [0.1, 100]$ and $c_A \in [0.001, 100]$.
+6. For the heteropolymerization case, complete the function `enthalpy`. This function has the string of a species as input and returns the enthalpy.
+7. For the heteropolymerization case, compute the equilibrium concentration and average length of the agents.
+8. With $C_A = 1$, make a phase diagram showing the average length for $T \in [0.1, 100]$ and $c_B \in [0.0001, 2]$
 
 
 **1. State the formal problem**
 
 $$
-\min ...
+\min \ldots
 $$
 
 $$
-s.t. ...
+\text{s.t.} \ldots
 $$
 
 **2. Gibbs free energy**
 
 ```julia; eval=false
-function gibbs_A(x; h, T=T)
+function gibbs(x, h, T=T)
   ...
 end
 ```
 
 ```julia; eval=false
-function grad_gibbs_A(x; h, T=T)
+function grad_gibbs(x, h, T=T)
   ...
 end
 ```
 
 ```julia; eval=false
-function hess_gibbs_A(x; h, T=T)
+function hess_gibbs(x, h, T=T)
   ...
 end
 ```
@@ -201,36 +200,66 @@ end
 #test is the conservation of mass holds
 ```
 
-**3. Homopolymerization**
+**4. Homopolymerization**
 
-```julia
+```julia; eval=false
 x0 = ...
 
 # compute the homopolymerization
 ```
 
+**5. Phase diagram (homopolymerization)**
+
+```julia
+
+```
+
+
+**6. Enthalpy**
+
+```julia; eval=false
+"""
+  enthalpy(molecule)
+
+Computes the formation enthalpy of a given `molecule`, e.g. `enthalpy("BAA")`
+yields 4 (one AB bond of 3, one AA bond of 1).
+"""
+function enthalpy(molecule)
+```
+
+**7. Heteropolymerization**
+
+```julia
+
+```
+
+**8. Phase diagram (heteropolymerization)**
+
+```julia
+
+```
+
+```julia
+
+```
 
 ## Evaluation
 
-Firstly, you should write code that works and solves the problem. As a second goal, your code is ideally elegant and performant. You can solve the problems using a dimension of $n=100$, which should go quite quickly even using relevatively sloppy implementations. However, it is possible to compute Newton steps very effiently *without* computing the complete Hessian. Such implementations can easily deal with sizes of $n\gg 1000$ and will receive the highest scores.
+Firstly, you should write code that works and solves the problem. As a second goal, your code is ideally elegant and performant. You can solve the problems using a dimension of $n=100$, which should go quite quickly, even using relatively sloppy implementations. However, it is possible to compute Newton steps very efficiently *without* computing the complete Hessian. Such implementations can easily deal with sizes of $n\gg 1000$ and will receive the highest scores.
 
 Some general guidelines:
 
-- Write some clear and concise explanation with the figures and experiments.
+- Write some clear and concise explanations with the figures and experiments.
+- You cannot use external optimization software (`Optim.jl`, `Jump.jl`...) as this is an implementation exercise. You are however free to resuse and modify Julia code from the
 - Write clean code:
   - use descriptive variable names
   - document functions
   - comment code lines which may not be obvious
-- Make nice figures with title, labeled axes, legend etc.
-  - some figures will be clearer in log-scale
+- Make nice figures with title, labeled axes, legend, etc.
+  - some figures will be more evident in log-scale.
 
 
 ## Hints
 
 - Keep into mind the logarithms: $0 \times \log 0$ should evaluate to 0 (by definition), but `0 * np.log(0)` returns a `NaN`. Make sure to keep this in mind!
-- The constrained Newton step *can* be computed efficiently in terms of time and memory complexity. Implementing this is however not a prerequisite for succeeding for the project. HINT: check `Diagonal` in the `LinearAlgebra` library.
-
-
-[^2e788f85]: Actually, the Gibbs free energy is just the change in entropy of the universum.
-
-[^39b98177]: In this project we will dispence with all units of energy, concentration or temperature. Likewise, all constants are nice round numbers to keep the focus on optimization. A simple rescaling would make the units in this toy example realistic.
+- The constrained Newton step *can* be computed efficiently in terms of time and memory complexity. Implementing this is however, not a prerequisite for succeeding for the project. HINT: check `Diagonal` in the `LinearAlgebra` library.
