@@ -2,6 +2,7 @@
 *.pdf
 Manifest.toml
 figures/*
+solution*
 
 ## Core latex/pdflatex auxiliary files:
 *.aux
@@ -16,6 +17,8 @@ figures/*
 *.cb
 *.cb2
 .*.lb
+*.pdf
+*.tex
 
 ## Intermediate documents:
 *.dvi
