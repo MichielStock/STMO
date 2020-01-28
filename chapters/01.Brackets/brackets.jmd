@@ -183,8 +183,8 @@ function quadratic_fit(a, b, c, ya, yb, yc)
 end
 
 function quadratic_fit_min(a, b, c, ya, yb, yc)
-  return 0.5 * (ya*(b^2-c^2) + yb*(c^2-a^2) + yc*(a^2 + b^2)) \
-        (ya*(b-c) + yb*(c-a) + yc*(a + b))
+  return 0.5 * (ya*(b^2-c^2) + yb*(c^2-a^2) + yc*(a^2-b^2)) \
+        (ya*(b-c) + yb*(c-a) + yc*(a-b))
 end
 ```
 ```julia
