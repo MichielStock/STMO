@@ -14,3 +14,21 @@
 
     @test size(dist(Y, Y)) == (3, 3)
 end
+
+
+@testset "graph" begin
+
+    @test [(1, 2), (3, 3)] isa EdgeList
+    @test !([(1, 2), (3, 3, 4)] isa EdgeList)
+    edges = [(0.1, 3, 2), (2.0, 1, 2)]
+    @test edges isa WeightedEdgeList
+
+    adjlist = edges2adjlist(edges)
+    @test adjlist isa AdjList{Float64, Int}
+    @test (2.0, 1) in adjlist[2]
+    @test (2.0, 1) ∉ edges2adjlist(edges, double=false)[2]
+
+    edgesrec = adjlist2edges(edges)
+    @test (0.1, 3, 2) in edges && (0.1, 2, 3) in edges
+
+end

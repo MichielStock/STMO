@@ -1,6 +1,6 @@
 #=
 Created on Thurday 02 January 2019
-Last update: -
+Last update: Tuesday 28 January 2020
 
 @author: Michiel Stock
 michielfmstock@gmail.com
@@ -77,3 +77,34 @@ dist(X::AbstractMatrix, Y::AbstractMatrix) = [dist(X[i,:], Y[j,:]) for i in 1:si
 Compute Euclidean distance matrix.
 """
 dist(X::AbstractMatrix) = dist(X::AbstractMatrix, X::AbstractMatrix)
+
+
+# GRAPHS
+# -----
+
+# special types for graphs
+EdgeList{T} = Array{Tuple{T,T},1}
+WeightedEdgeList{R,T} = Array{Tuple{R,T,T},1}
+Vertices{T} = Array{T,1}
+AdjList{R,T} = Dict{T, Array{Tuple{R,T},1}}
+
+function edges2adjlist(edges::WeightedEdgeList{R,T}; double=true)  where {R<:Real,T}
+    adjlist = AdjList{R,T}()
+    for (w, i, j) in edges
+        if !haskey(adjlist, i); adjlist[i] = [] end
+        if !haskey(adjlist, j); adjlist[j] = [] end
+        push!(adjlist[i], (w, j))
+        double && push!(adjlist[j], (w, i))
+    end
+    return adjlist
+end
+
+function adjlist2edges(adjlist::AdjList{R,T}) where {R<:Real, T}
+    edges = WeightedEdgeList{R,T}
+    for (v, neighbors) in adjlist
+        for (w, n) in neighbors
+            push!(edges, (w, v, n))
+        end
+    end
+    return edges
+end
