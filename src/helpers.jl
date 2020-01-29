@@ -88,6 +88,11 @@ WeightedEdgeList{R,T} = Array{Tuple{R,T,T},1}
 Vertices{T} = Array{T,1}
 AdjList{R,T} = Dict{T,Array{Tuple{R,T},1}}
 
+"""
+Turns a list of weighted edges in an adjacency matrix (implemented as a Dict).
+If the keyword `double` is set to `true`, every edge is added twice: `(w, u, v)`
+and `(w, v, u)`. This is the default behaviour.
+"""
 function edges2adjlist(edges::WeightedEdgeList{R,T}; double=true)  where {R<:Real,T}
     adjlist = AdjList{R,T}()
     for (w, i, j) in edges
@@ -99,5 +104,8 @@ function edges2adjlist(edges::WeightedEdgeList{R,T}; double=true)  where {R<:Rea
     return adjlist
 end
 
+"""
+Turns an adjacency list (implemented as a Dict) into an edge list.
+"""
 adjlist2edges(adjlist::AdjList{R,T}) where {R<:Real, T} =
             [(w, v, n) for (v, neighbors) in adjlist for (w, n) in neighbors]

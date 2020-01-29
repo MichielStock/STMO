@@ -1,0 +1,242 @@
+---
+title : Minimum spanning trees
+author : Michiel Stock
+date: 2019-2020
+---
+
+
+
+```julia; echo=false
+using STMO
+using Plots
+```
+
+# Graphs in Julia
+
+Consider the following example graph:
+
+![A small graph to show how to implement graphs in Julia.](Figures/graph.png)
+
+This graph can be represented using an *adjacency list*. We do this using a `Dict`. Every vertex is a key with the adjacent vertices given as a `set` containing tuples `(weight, neighbor)`. The weight is first because this makes it easy to compare the weights of two edges. Note that for every ingoing edges, there is also an outgoing edge, this is an undirected graph.
+
+
+```julia
+graph = Dict(
+    'A' => [(2, 'B'), (3, 'D')],
+    'B' => [(2, 'A'), (1, 'C'), (2, 'E')],
+    'C' => [(1, 'B'), (2, 'D'), (1, 'E')],
+    'D' => [(2, 'C'), (3, 'A'), (3, 'E')],
+    'E' => [(2, 'B'), (1, 'C'), (3, 'D')]
+)
+```
+
+Sometimes we will use an *edge list*, i.e. a list of (weighted) edges. This is often a more compact way of storing a graph. The edge list is given below. Note that again every edge is double: an in- and outgoing edge is included.
+
+
+```julia
+edges = [
+ (2, 'B', 'A'),
+ (3, 'D', 'A'),
+ (2, 'C', 'D'),
+ (3, 'A', 'D'),
+ (3, 'E', 'D'),
+ (2, 'B', 'E'),
+ (3, 'D', 'E'),
+ (1, 'C', 'E'),
+ (2, 'E', 'B'),
+ (2, 'A', 'B'),
+ (1, 'C', 'B'),
+ (1, 'E', 'C'),
+ (1, 'B', 'C'),
+ (2, 'D', 'C')]
+```
+
+We can easily turn one representation in the other (with a time complexity proportional to the number of edges) using the provided functions `edges2adjlist` and `adjlist2edges`.
+
+
+```julia
+adjlist2edges(graph)
+```
+
+
+```julia
+edges2adjlist(edges)
+```
+
+
+## Disjoint-set data structure
+
+Implementing an algorithm for finding the minimum spanning tree is fairly straightforward. The only bottleneck is that the algorithm requires the a disjoint-set data structure to keep track of a set partitioned in a number of disjoined subsets.
+
+For example, consider the following inital set of eight elements.
+
+![](Figures/disjointset1.png)
+
+We decide to group elements A, B and C together in a subset and F and G in another subset.
+
+![](Figures/disjointset2.png)
+
+The disjoint-set data structure support the following operations:
+
+- **Find**: check which subset an element is in. Is typically used to check whether two objects are in the same subset;
+- **Union** merges two subsets into a single subset.
+
+A Julia implementation of a disjoint-set is available in the `DataStructures` library. The function `DisjointSets` turns a list in an union set forest. The function `union!` will merge the sets of two elements while `in_same_set` can be used to check whether two elements are in the same set. A simple example will make everything clear!
+
+
+```julia
+using DataStructures
+
+animals = ["mouse", "bat", "robin", "trout", "seagull", "hummingbird",
+           "salmon", "goldfish", "hippopotamus", "whale", "sparrow"]
+union_set_forest = DisjointSets(animals)
+```
+```julia
+# group mammals together
+union!(union_set_forest, "mouse", "bat")
+union!(union_set_forest, "mouse", "hippopotamus")
+union!(union_set_forest, "whale", "bat")
+```
+```julia
+# group birds together
+union!(union_set_forest, "robin", "seagull")
+union!(union_set_forest, "seagull", "sparrow")
+union!(union_set_forest, "seagull", "hummingbird")
+union!(union_set_forest, "robin", "hummingbird")
+```
+```julia
+# group fishes together
+union!(union_set_forest, "goldfish", "salmon")
+union!(union_set_forest, "trout", "salmon")
+```
+
+
+```julia
+# mouse and whale in same subset?
+in_same_set(union_set_forest, "mouse", "whale")
+```
+
+```julia
+# mouse and whale in same subset?
+in_same_set(union_set_forest, "robin", "salmon")
+```
+
+## Heap queue
+
+Can be used to find the minimum of a changing list without having to sort the list every update. Heaps are also implemented in `DataStructures`.
+
+
+```julia
+heap = [(5, 'A'), (3, 'B'), (2, 'C'), (7, 'D')]
+
+heapify!(heap)  # turn in a heap
+```
+
+
+
+```julia
+# return item lowest value while retaining heap property
+heappop!(heap)
+```
+
+This has changed the heap:
+```julia
+heap
+```
+
+```julia
+# add new item and retain heap prop
+heappush!(heap, (4, 'E'))
+```
+
+## Prim's algorithm
+
+Prim's algorithm starts with a single vertex and add $|V|-1$ edges to it, always taking the next edge with minimal weight that connects a vertex on the MST to a vertex not yet in the MST.
+from minimumspanningtrees import prim
+
+```python
+def prim(vertices, edges, start):
+    """
+    Prim's algorithm for finding a minimum spanning tree.
+
+    Inputs :
+        - vertices : a set of the vertices of the Graph
+        - edges : a list of weighted edges (e.g. (0.7, 'A', 'B') for an
+                    edge from node A to node B with weigth 0.7)
+        - start : an edge to start with
+
+    Output:
+        - edges : a minumum spanning tree represented as a list of edges
+        - total_cost : total cost of the tree
+    """
+    adj_list = edges_to_adj_list(edges)  # easier using an adjacency list
+
+    ... # to complete
+    return mst_edges, total_cost
+```
+
+## Kruskal's algorithm
+
+
+Kruskal's algorithm is a very simple algorithm to find the minimum spanning tree. The main idea is to start with an intial 'forest' of the individual nodes of the graph. In each step of the algorithm we add an edge with the smallest possible value that connects two disjoint trees in the forest. This process is continued until we have a single tree, which is a minimum spanning tree, or until all edges are considered. In the latter case, the algoritm returns a minimum spanning forest.
+from minimumspanningtrees import kruskal
+
+```python
+def kruskal(vertices, edges):
+    """
+    Kruskal's algorithm for finding a minimum spanning tree.
+
+    Inputs :
+        - vertices : a set of the vertices of the Graph
+        - edges : a list of weighted edges (e.g. (0.7, 'A', 'B') for an
+                    edge from node A to node B with weigth 0.7)
+
+    Output:
+        - edges : a minumum spanning tree represented as a list of edges
+        - total_cost : total cost of the tree
+    """
+    ...  # to complete
+    return mst_edges, total_cost
+```
+
+
+```python
+from tickettoride import vertices, edges
+```
+
+
+```python
+print(vertices)
+```
+
+
+```python
+print(edges[:5])
+```
+
+
+```python
+# compute the minimum spanning tree of the ticket to ride data set
+...
+```
+
+## Clustering
+
+Minimum spanning trees on a distance graph can be used to cluster a data set.
+
+
+```python
+# import features and distance
+from clustering import X, D
+```
+
+
+```python
+fig, ax = plt.subplots()
+ax.scatter(X[:,0], X[:,1], color=green)
+```
+
+
+```python
+# cluster the data based on the distance
+```
