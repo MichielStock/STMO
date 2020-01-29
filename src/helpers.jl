@@ -93,7 +93,7 @@ Turns a list of weighted edges in an adjacency matrix (implemented as a Dict).
 If the keyword `double` is set to `true`, every edge is added twice: `(w, u, v)`
 and `(w, v, u)`. This is the default behaviour.
 """
-function edges2adjlist(edges::WeightedEdgeList{R,T}; double=true)  where {R<:Real,T}
+function edges2adjlist(edges::WeightedEdgeList{R,T}; double=true) where {R<:Real,T}
     adjlist = AdjList{R,T}()
     for (w, i, j) in edges
         if !haskey(adjlist, i); adjlist[i] = [] end
@@ -109,3 +109,40 @@ Turns an adjacency list (implemented as a Dict) into an edge list.
 """
 adjlist2edges(adjlist::AdjList{R,T}) where {R<:Real, T} =
             [(w, v, n) for (v, neighbors) in adjlist for (w, n) in neighbors]
+
+
+nvertices(adjlist::AdjList) = length(adjlist)
+
+function nvertices(edges::WeightedEdgeList{R,T}) where {R<:Real,T}
+    vertices = Set{T}()
+    for (w, u, v) in edges
+        push!(vertices, u)
+        push!(vertices, v)
+    end
+    return length(vertices)
+end
+
+function isconnected(adjlist::AdjList{R,T}) where {R<:Real, T}
+    visited = Set{T}()
+    to_explore = [first(keys(adjlist))]
+    while length(to_explore) > 0
+        u = pop!(to_explore)
+        push!(visited, u)
+        for (w, n) in adjlist[u]
+            n ∉ visited && push!(to_explore, n)
+        end
+    end
+    return length(visited) == nvertices(adjlist)
+end
+
+isconnected(edges::WeightedEdgeList) = isconnected(edges2adjlist(edges))
+
+
+
+#= TODO: write routines for
+
+- [ ] number of edges
+- [x] number of vertices
+- [x] is connected
+- [ ] is tree
+=#
