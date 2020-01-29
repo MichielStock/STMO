@@ -31,4 +31,7 @@ export MST
 include("testfuns.jl")
 export TestFuns
 
+include("tickettoride.jl")
+export TicketToRide
+
 end # module
