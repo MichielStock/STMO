@@ -28,6 +28,9 @@ export OptimalTransport
 include("mst.jl")
 export MST
 
+include("shortestpath.jl")
+export ShortestPath
+
 include("testfuns.jl")
 export TestFuns
 
