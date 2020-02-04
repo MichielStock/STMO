@@ -19,7 +19,8 @@ dirs = ["00.Introduction",
         "03.Unconstrained",
         "04.Constrained",
         "05.AutoDiff",
-        "06.OptimalTransport"
+        "06.OptimalTransport",
+        "07.MST"
         ]
 
 
