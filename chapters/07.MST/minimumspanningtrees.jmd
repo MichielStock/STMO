@@ -14,7 +14,7 @@ In this chapter, we will introduce minimization problems on graphs. We will stud
 
 # Graphs in Julia
 
-Graphs are principal tools in computer science. Most programming languages provide interfaces for graphs; Julia is no exception. A simple package for working with is [`LightGraphs.jl`](https://github.com/JuliaGraphs/LightGraphs.jl). In this course, we will limit ourselves to using the basic data structures provided by these languages, arrays, sets, and dictionaries. The type system allows us to encode how we will represent graph structures formally.
+Graphs are principal tools in computer science. Most programming languages provide interfaces for graphs; Julia is no exception. A simple package for working with is [`LightGraphs.jl`](https://github.com/JuliaGraphs/LightGraphs.jl). In this course, we will limit ourselves to using the basic data structures provided by these languages, arrays, sets, and dictionaries. The type system allows us to formally encode how we will represent graph structures.
 
 ```
 EdgeList{T} = Array{Tuple{T,T},1}
@@ -39,7 +39,7 @@ graph = Dict(
     'C' => [(1, 'B'), (2, 'D'), (1, 'E')],
     'D' => [(2, 'C'), (3, 'A'), (3, 'E')],
     'E' => [(2, 'B'), (1, 'C'), (3, 'D')]
-)
+);
 ```
 
 Sometimes we will use an *edge list*, i.e., a list of (weighted) edges. The edge list is often a more compact way of storing a graph. We show the edge list for the example graph below. Note that again every edge is double: we include an in- and outgoing edge.
@@ -60,7 +60,7 @@ edges = [
  (1, 'C', 'B'),
  (1, 'E', 'C'),
  (1, 'B', 'C'),
- (2, 'D', 'C')]
+ (2, 'D', 'C')];
 ```
 
 We can quickly turn one representation in the other (with a time complexity proportional to the number of edges) using the provided functions `edges2adjlist` and `adjlist2edges`.
