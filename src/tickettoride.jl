@@ -131,5 +131,6 @@ cities_coordinates = Dict("Atlanta" => (-84.3901849, 33.7490987),
                                "Winnipeg" => (-97.168579, 49.884017))
 
 cities = [k for k in keys(cities_coordinates)]
+
 export tickettoride_edges, cities_coordinates, cities
 end  # module TicketToRide
