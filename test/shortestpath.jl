@@ -16,4 +16,13 @@
     @test distances['D'] ≈ 2.5
     @test previous['E'] == 'H'
 
+    path = reconstruct_path(previous, 'A', 'H')
+    @test first(path) == 'A'
+    @test last(path) == 'H'
+
+    path_d, cost_AH = dijkstra(graph, 'A', 'H')
+    @test path_d == path
+    @test cost_AH ≈ distances['H']
+
+
 end
