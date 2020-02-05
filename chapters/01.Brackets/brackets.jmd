@@ -87,7 +87,9 @@ The bisection procedure is repeated until the length of the interval is smaller 
 >> 1. *Determine midpoint*. $x:=(a+b)/2$
 >> 2. *Update*.
 >>> **if $g(x)=0$**: $a:=x$, $b:=x$
+>>>
 >>> **else if $\text{sign}(g(x)) = \text{sign}(g(a))$**: $a:=x$
+>>>
 >>> **else**: $b:=x$
 >
 > **Output**: $[a, b]$
@@ -103,7 +105,7 @@ iterations.
 **Assignment 1** Complete the code for the bisection method. Use it to find the minimum of
 
 $$
-f(x) = \log(e^{-x} + \frac{x^2}{2})
+f(x) = (x-2)^4 + e^{-2x} +2e^{\frac{x}{3}}
 $$
 
 Check your results graphically.
@@ -125,8 +127,10 @@ end
 ```
 
 ```julia
-f(x) = log(exp(-x) + 0.5x^2)
+f(x) = (x-2.0)^2+exp(-2x)+2exp(x/3)
 ```
+> To type `f′` just type `f\prime<tab>`. Whenever you are unsure how to type a unicode character you can call it using the help, e.g. `?ϵ`.
+
 ```julia; eval=false
 f′(x) = ...
 ```
