@@ -24,5 +24,9 @@
     @test path_d == path
     @test cost_AH ≈ distances['H']
 
+    path_as, cost_as = a_star(graph, 'A', 'H', x -> 0.0)
+    @test path_as == path
+    @test cost_as ≈ distances['H']
+
 
 end
