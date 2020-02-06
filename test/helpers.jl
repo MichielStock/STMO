@@ -13,6 +13,8 @@
     @test D[1, 3] ≈ 0
 
     @test size(dist(Y, Y)) == (3, 3)
+
+    @test hamming("banana", "banaan") == 2 
 end
 
 

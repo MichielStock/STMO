@@ -1,6 +1,6 @@
 #=
 Created on Thurday 02 January 2019
-Last update: Tuesday 28 January 2020
+Last update: Thurday 6 February 2020
 
 @author: Michiel Stock
 michielfmstock@gmail.com
@@ -78,6 +78,16 @@ Compute Euclidean distance matrix.
 """
 dist(X::AbstractMatrix) = dist(X::AbstractMatrix, X::AbstractMatrix)
 
+"""Compute the Hamming distance between two strings"""
+function hamming(s1, s2)
+    d = 0
+    for (c1i, c2i) in zip(s1, s2)
+        if c1i!=c2i
+            d += 1
+        end
+    end
+    return d
+end
 
 # GRAPHS
 # -----

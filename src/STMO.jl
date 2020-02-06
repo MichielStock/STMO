@@ -21,7 +21,6 @@ include("unconstrained.jl")
 export Unconstrained
 #export gradient_descent, coordinate_descent, newtons_method, backtracking_line_search
 
-
 include("optimaltransport.jl")
 export OptimalTransport
 
@@ -36,5 +35,8 @@ export TestFuns
 
 include("tickettoride.jl")
 export TicketToRide
+
+include('words.jl')
+export Words
 
 end # module
