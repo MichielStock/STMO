@@ -7,7 +7,7 @@ include("helpers.jl")
 export myred, mygreen, myyellow, myblue, myblack, myorange, mycolors
 export trace, notrack, PathTrack, nsteps
 export path, path!, plotobj, plotobj!, colorscatter
-export dist
+export dist, hamming
 export EdgeList, WeightedEdgeList, Vertices, AdjList, edges2adjlist, adjlist2edges
 export nvertices, isconnected
 
@@ -36,7 +36,7 @@ export TestFuns
 include("tickettoride.jl")
 export TicketToRide
 
-include('words.jl')
+include("words.jl")
 export Words
 
 end # module
