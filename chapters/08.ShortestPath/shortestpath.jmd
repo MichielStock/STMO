@@ -1,0 +1,273 @@
+---
+title : Shortest path problems
+author : Michiel Stock
+date: 2019-2020
+---
+
+
+```julia; echo=false
+using STMO
+using Plots, DataStructures
+```
+
+
+# Dijkstra's shortest path algorithm
+
+Dijkstra's algorithm is a popular algorithm to find the shortest path between the nodes of a graph. The algorithm can be used in two ways:
+
+- when both a source and a sink node are provided, the algorithm gives the list of nodes of the shortest path, together with the length (distance of the path).
+- when only a source is given, the shortest distance between the source and all (accessable) nodes is returned together with a dictionary representing the tree of the shortest paths between the source and other nodes.
+
+The pseudocode can be found below.
+
+## Pseudocode of Dijkstra's shortest path algorithm
+Source: Wikipedia.org
+```
+1  function Dijkstra(Graph, source, sink (optional)):
+2      distance[source] := 0  // initialize a dictionary with distance
+3                             // to source
+4      for each vertex V in Graph:
+5          if V ≠ source
+6              distance[V] := infinity
+7      previous := empty dict   // stores the previous node in path
+8
+10     make empty priority queue Q for vertices to check
+11     Q.add_with_priority(source, 0)  # first check the source
+12
+13
+14     while Q is not empty:                     // The main loop
+15         get node U with smallest distance from Q
+16         if U is the sink (if provided)
+17              break the loop
+17         for every neighbor V of U:
+18             alternative := distance[U] + dist(U, V)
+18             if alternative < distance[V]
+19                 distance[V] := alternative
+20                 previous[V] := U
+21                 Q.add_with_priority(V, alternative)
+22
+23     if sink is given
+24         reconstruct shortest path
+25         return shortest path and length of path
+26     else
+27         return distance, previous
+```
+
+## Pseudocode of path reconstruction  algorithm
+```
+1 function reconstruct_path(previous, source, sink)
+2    if the source is not in previous
+3          return empty path
+4    V := sink   \\ path is reconstructed backwards
+5    path := [V]  \\ path is a list of nodes
+6    while V is not source
+7         V := previous node in path
+8         add V in beginning of the path
+9    return the path
+```
+from shortestpaths import dijkstra, reconstruct_path
+
+```julia; eval=false
+"""
+    dijkstra(graph::AdjList{R,T}, source::T, sink::T) where {R<:Real,T}
+
+Dijkstra's shortest path algorithm.
+
+Inputs:
+    - `graph` : adjacency list representing a weighted directed graph
+    - `source`
+    - `sink`
+
+Outputs:
+    - the shortest path
+    - the cost of this shortest path
+"""
+function dijkstra(graph::AdjList{R,T}, source::T, sink) where {R<:Real,T}
+    # initialize the tentative distances
+    distances = Dict(v => Inf for v in keys(graph))
+    distances[source] = ...
+    ...
+end
+
+```
+
+
+```julia; eval=false
+"""
+    reconstruct_path(previous::Dict{T,T}, source::T, sink::T) where {T}
+
+Reconstruct the path from the output of the Dijkstra algorithm.
+
+Inputs:
+        - previous : a Dict with the previous node in the path
+        - source : the source node
+        - sink : the sink node
+Ouput:
+        - the shortest path from source to sink
+"""
+function reconstruct_path(previous::Dict{T,T}, source::T, sink::T) where {T}
+    path = T[sink]
+    ...
+    return ...
+end
+```
+
+**Assignment 1: Dijkstra**
+
+1. Complete the implementation for Dijstra's algorithm and the path reconstruction function
+2. Find the shortest path from node A to I in the example graph below.
+3. Find the shortest path from Portland to Nashville on the Ticket to Ride graph.
+3. (optional, hard) Modify `dijkstra` such that the sink is optional. When no sink is given, the dictionary `previous` (where `previous[u] = v` indicates that the shortest path from `v` is via `u`) and `distances`, a dictionary containing the minimal distance from every node to the sink.
+
+![Example network](Figures/example_graph.png)
+
+
+```julia
+# the above graph as an adjacency list
+graph = Dict('A' => [(2, 'B'), (3, 'D')],
+        'B' => [(1, 'C'), (5, 'E')],
+        'C' => [(2, 'D'), (1, 'E')],
+        'D' => [(3, 'E')],
+        'E' => [(2, 'B'), (3, 'F')],
+        'F' => [(5, 'G'), (8, 'I')],
+        'G' => [(2, 'H'), (5, 'I')],
+        'H' => [(3, 'I')],
+        'I' => [(7, 'G')]);
+```
+
+
+```julia; eval=false
+dijkstra(graph, 'A', 'I')
+```
+
+```julia
+using STMO.TicketToRide
+```
+
+```julia
+tickettoride_graph
+```
+
+
+# A* shortest path algorithm
+
+It is hard to explain the algorithm into more depth than [here](http://theory.stanford.edu/~amitp/GameProgramming/) and [here](http://www.redblobgames.com/pathfinding/a-star/introduction.html).
+
+The A\* algorithm is exact (like Dijkstra's algorithm), but it can also use a **heuristic** to speed up the search. In each iteration, the next neighbor $v$ of the current vertex that the algorithm considers is chosen based on the heuristic
+
+$$
+f(v) = g(v) + h(v)
+$$
+
+with $g(v)$ the cost of the path so far and $h(v)$ a heuristic that estimates the cost of the cost of the shortest path from $v$ to the goal. The heuristic $h(v)$ should satify two properties:
+1. To guaranty that a shortest path is found, the heuristic should be **admissible**, i.e. it should never overestimate the true distance to goal.
+2. Evaluating the heuristic should be cheap (it is either pre-computed or is a function).
+
+So the A\* algorithm is basically the same as Dijkstra's algorithm, but with the main difference that the the latter chooses nodes to explore based on the distance from the starting node, while the latter chooses nodes **based on an estimate of distance to the goal**.
+
+When using A\* to find the shortest path between two physical locations, each vertex corresponds to a point in space. A good heuristic is the (Euclidian) distance between the vertexs, as this will always be a lower bound for the actual distance to travel to the goal.
+
+Consider the following example of finding the path from vertex $a$ to vertex $h$.
+
+![Example how A\* uses the heuristics](Figures/astarexample.png)
+
+The shortest path so far is $[a, e]$ and the algorithm needs to choose to explore vertex $d$ or vertex $g$. Since the path of $ed$ is shorter than the path $eg$, Dijkstra will choose this vertex, even though it is farther removed from the goal $h$ (Dijkstra chooses a neighbor $n$ only based on the current path length form the starting vertex $g(n)$. The A\* algorithm will chose vertex $g$ to explore, because the estimated path length $f(e) = g(e) + h(e) > f(d)$ and hence will approach the goal.
+
+## Pseudocode of A\* shortest path algorithm
+Source from Wikipedia (modified)
+```
+1  function Astar(Graph, source, sink, heuristic):
+2      make empty priority queue Q for vertices to check
+3
+4      add source to Q with priority f(source)
+5          // use the estimated path length for priority
+6
+7      distance[V] := 0   // initialize a dictionary with distance
+8                           // to source
+9      previous := empty dict   // stores the previous node in path
+10
+11     while Q is not empty:                     // The main loop
+12         pop node U with lowest estimated path length to sink
+13         if U is the sink
+14              break the loop
+15         for every neighbor V of U:
+16             distance_source_U := distance[U] + dist(U, V)
+17             if V not in distance or distance_source_U < distance[V]
+18                 distance[V] := distance_source_U
+19                 previous[V] := U
+20                 heuristic_V_sink := distance[V] + heuristic(V)
+21                 Q.add_with_priority(V, heuristic_V_sink)
+22
+23     reconstruct shortest path
+24     return shortest path and length of path
+```
+
+
+**Assignment 2: A\***
+
+1. Complete the implementation for the A\* algorithm.
+2. Compute the shortest path between Portland to Nashville. The function `tickettoride_dist` returns the shortest distance (as the bird flies) between two cities.
+3. Compare running time of the two shortest path algorithms using `@time`.
+
+
+
+```julia; eval=false
+"""
+    a_star(graph::AdjList{R,T}, source::T, sink::T, heuristic) where {R<:Real,T}
+
+A* shortest path algorithm.
+
+Inputs:
+    - `graph` : adjacency list representing a weighted directed graph
+    - `source`
+    - `sink`
+    - `heuristic` : a function that inputs a node and returns an lower bound
+            for the distance to the source. Note that a distance can be turned into
+            a heuristic using `n -> d(n, sink)`
+
+Outputs:
+    - the shortest path
+    - the cost of this shortest path
+"""
+function a_star(graph::AdjList{R,T}, source::T, sink::T, heuristic) where {R<:Real,T}
+    # initialize the tentative distances
+    distances = Dict(v => Inf for v in keys(graph))
+    ...
+    while ...
+        ...
+end
+```
+
+
+# Word problem
+
+Let us use shortest path for some word problems? What is the shortest chain from one word to another if you can only change 5 letters at a time? We will explore this on all words of length 12.
+
+```julia; eval=false
+using STMO.Words
+
+words12 = getwords(12)
+```
+
+We have the function `hamming` to compute the hamming distance between two stings.
+
+```julia; eval=false
+w1, w2 = rand(words12, 2)
+```
+
+```julia; eval=false
+hamming(w1, w2)
+```
+
+We can compute the weighted graph where two words are connected if they have a Hamming distance of at most 5.
+
+```julia; eval=false
+words_edges = getwordedges(words12);
+words_graph = edges2adjlist(words_edges)
+```
+
+
+**Assignment 3: word salad**
+
+1. Use Dijkstra and A* to find the distance between two randomly chosen words.
+2. Can you find the longest word chain?

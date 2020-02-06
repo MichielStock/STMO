@@ -20,7 +20,8 @@ dirs = ["00.Introduction",
         "04.Constrained",
         "05.AutoDiff",
         "06.OptimalTransport",
-        "07.MST"
+        "07.MST",
+        "08.ShortestPath"
         ]
 
 
