@@ -13,7 +13,9 @@ Choo choo
 
 module TicketToRide
 
-tickettoride_edges = [(1, "Vancouver", "Seattle"),
+using STMO
+
+const tickettoride_edges = [(1, "Vancouver", "Seattle"),
           (1, "Seattle", "Portland"),
           (3, "Vancouver", "Calgary"),
           (6, "Calgary", "Winnipeg"),
@@ -93,7 +95,7 @@ tickettoride_edges = [(1, "Vancouver", "Seattle"),
           (4, "Charleston", "Miami")
           ]
 
-cities_coordinates = Dict("Atlanta" => (-84.3901849, 33.7490987),
+const cities_coordinates = Dict("Atlanta" => (-84.3901849, 33.7490987),
                                "Boston" => (-71.0595678, 42.3604823),
                                "Calgary" => (-114.0625892, 51.0534234),
                                "Charleston" => (-79.9402728, 32.7876012),
@@ -130,7 +132,13 @@ cities_coordinates = Dict("Atlanta" => (-84.3901849, 33.7490987),
                                "Washington" => (-77.0366456, 38.8949549),
                                "Winnipeg" => (-97.168579, 49.884017))
 
-cities = [k for k in keys(cities_coordinates)]
+const cities = [k for k in keys(cities_coordinates)]
 
-export tickettoride_edges, cities_coordinates, cities
+tickettoride_dist(c1, c2) = sqrt(sum((cities_coordinates[c1] .- cities_coordinates[c2]).^2))
+
+tickettoride_edges_dists = [(tickettoride_dist(u, v), u, v) for (w, u, v) in tickettoride_edges]
+
+const tickettoride_graph = edges2adjlist(tickettoride_edges_dists)
+
+export tickettoride_edges, cities_coordinates, cities, tickettoride_dist, tickettoride_graph
 end  # module TicketToRide
