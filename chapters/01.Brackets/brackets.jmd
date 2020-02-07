@@ -37,13 +37,13 @@ end
 ```
 
 ```julia
-f(x) = x^3 - 8x^2 - 3x - 8
+f(x) = 0.003x^4 + 8x^3 - 3x - 8
 
 (a, b) = bracket_minimum(f, k=1.2)
 ```
 
 ```julia
-plot(f, -4:0.1:9, xlabel="\$ x\$", label="\$ f(x) \$", color=myblue, lw=2)
+plot(f, -4:0.1:5, xlabel="\$ x\$", label="\$ f(x) \$", color=myblue, lw=2)
 vline!([a, b], label="", color=myorange, lw=2)
 vline!([0], label="", color=mygreen, lw=2)
 xticks!([a, b, 0], ["a", "b", "x"])
@@ -105,7 +105,7 @@ iterations.
 **Assignment 1** Complete the code for the bisection method. Use it to find the minimum of
 
 $$
-f(x) = (x-2)^4 + e^{-2x} +2e^{\frac{x}{3}}
+f(x) = \log(e^{8x-3}+2e^{0.2x^2-x+1})
 $$
 
 Check your results graphically.
@@ -127,7 +127,7 @@ end
 ```
 
 ```julia
-f(x) = (x-2.0)^2+exp(-2x)+2exp(x/3)
+f(x) = log(exp(8x-3)+2exp(0.2x^2-x+1))
 ```
 > To type `f′` just type `f\prime<tab>`. Whenever you are unsure how to type a unicode character you can call it using the help, e.g. `?ϵ`.
 
@@ -158,7 +158,7 @@ $$
 For example, in Julia, we have:
 
 ```julia
-a, b, c = -2, -1, 5
+a, b, c = -2, -1, 3
 ya, yb, yc = f.([a, b, c])
 
 p1, p2, p3 = [1 a a^2; 1 b b^2; 1 c c^2] \ [ya, yb, yc]
@@ -181,24 +181,24 @@ We have implemented these two formulas in `quadratic_fit` and `quadratic_fit_min
 ```julia
 function quadratic_fit(a, b, c, ya, yb, yc)
   @assert a != b != c
-  return x -> ya * (x-b) * (x-c)/(a-b)/(a-c) +
-    yb * (x-a)*(x-c)/(b-a)/(b-c) +
-    yc * (x-a)*(x-b)/(c-a)/(c-b)
+  return x -> ya * (x-b) * (x-c) / ((a-b) * (a-c)) +
+              yb * (x-a) * (x-c) / ((b-a) * (b-c)) +
+              yc * (x-a) * (x-b) / ((c-a) * (c-b))
 end
 
 function quadratic_fit_min(a, b, c, ya, yb, yc)
-  return 0.5 * (ya*(b^2-c^2) + yb*(c^2-a^2) + yc*(a^2-b^2)) \
-        (ya*(b-c) + yb*(c-a) + yc*(a-b))
+  return 0.5 * (ya * (b^2 - c^2) + yb * (c^2 - a^2) + yc * (a^2 - b^2)) /
+        (ya * (b-c) + yb * (c-a) + yc * (a-b))
 end
 ```
 ```julia
 x = quadratic_fit_min(a, b, c, ya, yb, yc)
 ```
 
-```julia
-plot(f, -5:0.1:7, label="\$f(x)\$", lw=2, xlabel="\$x\$", color=myblue)
+```julia; echo=false
+plot(f, -3:0.1:5, label="\$f(x)\$", lw=2, xlabel="\$x\$", color=myblue)
 scatter!([a, b, c], [ya, yb, yc], label="\$a, b, c\$", color=myorange)
-plot!(quadratic_fit(a, b, c, ya, yb, yc), -5:0.1:7, label="\$ q(x) \$", lw=2, color=mygreen)
+plot!(quadratic_fit(a, b, c, ya, yb, yc), -3:0.1:5, label="\$ q(x) \$", lw=2, color=mygreen)
 vline!([x], label="\$x\$", lw=2, color=myred)
 ```
 
@@ -245,7 +245,7 @@ The coming chapters will discuss the minimization of quadratic functions in much
 1. Find the maximum of $\sqrt[\leftroot{-2}\uproot{2}x]{x}$.
 2. Given a chemical system for which a chemical with concentration is degraded by enzymic conversion and chemical decay. The rate of removal is given by
 $$
-r(x) = -0.02 - 1.2\frac{x}{10+x}\,.
+r(x) = 0.02 + 1.2\frac{x}{10+x}\,.
 $$
 The system receives a constant input with a concentration of 0.3. What is the steady-state concentration?
 
