@@ -110,17 +110,32 @@ Turns an adjacency list (implemented as a Dict) into an edge list.
 adjlist2edges(adjlist::AdjList{R,T}) where {R<:Real, T} =
             [(w, v, n) for (v, neighbors) in adjlist for (w, n) in neighbors]
 
-
+"""
+Returns the number of vertices in a graph.
+"""
 nvertices(adjlist::AdjList) = length(adjlist)
 
-function nvertices(edges::WeightedEdgeList{R,T}) where {R<:Real,T}
+"""
+Returns the vertices of a graph.
+"""
+vertices(adjlist::AdjList) = Set(keys(adjlist))
+
+"""
+Returns the vertices of a graph.
+"""
+function vertices(edgelist::WeightedEdgeList{R,T}) where {R<:Real,T}
     vertices = Set{T}()
-    for (w, u, v) in edges
+    for (w, u, v) in edgelist
         push!(vertices, u)
         push!(vertices, v)
     end
-    return length(vertices)
+    return vertices
 end
+
+"""
+Returns the number of vertices in a graph.
+"""
+nvertices(edgelist::WeightedEdgeList) = length(vertices(edgelist))
 
 function isconnected(adjlist::AdjList{R,T}) where {R<:Real, T}
     visited = Set{T}()

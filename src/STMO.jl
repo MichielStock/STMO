@@ -9,7 +9,7 @@ export trace, notrack, PathTrack, nsteps
 export path, path!, plotobj, plotobj!, colorscatter
 export dist
 export EdgeList, WeightedEdgeList, Vertices, AdjList, edges2adjlist, adjlist2edges
-export nvertices, isconnected
+export nvertices, isconnected, vertices
 
 include("quadratic.jl")
 export fquad, quadratic

@@ -32,6 +32,7 @@ end
     @test (0.1, 3, 2) in edgesrec && (0.1, 2, 3) in edgesrec
 
     @test nvertices(adjlist) == nvertices(edges) == 3
+    @test vertices(adjlist) == vertices(edges) == Set([1, 2, 3])
     @test isconnected(adjlist) == isconnected(edges) == true
     @test !isconnected([(0.1, 1, 2), (0.1, 2, 3), (0.01, 5, 4)])
 
