@@ -183,7 +183,8 @@ using LinearAlgebra
 
 A = [5 -1; -1 2]
 isposdef(A)  # true
-
+```
+```julia
 B = [0.5 3; 3 1]
 isposdef(B)  # false
 ````

@@ -2,6 +2,7 @@
 *.pdf
 Manifest.toml
 figures/*
+chapters/01.Brackets/slides/*
 
 ## Core latex/pdflatex auxiliary files:
 *.aux

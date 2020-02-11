@@ -43,7 +43,7 @@ f(x) = 0.003x^4 + 8x^3 - 3x - 8
 ```
 
 ```julia
-plot(f, -4:0.1:5, xlabel="\$ x\$", label="\$ f(x) \$", color=myblue, lw=2)
+plot(f, -0.5:0.01:0.5, xlabel="\$ x\$", label="\$ f(x) \$", color=myblue, lw=2)
 vline!([a, b], label="", color=myorange, lw=2)
 vline!([0], label="", color=mygreen, lw=2)
 xticks!([a, b, 0], ["a", "b", "x"])
@@ -58,11 +58,11 @@ $$
 g(x) = 0\,.
 $$
 
-We can use the bisection method to find a minimum of a function $f(x0$ by finding points where the first derivative $f'(x)$ is equal to 0.
+We can use the bisection method to find a minimum of a function $f(x)$ by finding points where the first derivative $f'(x)$ is equal to 0.
 
 > **Question**: in addition to the first derivative being equal to zero, which other criteria should hold for $x^\star$ to be a minimizer?
 
-The bisection method departs from an initial bracket $[a, b]$, where $f'(a)$ and $f'(b)$ have opposing signs. If $f'(x)$ is a continious function, the *intermediate value theorem* states that there is at least one $x\in[a,b]$ such that $f'(x)$.
+The bisection method departs from an initial bracket $[a, b]$, where $g(a)$ and $g(b)$ have opposing signs. If $g(x)$ is a continious function, the *intermediate value theorem* states that there is at least one $x\in[a,b]$ such that $g(x)$.
 
 In every step of the bisection method, the interval it cut into half. The midpoint $x = (b-a)/2$ is computed, and a new bracket is formed from the midpoint and the side that contains zero.
 
@@ -112,7 +112,7 @@ Check your results graphically.
 
 ```julia; eval=false
 function bisection(g, a, b; ϵ=1e-3)
-  @assert a < b, "a should be smaller than b"
+  @assert a < b "a should be smaller than b"
 
   # a is minizer?
   g(a) == 0 && return a, a
@@ -219,8 +219,8 @@ Given the minimizer $x^\star$ of the quadratic approximation, we can update the 
 
 ```julia; eval=false
 function quadratic_fit_search(f, a, b, c, n)
-  @assert a < b < c, "a, b, c not consecutive "
-  @assert f(a) > f(b) && f(c) > f(b), "no local minimum between a and b"
+  @assert a < b < c "a, b, c not consecutive "
+  @assert f(a) > f(b) && f(c) > f(b) "f(b) should be less than f(a) and f(c)"
 
   for i in 1:n
     ...
@@ -248,6 +248,18 @@ $$
 r(x) = 0.02 + 1.2\frac{x}{10+x}\,.
 $$
 The system receives a constant input with a concentration of 0.3. What is the steady-state concentration?
+
+```julia
+
+```
+
+```julia
+
+```
+
+```julia
+
+```
 
 # References
 
