@@ -64,7 +64,7 @@ We can use the bisection method to find a minimum of a function $f(x)$ by findin
 
 The bisection method departs from an initial bracket $[a, b]$, where $g(a)$ and $g(b)$ have opposing signs. If $g(x)$ is a continious function, the *intermediate value theorem* states that there is at least one $x\in[a,b]$ such that $g(x)$.
 
-In every step of the bisection method, the interval it cut into half. The midpoint $x = (b-a)/2$ is computed, and a new bracket is formed from the midpoint and the side that contains zero.
+In every step of the bisection method, the interval it cut into half. The midpoint $x = (a+b)/2$ is computed, and a new bracket is formed from the midpoint and the side that contains zero.
 
 ```julia; echo=false
 g(x) = tanh(sin(x))
