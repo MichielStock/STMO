@@ -5,7 +5,7 @@ using Plots, LinearAlgebra
 
 include("helpers.jl")
 export myred, mygreen, myyellow, myblue, myblack, myorange, mycolors
-export trace, notrack, PathTrack, nsteps
+export trace, notrack, PathTrack, nsteps, Tracker
 export path, path!, plotobj, plotobj!, colorscatter
 export dist
 export EdgeList, WeightedEdgeList, Vertices, AdjList, edges2adjlist, adjlist2edges
