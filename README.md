@@ -80,14 +80,6 @@ add https://github.com/MichielStock/STMO.git
 
 ### Running the IJulia Notebook
 
-If you are comfortable managing your own Python/Jupyter installation, you can just run `jupyter notebook` yourself in a terminal. To simplify installation, you can alternatively type the following in Julia, at the `julia>` prompt:
-```julia
-using IJulia
-notebook()
-```
-to launch the IJulia notebook in your browser.
-
-The first time you run `notebook()`, it will prompt you
-for whether it should install Jupyter.  Hit enter to have it use the [Conda.jl](https://github.com/Luthaf/Conda.jl) package to install a minimal Python+Jupyter distribution (via [Miniconda](http://conda.pydata.org/docs/install/quick.html)) that is private to Julia (not in your `PATH`).
-On Linux, it defaults to looking for `jupyter` in your `PATH` first, and only asks to installs the  Conda Jupyter if that fails; you can force it to use Conda on Linux by setting `ENV["JUPYTER"]=""` during installation (see above).  (In a Debian or Ubuntu  GNU/Linux system, install the package `jupyter-client` to install the system `jupyter`).
-[source](https://raw.githubusercontent.com/JuliaLang/IJulia.jl/master/README.md)
+Running Jupyter notebooks requires an [ Anaconda](https://www.anaconda.com/distribution/) installation.
+You can either open Anaconda naviator to open jupyter notebooks, or type ``jupyter notebook``
+in the Anaconda prompt.
