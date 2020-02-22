@@ -5,6 +5,7 @@ figures/*
 chapters/01.Brackets/slides/*
 chapters/02.Quadratic/Slides/*
 chapters/02.Quadratic/solution_*
+projects/*
 
 ## Core latex/pdflatex auxiliary files:
 *.aux
