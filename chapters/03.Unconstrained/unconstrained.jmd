@@ -418,7 +418,7 @@ Coordinate descent optimizes every dimension in turn, for this reason it is some
 
 ```julia; eval=false
 """
-    gradient_descent(f, x₀, grad_f; α::Real=0.2, β::Real=0.7,
+    coordinate_descent(f, x₀, grad_f; α::Real=0.2, β::Real=0.7,
         ν::Real=1e-3)
 
 General coordinate descent algorithm.
@@ -551,9 +551,6 @@ See below for the paths of Newton's algorithm on the quadratic and non-quadratic
 
 The following figure shows the convergence of Newton's algorithm on the quadratic and non-quadratic functions. Note that the quadratic problem is solved exactly in one step.
 
-```julia
-
-```
 
 ### Convergence analysis
 
@@ -611,6 +608,14 @@ function newtons_method(f, x₀, Df, DDf; α::Real=0.2, β::Real=0.7,
 end
 ```
 
+```julia
+
+```
+
+```julia
+
+```
+
 ### Summary Newton's method
 
 - Convergence of Newton's algorithm is rapid and quadratic near $\mathbf{x}^\star$.
@@ -621,18 +626,6 @@ end
 ## Quasi-Newton methods
 
 Quasi-Newton methods try to emulate the success of the Newton method, but without the high computational burden of constructing the Hessian matrix every step. One of the most popular quasi-Newton algorithms is the *Broyden-Fletcher-Goldfarb-Shanno* (BFGS) algorithm. Here, the Hessian is approximated by a symmetric rank-one matrix.
-
-## Numerical approximation of the gradient and Hessian
-
-In many cases, there is no analytical expression for gradient and the Hessian. The finite difference method can motivate the following approximations for the gradient-vector product
-$$
-\nabla f(\mathbf{x})^\top\Delta\mathbf{x} \approx \frac{1}{2\epsilon} (f(\mathbf{x}+\epsilon\Delta\mathbf{x} ) - f(\mathbf{x}-\epsilon\Delta\mathbf{x} ))
-$$
-and the Hessian-vector product
-$$
-\nabla^2 f(\mathbf{x})^\top\Delta\mathbf{x} \approx \frac{1}{2\epsilon} (\nabla f(\mathbf{x}+\epsilon\Delta\mathbf{x} ) - \nabla f(\mathbf{x}-\epsilon\Delta\mathbf{x} ))\,
-$$
-with $\epsilon$ a small constant.
 
 ## Exercise: logistic regression
 
@@ -673,27 +666,18 @@ Here, the first part is the cross entropy, which penalizes disagreement between 
 
 Consider the data set in the file `BreastCancer.csv`. This dataset contains information about 569 female patients diagnosed with breast cancer. For each patient it was recorded wether the tumor was benign (B) or malignant (M), this is the response variable. Each tumor is described by 30 features, which encode some information about the tumor. We want to use logistic regression with regularization to predict wether a tumor is benign or malignant based on these features.
 
-```julia; eval=false
-# pandas allows us to comfortably work with datasets in python
-using CSV
-
-cancer_data = CSV.read("Data/BreastCancer.csv")  # load data
+```julia
+using STMO.CancerData
+features, binary_response = getcancerdata();
 ```
-```julia; eval=false
+```julia
 # extract response in binary encoding:
 # 0 : B(enign)
 # 1 : M(alignant)
-binary_response = cancer_data.y .== 'M'
-
-# extract feature matrix X
-features = Matrix(cancer_data[:,3:end])
-
-# standarizing features
-# this is needed for gradient descent to run faster
-features .-= sum(features, dims=1) / size(features, 1)
-features ./= sum(features.^2, dims=1).^0.5 / (size(features, 1).^0.5)
-# add intercept using dummy variable
-features = [ones(size(features, 1)) features]
+binary_response
+```
+```julia
+features
 ```
 
 **Assignments**
@@ -711,7 +695,7 @@ Complete the functions below.
 
 logistic_map(x) = 1 / (1.0 + exp(-x));
 # make sure that no nan is returned when p is very small
-cross_entropy(l::Bool, p) = l ? log(p) : log(1.0 - p)
+cross_entropy(l::Bool, p) = l ? -log(p) : -log(1.0 - p)
 ```
 
 ```julia; eval=false
