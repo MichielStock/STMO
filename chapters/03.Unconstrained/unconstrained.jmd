@@ -10,7 +10,6 @@ using LinearAlgebra
 using STMO
 ```
 
-
 # Motivation
 
 In this chapter we will study unconstrained convex problems, i.e., problems of the form
@@ -109,7 +108,7 @@ $$
 f(x_1, x_2) = \log(e^{x_1 +3x_2-0.1}+e^{x_1 -3x_2-0.1}+e^{-x_1 -0.1})\,.
 $$
 
-```julia
+```julia; echo=false
 import STMO.TestFuns: fquadr, grad_fquadr, hess_fquadr
 import STMO.TestFuns: fnonquadr, grad_fnonquadr, hess_fnonquadr
 ```
@@ -276,7 +275,7 @@ We conclude:
 ```julia; eval=false
 """
     gradient_descent(f, x₀, grad_f; α::Real=0.2, β::Real=0.7,
-        ν::Real=1e-3, tracker::Tracker=notrack)
+        ν::Real=1e-3)
 
 General gradient descent algorithm.
 
@@ -287,16 +286,16 @@ Inputs:
     - α: parameter for btls
     - β: parameter for btls
     - ν: parameter to determine if the algorithm is converged
-    - tracker: a structure to store the path
 
 Outputs:
     - xstar: the found minimum
 """
 function gradient_descent(f, x₀, grad_f; α::Real=0.2, β::Real=0.7,
-      ν::Real=1e-7, tracker::Tracker=notrack)
+      ν::Real=1e-7)
 
     x = x₀  # initial value
     Δx = similar(x)
+    nsteps = 0
     while true
         ... # choose direction
         if ...
@@ -304,52 +303,19 @@ function gradient_descent(f, x₀, grad_f; α::Real=0.2, β::Real=0.7,
         end
         t = ...
         ... # do a step
-        trace(tracker, x)
+        nsteps += 1
     end
+    println("converged after $nsteps steps")
     return x
 end
 ```
 
-```julia; echo=false
-# quadratic function
-x0q = [9.0, 2.0];
+```julia
 
-trackerqgd = PathTrack(x0q);
-xstarq = Unconstrained.gradient_descent(fquadr, copy(x0q), grad_fquadr, tracker=trackerqgd);
 ```
 
-```julia; echo=false
-# quadratic function
-x0nq = [-1.0, 0.75];
+```julia
 
-trackernqgd = PathTrack(x0nq)
-xstarnq = Unconstrained.gradient_descent(fnonquadr, copy(x0nq), grad_fnonquadr,
-                tracker=trackernqgd);
-```
-
-```julia; echo=false
-xstarnq_exact = Unconstrained.gradient_descent(fnonquadr, copy(x0nq), grad_fnonquadr, ν=1e-8);
-fnqexact = fnonquadr(xstarnq_exact);
-nonquadrerr = x -> abs(fnonquadr(x) - fnqexact) + 1e-20;
-```
-
-```julia; echo=false
-pq = contour(-10:0.1:10, -5:0.1:5, (x1, x2) -> fquadr((x1, x2)),
-            xlabel="x1", ylabel="x2", title="quadratic", fill=true);
-path!(trackerqgd, label="GD")
-```
-```julia; echo=false
-pnq = contour(-2:0.1:2, -1:0.1:1, (x1, x2) -> fnonquadr((x1, x2)), xlabel="x1",
-                ylabel="x2", title="non-quadratic", fill=true);
-path!(trackernqgd, label="GD")
-```
-
-```julia; echo=false
-p1 = plotobj(fquadr, trackerqgd, label="GD", yscale=:log10, ylabel="\$ f(x) - f(x^\\star)\$",
-                    title="quadratic");
-p2 = plotobj(nonquadrerr, trackernqgd, label="GD", yscale=:log10, ylabel="\$ f(x) - f(x^\\star)\$",
-    title="non-quadratic");
-plot(p1, p2)
 ```
 
 ## Steepest descent
@@ -452,8 +418,8 @@ Coordinate descent optimizes every dimension in turn, for this reason it is some
 
 ```julia; eval=false
 """
-    gradient_descent(f, x₀, grad_f; α::Real=0.2, β::Real=0.7,
-        ν::Real=1e-3, tracker::Tracker=notrack)
+    coordinate_descent(f, x₀, grad_f; α::Real=0.2, β::Real=0.7,
+        ν::Real=1e-3)
 
 General coordinate descent algorithm.
 
@@ -464,15 +430,15 @@ Inputs:
     - α: parameter for btls
     - β: parameter for btls
     - ν: parameter to determine if the algorithm is converged
-    - tracker: a structure to store the path
 
 Outputs:
     - xstar: the found minimum
 """
 function coordinate_descent(f, x₀::Vector, grad_f; α::Real=0.2, β::Real=0.7,
-      ν::Real=1e-7, tracker::Tracker=notrack)
+      ν::Real=1e-7)
     x = x₀  # initial value
     Δx = zero(x)
+    nsteps = 0
     while true
         ...   # choose direction
 
@@ -481,47 +447,19 @@ function coordinate_descent(f, x₀::Vector, grad_f; α::Real=0.2, β::Real=0.7,
         end
         ...  # BLS for optimal step size
         ...  # do a step
-        trace(tracker, x)
+        nsteps += 1
     end
+    println("converged after $nsteps steps")
     return x
 end
 ```
 
-```julia; echo=false
-# quadratic function
-trackerqcd = PathTrack(x0q);
-xstarq = Unconstrained.coordinate_descent(fquadr, copy(x0q), grad_fquadr,
-                tracker=trackerqcd);
+```julia
+
 ```
 
-```julia; echo=false
-# non-quadratic function
-trackernqcd = PathTrack(x0nq);
-xstarq = Unconstrained.coordinate_descent(fnonquadr, copy(x0nq), grad_fnonquadr,
-            tracker=trackernqcd);
-```
+```julia
 
-```julia; echo=false
-pq = contour(-10:0.1:10, -5:0.1:5, (x1, x2) -> fquadr((x1, x2)), xlabel="x1",
-                ylabel="x2", title="quadratic", fill=true)
-path!(trackerqgd, label="GD")
-path!(trackerqcd, label="CD", color=myblue)
-```
-```julia; echo=false
-pnq = contour(-2:0.1:2, -1:0.1:1, (x1, x2) -> fnonquadr((x1, x2)), xlabel="x1",
-                ylabel="x2", title="non-quadratic", fill=true)
-path!(trackernqgd, label="GD")
-path!(trackernqcd, label="CD", color=myblue)
-```
-
-```julia; echo=false
-p1 = plotobj(fquadr, trackerqgd, label="GD", yscale=:log10, ylabel="\$ f(x) - f(x^\\star)\$",
-                                        title="quadratic")
-plotobj!(fquadr, trackerqcd, color=myblue, label="CD")
-p2 = plotobj(nonquadrerr, trackernqgd, label="GD", yscale=:log10, ylabel="\$ f(x) - f(x^\\star)\$",
-                                                        title="non-quadratic");
-plotobj!(nonquadrerr, trackernqcd, color=myblue, label="CD");
-plot(p1, p2)
 ```
 
 ## Newton's method
@@ -609,43 +547,10 @@ The above algorithm is sometimes called the *damped* Newton method, as it uses a
 
 See below for the paths of Newton's algorithm on the quadratic and non-quadratic functions. Note that the quadratic problem is solved exactly in one step.
 
-
-```julia; echo=false
-# quadratic function
-trackerqnm = PathTrack(x0q)
-xstarq = Unconstrained.newtons_method(fquadr, copy(x0q), grad_fquadr, hess_fquadr, tracker=trackerqnm)
-```
-
-```julia; echo=false
-# non-quadratic function
-trackernqnm = PathTrack(x0nq)
-xstarq = Unconstrained.newtons_method(fnonquadr, copy(x0nq), grad_fnonquadr, hess_fnonquadr, tracker=trackernqnm)
-```
-
-```julia; echo=false
-pq = contour(-10:0.1:10, -5:0.1:5, (x1, x2) -> fquadr((x1, x2)), xlabel="x1", ylabel="x2", title="quadratic", fill=true)
-path!(trackerqgd, label="GD")
-path!(trackerqcd, label="CD", color=myblue)
-path!(trackerqnm, label="Newton", color=mygreen)
-```
-```julia; echo=false
-pnq = contour(-2:0.1:2, -1:0.1:1, (x1, x2) -> fnonquadr((x1, x2)), xlabel="x1", ylabel="x2", title="non-quadratic", fill=true)
-path!(trackernqgd, label="GD")
-path!(trackernqcd, label="CD", color=myblue)
-path!(trackernqnm, label="Newton", color=mygreen)
-```
+![](Figures/newtons_method.png)
 
 The following figure shows the convergence of Newton's algorithm on the quadratic and non-quadratic functions. Note that the quadratic problem is solved exactly in one step.
 
-```julia; echo=false
-p1 = plotobj(fquadr, trackerqgd, label="GD", yscale=:log10, ylabel="\$ f(x) - f(x^\\star)\$", title="quadratic", ylim=(1e-15, 10));
-plotobj!(fquadr, trackerqcd, color=myblue, label="CD");
-plotobj!(fquadr, trackerqnm, color=mygreen, label="Newton");
-p2 = plotobj(nonquadrerr, trackernqgd, label="GD", yscale=:log10, ylabel="\$ f(x) - f(x^\\star)\$", title="non-quadratic", ylim=(1e-15, 10));
-plotobj!(nonquadrerr, trackernqcd, color=myblue, label="CD");
-plotobj!(fquadr, trackernqnm, color=mygreen, label="Newton");
-plot(p1, p2)
-```
 
 ### Convergence analysis
 
@@ -664,7 +569,7 @@ After a sufficiently large number of iterations, the number of correct digits do
 ```julia; eval=false
 """
     newtons_method(f, x₀, Df, DDf; α::Real=0.2, β::Real=0.7,
-        ϵ::Real=1e-7, tracker::Tracker=notrack)
+        ϵ::Real=1e-7)
 
 General Newton method.
 
@@ -676,18 +581,18 @@ Inputs:
     - α: parameter for btls
     - β: parameter for btls
     - ϵ: parameter to determine if the algorithm is converged
-    - tracker: (bool) store the path that is followed?
 
 Outputs:
     - xstar: the found minimum
 """
 function newtons_method(f, x₀, Df, DDf; α::Real=0.2, β::Real=0.7,
-      ϵ::Real=1e-5, tracker::Tracker=notrack)
+      ϵ::Real=1e-5)
 
     x = x₀  # initial values
     # preallocation
     Δx = similar(x)
     Dfx = similar(x)
+    nsteps = 0
     while true
         ... # choose direction
         λ² = ...  # newton decrement
@@ -696,10 +601,19 @@ function newtons_method(f, x₀, Df, DDf; α::Real=0.2, β::Real=0.7,
         end
         ...
         ...  # do a step
-        trace(tracker, x)
+        nsteps += 1
     end
+    println("converged after $nsteps steps")
     return x
 end
+```
+
+```julia
+
+```
+
+```julia
+
 ```
 
 ### Summary Newton's method
@@ -712,18 +626,6 @@ end
 ## Quasi-Newton methods
 
 Quasi-Newton methods try to emulate the success of the Newton method, but without the high computational burden of constructing the Hessian matrix every step. One of the most popular quasi-Newton algorithms is the *Broyden-Fletcher-Goldfarb-Shanno* (BFGS) algorithm. Here, the Hessian is approximated by a symmetric rank-one matrix.
-
-## Numerical approximation of the gradient and Hessian
-
-In many cases, there is no analytical expression for gradient and the Hessian. The finite difference method can motivate the following approximations for the gradient-vector product
-$$
-\nabla f(\mathbf{x})^\top\Delta\mathbf{x} \approx \frac{1}{2\epsilon} (f(\mathbf{x}+\epsilon\Delta\mathbf{x} ) - f(\mathbf{x}-\epsilon\Delta\mathbf{x} ))
-$$
-and the Hessian-vector product
-$$
-\nabla^2 f(\mathbf{x})^\top\Delta\mathbf{x} \approx \frac{1}{2\epsilon} (\nabla f(\mathbf{x}+\epsilon\Delta\mathbf{x} ) - \nabla f(\mathbf{x}-\epsilon\Delta\mathbf{x} ))\,
-$$
-with $\epsilon$ a small constant.
 
 ## Exercise: logistic regression
 
@@ -764,27 +666,18 @@ Here, the first part is the cross entropy, which penalizes disagreement between 
 
 Consider the data set in the file `BreastCancer.csv`. This dataset contains information about 569 female patients diagnosed with breast cancer. For each patient it was recorded wether the tumor was benign (B) or malignant (M), this is the response variable. Each tumor is described by 30 features, which encode some information about the tumor. We want to use logistic regression with regularization to predict wether a tumor is benign or malignant based on these features.
 
-```julia; eval=false
-# pandas allows us to comfortably work with datasets in python
-using CSV
-
-cancer_data = CSV.read("Data/BreastCancer.csv")  # load data
+```julia
+using STMO.CancerData
+features, binary_response = getcancerdata();
 ```
-```julia; eval=false
+```julia
 # extract response in binary encoding:
 # 0 : B(enign)
 # 1 : M(alignant)
-binary_response = cancer_data.y .== 'M'
-
-# extract feature matrix X
-features = Matrix(cancer_data[:,3:end])
-
-# standarizing features
-# this is needed for gradient descent to run faster
-features .-= sum(features, dims=1) / size(features, 1)
-features ./= sum(features.^2, dims=1).^0.5 / (size(features, 1).^0.5)
-# add intercept using dummy variable
-features = [ones(size(features, 1)) features]
+binary_response
+```
+```julia
+features
 ```
 
 **Assignments**
@@ -802,7 +695,7 @@ Complete the functions below.
 
 logistic_map(x) = 1 / (1.0 + exp(-x));
 # make sure that no nan is returned when p is very small
-cross_entropy(l::Bool, p) = l ? log(p) : log(1.0 - p)
+cross_entropy(l::Bool, p) = l ? -log(p) : -log(1.0 - p)
 ```
 
 ```julia; eval=false
@@ -857,6 +750,14 @@ Use gradient descent, coordinate descent and Newton's method to find the paramet
 **Assignment 3**
 
 Make a plot for each of the four optimization method in which you show the convergence for $\lambda = [10^{-3}, 10^{-1}, 1, 10, 100]$.
+
+```julia
+
+```
+
+```julia
+
+```
 
 ```julia
 

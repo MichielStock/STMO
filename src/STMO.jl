@@ -5,11 +5,11 @@ using Plots, LinearAlgebra
 
 include("helpers.jl")
 export myred, mygreen, myyellow, myblue, myblack, myorange, mycolors
-export trace, notrack, PathTrack, nsteps
+export trace, notrack, PathTrack, nsteps, Tracker
 export path, path!, plotobj, plotobj!, colorscatter
 export dist, hamming
 export EdgeList, WeightedEdgeList, Vertices, AdjList, edges2adjlist, adjlist2edges
-export nvertices, isconnected
+export nvertices, isconnected, vertices
 
 include("quadratic.jl")
 export fquad, quadratic
@@ -38,5 +38,8 @@ export TicketToRide
 
 include("words.jl")
 export Words
+
+include("cancer.jl")
+export CancerData
 
 end # module

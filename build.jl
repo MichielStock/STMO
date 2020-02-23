@@ -49,6 +49,7 @@ end
 
 include("scripts/maketestfigs.jl")
 include("scripts/monge.jl")
+include("scripts/unconstrained.jl")
 
 tₑ = time()
 
