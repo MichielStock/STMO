@@ -63,7 +63,7 @@ Convex functions frequently arise:
 
 - If $f$ and $g$ are both convex, then $m(x)=\max(f(x), g(x))$ and $h(x)=f(x)+g(x)$ are also convex.
 - If $f$ and $g$ are convex functions and $g$ is non-decreasing over a univariate domain, then $h(x)=g(f(x))$ is convex. Example: $e^{f(x)}$ is convex if $f({x})$ is convex.
-- If $f$ is concave and g is convex and non-increasing over a univariate domain, then ${\displaystyle h(x)=g(f(x))}$ is convex.
+- If $f$ is concave and $g$ is convex and non-increasing over a univariate domain, then $h(x)=g(f(x))$ is convex.
 
 Note, the convexity of expected value in probability theory gives rise to *Jensen's inequality*. For any convex function $\varphi$, if holds that
 $$
@@ -368,7 +368,7 @@ Examples:
 **Normalized steepest descent direction**:
 
 $$
-\Delta x_\text{nsd} = \text{arg min}_\mathbf{v}\, \{\nabla f(\mathbf{x})^T \mathbf{v} \mid ||\mathbf{v}||\leq 1 \}\,.
+\Delta x_\text{nsd} = \text{arg min}_\mathbf{v}\, \{\nabla f(\mathbf{x})^T \mathbf{v} \mid ||\mathbf{v}||_1\leq 1 \}\,.
 $$
 
 **Unnormalized steepest descent direction**:
@@ -497,7 +497,7 @@ This quadratic model will be particularly accurate when $\mathbf{x}$ is close to
 
 The Newton step is the steepest descent step if a quadratic norm using the Hessian is used, i.e.
 $$
-||\mathbf{u}||_{\nabla^2f(\mathbf{x})}=(\mathbf{u}^\top\nabla^2f(\mathbf{x})\mathbf{u})^\frac{1}{2}\,.
+||\mathbf{u}||_{\nabla^2f(\mathbf{x})}=(\mathbf{u}^\top(\nabla^2f(\mathbf{x}))^{-1}\mathbf{u})^\frac{1}{2}\,.
 $$
 
 **Affine invariance of the Newton step**
