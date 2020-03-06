@@ -19,7 +19,9 @@ dirs = ["00.Introduction",
         "03.Unconstrained",
         "04.Constrained",
         "05.AutoDiff",
-        "06.OptimalTransport"
+        "06.OptimalTransport",
+        "07.MST",
+        "08.ShortestPath"
         ]
 
 
@@ -47,6 +49,7 @@ end
 
 include("scripts/maketestfigs.jl")
 include("scripts/monge.jl")
+include("scripts/unconstrained.jl")
 
 tₑ = time()
 

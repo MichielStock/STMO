@@ -174,7 +174,7 @@ The exact value of $\mu$ is not particularly critical, values between 10 and 20 
 
 The *central path* is the set of points satisfying:
 
-- $\mathbf{x}^\star(t)$ is strictly feasible: $A\mathbf{x}^\star(t)=\mathbf{b}$ and $f_i(\mathbf{x}^\star(t))<0$ for $i=1,\ldots,m$
+-  $\mathbf{x}^\star(t)$ is strictly feasible: $A\mathbf{x}^\star(t)=\mathbf{b}$ and $f_i(\mathbf{x}^\star(t))<0$ for $i=1,\ldots,m$
 - there exist $\hat{\boldsymbol{\nu}}\in\mathbb{R}^p$ such that
 $$
 t\nabla f_0(\mathbf{x}^\star(t)) + \nabla \phi(\mathbf{x}^\star(t)) +A^\top \hat{\boldsymbol{\nu}}=0

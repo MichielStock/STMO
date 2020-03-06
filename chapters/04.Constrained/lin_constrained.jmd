@@ -7,9 +7,7 @@ date: 2019-2020
 ```julia; echo=false
 using Plots
 using LinearAlgebra
-using STMO: path!, path, plotobj, plotobj!, myred, mygreen, myblue, myorange, myblack, myyellow
-using STMO: notrack, PathTrack, Tracker, trace
-import STMO
+using STMO
 ```
 
 # Motivation
@@ -150,17 +148,8 @@ $$
 $$
 
 ```julia; echo=false
-fquadr((x1, x2); γ=10.0) = 0.5(x1^2 + γ * x2^2);
-grad_fquadr((x1, x2); γ=10.0) = [x1, γ * x2];
-hess_fquadr((x1, x2); γ=10.0) = [1 0; 0 γ];
-```
-
-```julia; echo=false
-import Zygote  # NOT doing this by hand!
-
-fnonquadr((x1, x2)) = log(exp(x1+3x2-0.1) + exp(x1-3x2-0.1)+exp(-x1-0.1));
-grad_fnonquadr(x) = Zygote.gradient(fnonquadr, x)[1];
-hess_fnonquadr(x) = Zygote.hessian(fnonquadr, x);
+import STMO.TestFuns: fquadr, grad_fquadr, hess_fquadr
+import STMO.TestFuns: fnonquadr, grad_fnonquadr, hess_fnonquadr
 ```
 
 
@@ -224,16 +213,15 @@ Inputs:
 
 Outputs:
     - xstar: the exact minimizer
-    - vstar: the optimal Lagrange multipliers
+    - nustar: the optimal Lagrange multipliers
 """
 function solve_constrained_quadratic_problem(P, q, A, b)
-
     p, n = ...  # size of the problem
     # complete this code
     solution = ...
     xstar = ...
-    vstar = ...
-    return np.array(xstar), np.array(vstar)
+    nustar = ...
+    return xstar, nustar
 end
 ```
 
@@ -300,7 +288,7 @@ In this chapter, we will use a fixed step size. For Newton's method this usually
 Again, the convergence can be monitored using the Newton decrement:
 
 $$
-\lambda^2(\mathbf{x}) = - \Delta \mathbf{x}_{nt}^\top \nabla f(\mathbf{x})\,.
+\lambda^2(\mathbf{x}) = \Delta \mathbf{x}_{nt}^\top \nabla^2 f(\mathbf{x})\Delta \mathbf{x}_{nt}\,.
 $$
 
 The algorithm terminates when
@@ -323,6 +311,7 @@ linear_constrained_newton(f, x₀, Df,
               tracker::Tracker=notrack)
 
 Newton's method for minimizing functions with linear constraints.
+Expects a feasible x₀!
 
 Inputs:
     - f: function to be minimized
@@ -332,29 +321,32 @@ Inputs:
     - A, b: linear constraints
     - t: step size for each Newton step (fixed)
     - ϵ: parameter to determine if the algorithm is converged
-    - tracker: a structure to store the path
+    - verbose: print the number of steps?
 
 Outputs:
     - xstar: the found minimum
 """
 function linear_constrained_newton(f, x₀, Df,
-              DDf, A, b; t::Real=0.25, ϵ::Real=1e-4,
-              tracker::Tracker=notrack)
+              DDf, A, b; t::Real=0.25, ϵ::Real=1e-4, verbose=false)
     @assert 0.0 < t <= 1.0 "stepsize t should be in (0, 1]"
+    @assert ... # test if x₀ is feasible
     x = x₀  # initial value
     p, n = size(A)
+    nsteps = 0
     while true
-        ddfx = Df(x)
-        dfx = DDf(x)
+        dfx = Df(x)
+        ddfx = DDf(x)
         # calculate residual
         Dx, _ = solve_constrained_quadratic_problem(...) # complete!
-        newton_decrement = ...
+        λ² = ...
         if ...  # stopping criterion
             break  # converged
         end
         # perform step
-        trace(tracker, x)
+        ...
+        nsteps += 1
     end
+    verbose && println("Converged in $nsteps steps")
     return x
 end
 ```
