@@ -5,7 +5,7 @@ date: 2019-2020
 ---
 
 ```julia; echo=false
-using Plots, BenchmarkTools, LaTeXStrings
+using Plots, LaTeXStrings
 using STMO
 ```
 
@@ -19,6 +19,8 @@ Up to now, we confidently assumed that we would always be able to compute the de
 using Plots, BenchmarkTools
 using STMO
 ```
+
+![](Figures/logo.png)
 
 # Motivation
 
@@ -110,7 +112,7 @@ $$
 **Complex step method**
 
 $$
-f'(x)\approx \frac{\text{Im} (f(x +ih))}{h}
+f'(x)\approx \frac{\text{Im}) (f(x +ih))}{h}
 $$
 
 ```julia
@@ -120,15 +122,15 @@ diff_complstep(f, x; h=1e-10) = imag(f(x + im * h)) / h;
 ```
 
 ```julia
-@btime diff_divdiff($f, 2.0)
+diff_divdiff(f, 2.0)
 ```
 
 ```julia
-@btime diff_centdiff($f, 2.0)
+diff_centdiff(f, 2.0)
 ```
 
 ```julia
-@btime diff_complstep($f, 2.0)
+diff_complstep(f, 2.0)
 ```
 
 **First sin of numerical analysis**:
@@ -284,9 +286,9 @@ f(v+\dot{v}\epsilon) = f(v) + f'(v)\dot{v}\epsilon\,.
 $$
 
 ```julia
-struct Dual
-    v
-    vdot
+struct Dual{T}
+    v::T
+    vdot::T
 end
 ```
 
@@ -300,13 +302,13 @@ Base.:/(a::Dual, b::Dual) = Dual(a.v / b.v, (a.vdot * b.v - a.v * b.vdot) / b.v^
 ```
 
 ```julia
-@btime f(Dual(2.0, 1.0))
+f(Dual(2.0, 1.0))
 ```
 
 ```julia
 myforwarddiff(f, x) = f(Dual(x, 1.0)).vdot
 
-@btime myforwarddiff($f, 2.0)
+myforwarddiff(f, 2.0)
 ```
 
 This directly works for vectors!
@@ -332,11 +334,11 @@ using ForwardDiff
 ```
 
 ```julia
-@btime ForwardDiff.derivative($f, 2.0)
+ForwardDiff.derivative(f, 2.0)
 ```
 
 ```julia
-@btime ForwardDiff.gradient($g, $xvect)
+ForwardDiff.gradient(g, xvect)
 ```
 
 ```julia
@@ -366,11 +368,11 @@ using Zygote
 ```
 
 ```julia
-@btime f'(2.0)  # that's it
+f'(2.0)  # that's it
 ```
 
 ```julia
-@btime g'(xvect)
+g'(xvect)
 ```
 
 Multi-layer perceptron.
@@ -513,7 +515,7 @@ plot(tsteps, solution, label="x", lw=2)
 
 **Assignments**
 
-1. Given $x_0=10$ and $(a, k_1, k_{-1}) = (5, 0.1, 0.01)$, compute the gradient of $x(t)$ w.r.t. $x_0$ (e.g. sensitivity for initial conditions.
+1. Given $x_0=10$ and $(a, k_1, k_{-1}) = (5, 0.1, 0.01)$, compute the gradient of $x(t)$ w.r.t. $x_0$ (e.g. sensitivity for initial conditions).
 2. Given these parameters, use gradient descent to tune $x_0$ such that $x(10) = 20$.
 3. Given a vector of measured concentrations with $x_0=10$, find the parameters of the process through gradient descent.
 
