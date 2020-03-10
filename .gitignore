@@ -22,6 +22,8 @@ projects/*
 *.cb
 *.cb2
 .*.lb
+*.pdf
+*.tex
 
 ## Intermediate documents:
 *.dvi
