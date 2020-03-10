@@ -9,6 +9,8 @@ using Plots, LaTeXStrings
 using STMO
 ```
 
+![](Figures/logo.png)
+
 # Motivation
 
 Up to now, we confidently assumed that we would always be able to compute the derivative or gradient of any function. Despite differentiation being a relatively easy operation, it is frequenty not feasible (or desirable) to compute this by hand. *Numerical differentiation* can provide approximations of th derivate or gradient at a particular point. *Automatic differentiation* directly manipulates the computational graph to generate a function that computes the (exact) derivate. Such methods have advanced greatly in the last years and it is no exageration that their easy use in popular software libraries such as TenserFlow and PyTorch are a cornerstone of deep learning and other machine learning and scientific computing fields.
@@ -19,12 +21,6 @@ Up to now, we confidently assumed that we would always be able to compute the de
 using Plots, BenchmarkTools
 using STMO
 ```
-
-![](Figures/logo.png)
-
-# Motivation
-
-Up to now, we confidently assumed that we would always be able to compute the derivative or gradient of any function. Despite differentiation being a relatively straightforward operation, it is frequently not feasible (or desirable) to calculate this by hand. *Numerical differentiation* can provide approximations of the derivate or gradient at a particular point. *Automatic differentiation* directly manipulates the computational graph to generate a function that computes the (exact) derivate. Such methods have advanced dramatically in the last years, and it is no exaggeration that their easy use in popular software libraries such as TensorFlow and PyTorch is a cornerstone of deep learning and other machine learning and scientific computing fields.
 
 # Definition of a derivative
 
@@ -59,6 +55,8 @@ Differentiation is *easy* compared to *integration* or *sampling*.
 Advantages:
 - exact derivatives!
 - gives the formula for different evaluations.
+    - insight in the system
+    - in some cases, closed-form solution extrema by solving $\frac{\text{d}f(x)}{\text{d}x}=0$
 - no hyperparameters or tweaking: just works!
 
 Disadvantages:
@@ -83,8 +81,8 @@ df(2.0)
 ```
 
 ```julia; echo=false
-plot(f, 1:0.01:5, label="\$f(x)\$", xlabel="\$x\$", lw=2, color=mygreen)
-plot!(df, 1:0.01:5, label="\$f'(x)\$", lw=2, color=myorange)
+plot(f, 1, 5, label="\$f(x)\$", xlabel="\$x\$", lw=2, color=mygreen)
+plot!(df, 1, 5, label="\$f'(x)\$", lw=2, color=myorange)
 ```
 
 # Numerical differentiation
@@ -133,6 +131,64 @@ diff_centdiff(f, 2.0)
 diff_complstep(f, 2.0)
 ```
 
+## Intermezzo: floats
+
+Real numbers are always represented as floating point numbers in a computer.
+
+![Encoding of a real number using a `Float32`.](Figures.gif)
+
+By default, Julia uses double precision floats (`Float64`). For brevity, let us take a look at the bit representation of a float. We use `Float32` for brevity's sake.
+
+```julia; term=true
+num = Float32(10.789)
+bitstring(num)
+```
+The first bit encodes the *sign*, here positive.
+
+```julia; term=true
+sign(num)
+```
+
+The next eight bits specify the *exponent*, the magnitude of the number.
+
+```julia; term=true
+exponent(num)
+```
+
+While the final 23 bits specify the *mantissa*, a number between $[1,2]$ representing the precision.
+
+```julia; term=true
+significand(num)
+```
+
+These can be used to reconstrunct the number.
+
+```julia; term=true
+significand(num) * 2^exponent(num)
+```
+
+The *machine precision* of a number can be retained using `eps`. This is the relative error.
+
+```julia; term=true
+eps(num)  # not very high because it is only Float32
+```
+
+This means that larger numbers have a larger absolute error compared to small numbers.
+
+```julia; term=true
+eps(1.2)
+```
+
+```julia; term=true
+eps(1.2e10)
+```
+
+```julia; term=true
+eps(1.2e-10)
+```
+
+This brings us with numerical issues we might encounter using numerical differentiation.
+
 **First sin of numerical analysis**:
 
 > *thou shalt not add small numbers to big numbers*
@@ -140,6 +196,8 @@ diff_complstep(f, 2.0)
 **second sin of numerical analysis**:
 
 > *thou shalt not subtract numbers which are approximately equal*
+
+## Back to numerical differentiation
 
 ```julia; echo=false
 fexamp(x) = 64x*(1-x)*(1-2x)^2*(1-8x+8x^2)^2
@@ -292,10 +350,17 @@ struct Dual{T}
 end
 ```
 
+Let's implement some basic rules showing linearity.
+
 ```julia
 Base.:+(a::Dual, b::Dual) = Dual(a.v + b.v, a.vdot + b.vdot)
 Base.:*(a::Dual, b::Dual) = Dual(a.v * b.v, a.v * b.vdot + b.v * a.vdot)
 Base.:*(v::Real, b::Dual) = Dual(v, 0.0) * b
+```
+
+And some more advanced ones, based on differentiation.
+
+```julia
 Base.:sin(a::Dual) = Dual(sin(a.v), cos(a.v) * a.vdot)
 Base.:log(a::Dual) = Dual(log(a.v), 1.0 / a.v * a.vdot)
 Base.:/(a::Dual, b::Dual) = Dual(a.v / b.v, (a.vdot * b.v - a.v * b.vdot) / b.v^2)
@@ -328,6 +393,8 @@ q(Dual.([1, 2], [1, 0]))  # partial wrt x1
 ```julia
 q(Dual.([1, 2], [0, 1]))  # partial wrt x2
 ```
+
+In practice, we prefer to use a package to do this.
 
 ```julia
 using ForwardDiff
@@ -371,15 +438,31 @@ using Zygote
 f'(2.0)  # that's it
 ```
 
+Works as well:
+
+```julia
+Zygote.gradient(f, 2.0)
+```
+
+Fuctions with more than one variable.
+
 ```julia
 g'(xvect)
 ```
+
+Finding the Hessian:
+
+```julia
+Zygote.hessian(g, xvect)
+```
+
+## Artificial neural networks
 
 Multi-layer perceptron.
 
 <img src="Figures/ANN_example.png" alt="drawing" width="200"/>
 
-Reverse differentation or backpropagation.
+Forward differentiation.
 
 <img src="Figures/Forwardprop.png" alt="drawing" width="500"/>
 
@@ -421,7 +504,7 @@ scatter(X[:,1], X[:,2], color=y)
 ```julia
 σ(t) = 1.0 / (1.0 + exp(t))
 f(x, w) = σ(sum(x .* w))
-L(w; X=X, y=y) = sum(- y .* log.(σ.(X * w)) - (1.0 .- y) .* log.(σ.(1. .- X * w)))
+L(w; X=X, y=y) = sum(- y .* log.(σ.(X * w)) - (1.0 .- y) .* log.(1. .- σ.( X * w)))
 ```
 
 ```julia
@@ -515,14 +598,14 @@ plot(tsteps, solution, label="x", lw=2)
 
 **Assignments**
 
-1. Given $x_0=10$ and $(a, k_1, k_{-1}) = (5, 0.1, 0.01)$, compute the gradient of $x(t)$ w.r.t. $x_0$ (e.g. sensitivity for initial conditions).
-2. Given these parameters, use gradient descent to tune $x_0$ such that $x(10) = 20$.
+1. Given $x_0=10$ and $(a, k_1, k_{-1}) = (5, 0.1, 0.01)$, compute the gradient of $x(t)$ w.r.t. $x_0$ (e.g., sensitivity for initial conditions).
+2. Given $x_0=10$, use gradient descent to tune the parameters such that $x(10) = 20$.
 3. Given a vector of measured concentrations with $x_0=10$, find the parameters of the process through gradient descent.
 
 ```julia
 # for the first two questions
 xfromx0(x0) = eulersolve(fautocat, x0, (0.0, 10.0), (5, 0.1, 0.01))
-x10fromx0(x0) = xfromx0(x0)[end]
+x10fromx0(x0) = last(xfromx0(x0))
 ```
 
 ```julia
