@@ -525,8 +525,15 @@ L(w)
     - forward differentiation
     - backward differentiation
 2. (optional) Implement a simple gradient descent to find  $\mathbf{w}^\star$.
-3. Add a bias to the prediction function.
+3. Add a bias to the prediction function. Use `Zygote` to compute the gradients w.r.t. both parameters.
 
+```julia
+
+```
+
+```julia
+
+```
 
 # Differentiating ODE
 
