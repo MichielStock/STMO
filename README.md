@@ -86,3 +86,8 @@ using IJulia
 ```
 to install the IJulia kernel.
 
+## Gitter
+
+While the course is given remotely, you can ask questions about the project and chapters via Gitter:
+
+[![Gitter](https://badges.gitter.im/STMOUGent/community.svg)](https://gitter.im/STMOUGent/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
