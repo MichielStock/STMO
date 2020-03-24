@@ -8,6 +8,9 @@ chapters/02.Quadratic/solution_*
 chapters/03.Unconstrained/solution_*
 chapters/04.Constrained/solution_*
 projects/*
+*.pages
+chapters/06.OptimalTransport/Slides/*
+chapters/06.OptimalTransport/solution*
 
 ## Core latex/pdflatex auxiliary files:
 *.aux

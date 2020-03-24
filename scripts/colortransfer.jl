@@ -10,9 +10,8 @@ Solution for the color transfer.
 
 using STMO
 using STMO.OptimalTransport
-using Plots, LaTeXStrings
-
-using Images, Colors
+using Plots
+using Images, Colors, LinearAlgebra
 
 # function to subsample image
 subsample(image, every=8) = image[1:every:size(image,1), 1:every:size(image,2)]

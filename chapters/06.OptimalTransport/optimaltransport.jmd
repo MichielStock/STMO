@@ -86,7 +86,7 @@ For working with probability distributions, we require a way to perform *soft-ma
 In a microscopy imaging experiment we monitor ten moving cells at time $t_1$ and some time later at time $t_2$. Between these times, the cells have moved. An image processing algorithm determined the coordinates of every cell in the two images. We want to know which cell in the first corresponds to the second image. To this end, search the assignment that minimizes the sum of the squared Euclidian distances between cells from the first image versus the corresponding cell of the second image.
 
 1. `X1` and `X2` contain the $x,y$ coordinates of the cells for the two images. Compute the matrix $C$ containing the pairwise squared Euclidean distance. You can use the function `dist` provide by the `STMO` library.
-2. Complete the function `monge_brute_force` to use brute-force search for the best permutation. You might find the function `permutations` from the `Combinatorics` library useful.
+2. Complete the function `monge_brute_force` to use brute-force search for the best permutation. You might find the function `permutations` from the `Combinatorics` library useful. How large is your search space? Time your function.
 3. Make a plot connecting the cells.
 
 
@@ -118,8 +118,9 @@ end
 ```
 
 ```julia; eval=false
-# get the cost matrix (i.e. pairwise squared
+# get the cost matrix (i.e. pairwise squared Euclidean)
 # Euclidean distances between the cells at the different times)
+import STMO: dist  # Euclidean distance
 
 C = ...
 ```
