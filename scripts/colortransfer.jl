@@ -22,12 +22,17 @@ image1 = load("chapters/06.OptimalTransport/Figures/butterfly3.jpg")
 image2 = load("chapters/06.OptimalTransport/Figures/butterfly2.jpg")
 
 # subsample
-image1 = subsample(image1, 8)
+image1 = subsample(image1, 7)
 image2 = subsample(image2, 5)
 
 # get colors, can also using sampling
 colors1 = vec(image1)
 colors2 = vec(image2)
+
+# plot the colors
+plot(
+  colorscatter(colors1, title="figure 1"),
+  colorscatter(colors2, title="figure 2"))
 
 # distance matrix
 C = [colordiff(c1, c2) for c1 in colors1, c2 in colors2]
@@ -35,7 +40,7 @@ C = [colordiff(c1, c2) for c1 in colors1, c2 in colors2]
 n, m = size(C)
 
 # optimal transport
-P = sinkhorn(C, ones(n)/n, ones(m)/m, λ=10)
+P = sinkhorn(C, ones(n)/n, ones(m)/m, λ=1)
 
 mapdistr(X, P) = Diagonal(sum(P, dims=2)[:].^-1) * P * X
 
