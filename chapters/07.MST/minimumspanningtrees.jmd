@@ -44,7 +44,6 @@ graph = Dict(
 
 Sometimes we will use an *edge list*, i.e., a list of (weighted) edges. The edge list is often a more compact way of storing a graph. We show the edge list for the example graph below. Note that again every edge is double: we include an in- and outgoing edge.
 
-
 ```julia
 edges = [
  (2, 'B', 'A'),
@@ -223,7 +222,7 @@ tickettoride_edges
 
 Let us plot this graph. We also have the coordinates of the cities in `cities_coordinates`. It is not needed to find the MST, but can help us make a draw the map.
 
-```julia
+```julia; echo=false
 p = plot(xaxis="longitude", yaxis="lattitude")
 
 # add edges
