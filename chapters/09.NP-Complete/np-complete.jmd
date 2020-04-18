@@ -33,17 +33,18 @@ end
 
 Consider the Indiana Jones problem:
 
-```
-|$i$|  artifact | $v_i$ |  $w_i$ |
-|--|-----------|-------|--------|
-|1 |      statue 1 |   1 |  2 |
-|2 |      statue 2 |   1 |  2 |
-|3 |      statue 3 |   1 |  2 |
-|4 |      tablet 1 |  10 |  5 |
-|5 |      tablet 2 |  10 |  5 |
-|6 |   golden mask |  13 |  7 |
-|7 |  golden plate |   7 |  3 |
-```
+
+| i |  artifact     | $v_i$ |  $w_i$ |
+|---|---------------|-------|--------|
+| 1 |  statue 1     |   1   |  2     |
+| 2 |  statue 2     |   1   |  2     |
+| 3 |  statue 3     |   1   |  2     |
+| 4 |  tablet 1     |  10   |  5     |
+| 5 |  tablet 2     |  10   |  5     |
+| 6 |  golden mask  |  13   |  7     |
+| 7 |  golden plate |   7   |  3     |
+
+.
 
 The capacity is 10 kg.
 
@@ -114,7 +115,8 @@ bruteforce(knapsack)
 ## Greedy
 
 ```julia
-function greedy(knapsack::Knapsack{T,V,W}, heuristic::Function) where {T,V<:Real,W<:Real}
+function greedy(knapsack::Knapsack{T,V,W},
+                    heuristic::Function) where {T,V<:Real,W<:Real}
   items_knapsack = items(knapsack)
   solution = eltype(items_knapsack)[]
   solution_weight = zero(W)
@@ -192,3 +194,9 @@ Note the restriction on the type of the weigths!
 ```julia
 dynamicprogramming(knapsack)
 ```
+
+# Maximum cover problem
+
+> **In words** Given an universe set $U$ and a set of sets $S=\{S_1,\ldots,S_m\}$ for which the union is the universe (i.e. $\bigcup_{i=1}^mS_i = U$), find the smallest sub-collection of $T\subseteq S$ whose union equals the universe.
+
+**Example**: if $U=\{1,2,3,4,5\}$ and $S=\{\{1,2,3\},\{2,4\},\{3,4\},\{4,5\}\}$, then $T=\{\{1,2,3\},\{4,5\}\}$.
