@@ -1,0 +1,194 @@
+---
+title : NP-complete problems
+author : Michiel Stock
+date: 2019-2020
+---
+
+In this document, we will go over some simple algorithms to solve the knapsack problem.
+
+# The knapsack problem
+
+## Problem definition
+
+> Given a set of items, each with a weight and a value, find the subset of items so that the total weight is less than or equal to a given limit and the total value is as large as possible.
+
+Or, in symbols:
+
+Given two sets of cardinality $n$ with the values $\{v_1,\ldots, v_n\}$ and the weights $\{w_1,\ldots, w_n\}$ and a capacity $W>0$ we want to determine $T\subseteq\{1,\ldots,n\}$ such that
+$$
+\max_T \, \sum_{i\in T} v_i
+$$
+$$
+\text{subject to } \sum_{i\in T} w_i \leq W\,.
+$$
+
+We can represent this problem in Julia using a list of tuples, representing the items with their reprective values and weights, and a number containing the capacity $W$. Let us however use this opportunity to construct a simple structure to represent knapsack problems.
+
+```julia
+struct Knapsack{T,V<:Real,W<:Real}
+  items::Array{Tuple{T,V,W},1}
+  capacity::W
+end
+```
+
+Consider the Indiana Jones problem:
+
+```
+|$i$|  artifact | $v_i$ |  $w_i$ |
+|--|-----------|-------|--------|
+|1 |      statue 1 |   1 |  2 |
+|2 |      statue 2 |   1 |  2 |
+|3 |      statue 3 |   1 |  2 |
+|4 |      tablet 1 |  10 |  5 |
+|5 |      tablet 2 |  10 |  5 |
+|6 |   golden mask |  13 |  7 |
+|7 |  golden plate |   7 |  3 |
+```
+
+The capacity is 10 kg.
+
+So we can define the instance as
+
+```julia
+knapsack = Knapsack([("statue 1", 1, 2),
+                     ("statue 2", 1, 2),
+                     ("statue 2", 1, 2),
+                     ("tablet 1", 10, 5),
+                     ("tablet 2", 10, 5),
+                     ("golden mask", 13, 7),
+                     ("golden plate", 7, 3)],
+                     10)
+```
+
+We might as well define some useful function that work on `Knapsack` structures.
+
+```julia
+"""Getter for the items."""
+items(knapsack::Knapsack) = knapsack.items
+
+"""Getter for the capacity."""
+capacity(knapsack::Knapsack) = knapsack.capacity
+
+"""Number of items"""
+Base.length(knapsack::Knapsack) = length(items(knapsack))
+
+"""Weight of a set of items"""
+weight(items::Array) = sum((w for (i, v, w) in items))
+
+"""Weight of an item"""
+weight(item::Tuple) = item[3]
+
+"""Value of a set of items"""
+value(items::Array) = sum((v for (i, v, w) in items))
+
+"""Value of an item"""
+value(item::Tuple) = item[2]
+```
+
+## Brute force
+
+```julia
+using Combinatorics: combinations
+
+function bruteforce(knapsack::Knapsack{T,V,W}) where {T,V<:Real,W<:Real}
+  # number of items
+  n = length(knapsack)
+  cap = capacity(knapsack)
+  knapsack_items = items(knapsack)
+  best_value = zero(W)
+  best_solution = eltype(knapsack_items)[]
+  for solution in combinations(knapsack_items)
+    if weight(solution) ≤ cap && value(solution) > best_value
+      best_solution = solution
+      best_value = value(solution)
+    end
+  end
+  return best_solution, best_value
+end
+```
+
+```julia
+bruteforce(knapsack)
+```
+
+## Greedy
+
+```julia
+function greedy(knapsack::Knapsack{T,V,W}, heuristic::Function) where {T,V<:Real,W<:Real}
+  items_knapsack = items(knapsack)
+  solution = eltype(items_knapsack)[]
+  solution_weight = zero(W)
+  solution_value = zero(V)
+  cap = capacity(knapsack)
+  for item in sort(items_knapsack, by=heuristic, rev=true)
+    v, w = value(item), weight(item)
+    if solution_weight + w ≤ cap
+      push!(solution, item)
+      solution_weight += w
+      solution_value += v
+    end
+  end
+  return solution, solution_value
+end
+```
+
+Here, `heuristic` is a function we can provide to guide the greedy search. For example, if we search by value.
+
+```julia
+greedy(knapsack, value)
+```
+
+Or, search lightest items first.
+
+```julia
+greedy(knapsack, item -> -weight(item))
+```
+
+Or, by value-density:
+
+```julia
+greedy(knapsack, item -> value(item) / weight(item))
+```
+
+## Dynamics programming
+
+```julia
+function dynamicprogramming(knapsack::Knapsack{T,V,W}) where {T,V<:Real,W<:Int}
+  items_knapsack = items(knapsack)
+  n = length(knapsack)
+  cap = capacity(knapsack)
+  DP = zeros(V, n + 1, cap + 1)  # starts from zero
+  # fill the DP matrix
+  for w in 1:cap
+    for (i, (itname, vᵢ, wᵢ)) in enumerate(items_knapsack)
+      if wᵢ ≤ w  # this item can fit the bag
+        DP[i+1,w+1] = max(DP[i,w+1],  # value without the item
+                        DP[i,w-wᵢ+1] + vᵢ)  # value with the item, given room for the item
+      else  # no room
+        DP[i+1,w+1] = DP[i, w+1]  # take value without the item
+      end
+    end
+  end
+  # now, backtrack
+  solution = eltype(items_knapsack)[]
+  i, w = n, cap
+  while i > 0
+    if DP[i+1,w+1] > DP[i,w+1]  # item i was added
+      item = items_knapsack[i]
+      push!(solution, item)
+      w -= weight(item)
+    end
+    i -= 1
+    i == 0 || w == 0 && break
+  end
+  return solution, last(DP)
+end
+
+```
+
+Note the restriction on the type of the weigths!
+
+
+```julia
+dynamicprogramming(knapsack)
+```

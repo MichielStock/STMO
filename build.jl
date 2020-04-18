@@ -21,7 +21,8 @@ dirs = ["00.Introduction",
         "05.AutoDiff",
         "06.OptimalTransport",
         "07.MST",
-        "08.ShortestPath"
+        "08.ShortestPath",
+        "09.NP-Complete"
         ]
 
 
