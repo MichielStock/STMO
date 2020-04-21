@@ -1,6 +1,6 @@
 module Words
 
-export getwords, hamming, wordedges
+export getwords, hamming, getwordedges
 
 using HTTP, STMO
 
