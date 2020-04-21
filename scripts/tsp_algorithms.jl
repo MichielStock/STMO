@@ -1,6 +1,6 @@
 #=
 Created on Sunday 19 April 2020
-Last update:
+Last update: Tuesday 21 April 2020
 
 @author: Michiel Stock
 michielfmstock@gmail.com
@@ -10,10 +10,12 @@ Illustration of the algorithms for solving TSP.
 Currently implements:
     - nearest neighbors
     - greedy
+    - random insertion
 =#
 
-using STMO.TSP
 using STMO
+using STMO.TSP
+
 using Plots
 
 tsp = totoro_tsp()
@@ -31,6 +33,7 @@ function nearestneighbors(tsp::TravelingSalesmanProblem; start::Int)
     cities_to_add = Set(cities(tsp))
     delete!(cities_to_add, start)
     tour = [start]
+    sizehint!(tour, n)
     current = start
     cost = 0.0
     while length(cities_to_add) > 0
@@ -60,7 +63,7 @@ function bestnearestneighbors(tsp::TravelingSalesmanProblem;
     end
     best_cost = Inf64
     best_tour = [1, 2]
-    for start in cities(tsp)
+    for start in cities_to_try
         tour, cost = nearestneighbors(tsp, start=start)
         if cost < best_cost
             best_cost = cost
@@ -71,13 +74,12 @@ function bestnearestneighbors(tsp::TravelingSalesmanProblem;
 end
 
 tour_nn, cost_nn = nearestneighbors(tsp)
-tour_nnbest, cost_nnbest = bestnearestneighbors(tsp)
+tour_nnbest, cost_nnbest = bestnearestneighbors(tsp, ntry=100)  # try 100 starts
 
-p_nn = plot_cities(tsp, markersize=2)
+p_nn = plot_cities(tsp, markersize=1)
 plot_tour!(tsp, tour_nn, label="random")
 plot_tour!(tsp, tour_nnbest, label="best", color=mygreen)
 title!("Nearest neighbor\n cost = $cost_nnbest")
-
 
 # GREEDY
 
@@ -109,6 +111,7 @@ function greedy(tsp::TravelingSalesmanProblem)
     current = findfirst(c->times_added[c]==1, cities(tsp))
     # knit edges in a tour
     tour = [current]
+    sizehint!(tour, n)
     used = Set([current])
     while length(tour) < n
         for (i, j) in selected_edges
@@ -130,38 +133,54 @@ end
 
 tour_greedy, cost_greedy = greedy(tsp)
 
-p_greedy = plot_cities(tsp, markersize=2)
+p_greedy = plot_cities(tsp, markersize=1)
 plot_tour!(tsp, tour_greedy)
 title!("Greedy\n cost = $cost_greedy")
 
+"""
+    insertion(tsp::TravelingSalesmanProblem)
 
-function insertion_farthest(tsp::TravelingSalesmanProblem;
-                start=nothing)
-    if start isa Nothing
-        current = rand(cities(tsp))
-    else
-        current = start
-    end
+Randomly inserts cities in a tour at a place where it has the lowest cost.
+"""
+function insertion(tsp::TravelingSalesmanProblem)
     n = length(tsp)
-    tour = [current]
+    start = rand(cities(tsp))
+    tour = [start]
+    sizehint!(tour, n)
     cities_to_try = Set(cities(tsp))
-    delete!(cities_to_try, current)
+    delete!(cities_to_try, start)
+    cost = 0.0
     while length(tour) < n
-        best_crit = -Inf
-        best_city = 0
+        city = rand(cities_to_try)
+        connection_cost = Inf64
         best_pos = 0
-        for c in cities_to_try
-            for pos in 1:length(tour)-1
-                crit = criterion(tsp, tour, pos, c)
-                if crit > best_crit
-                    best_crit = crit
-                    best_pos = pos
-                    best_city = c
-                end
+        # find cheapest place to insert city
+        for pos in 1:length(tour)
+            ci = (pos > 1) ? tour[pos-1] : tour[end]
+            cj = tour[pos]
+            # cost of connecting
+            δ = dist(tsp, ci, city) + dist(tsp, city, cj) - dist(tsp, ci, cj)
+            if δ < connection_cost
+                connection_cost = δ
+                best_pos = pos
             end
         end
-        insert!(tour, best_pos, best_city)
-        delete!(cities_to_try, best_city)
+        insert!(tour, best_pos, city)
+        delete!(cities_to_try, city)
+        cost += connection_cost
     end
     return tour, computecost(tsp, tour)
 end
+
+
+tour_insertion, cost_insertion = insertion(tsp)
+
+p_insertion = plot_cities(tsp, markersize=1)
+plot_tour!(tsp, tour_insertion)
+
+title!("Insertion (random)\ncost=$cost_insertion")
+
+
+# 2-opt
+
+function swap(tsp, tour, )
