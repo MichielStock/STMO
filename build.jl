@@ -13,12 +13,12 @@ t₀ = time()
 using Weave
 
 
-dirs = ["00.Introduction",
+dirs = [#="00.Introduction",
         "01.Brackets",
         "02.Quadratic",
         "03.Unconstrained",
         "04.Constrained",
-        "05.AutoDiff",
+        "05.AutoDiff",=#
         "06.OptimalTransport",
         "07.MST",
         "08.ShortestPath",

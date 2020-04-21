@@ -262,10 +262,9 @@ hamming(w1, w2)
 We can compute the weighted graph where two words are connected if they have a Hamming distance of at most 5.
 
 ```julia; eval=false
-words_edges = getwordedges(words12);
+words_edges = getwordedges(words12, cutoff=5);
 words_graph = edges2adjlist(words_edges)
 ```
-
 
 **Assignment 3: word salad**
 

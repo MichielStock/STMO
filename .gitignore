@@ -14,6 +14,7 @@ chapters/06.OptimalTransport/solution*
 chapters/07.MST/Slides/*
 chapters/08.ShortestPath/Slides/*
 chapters/08.ShortestPath/Figures/*
+chapters/09.NP-Complete/Figures/*
 
 ## Core latex/pdflatex auxiliary files:
 *.aux
