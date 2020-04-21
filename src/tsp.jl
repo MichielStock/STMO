@@ -10,9 +10,11 @@ Utilities for the TSP problem.
 
 module TSP
 
-import STMO: dist
+import STMO:dist
+using STMO
+using Plots: plot!, scatter, scatter!, plot
 
-export TravelingSalesmanProblem, cities, cost, coordinates
+export TravelingSalesmanProblem, cities, computecost, coordinates
 export plot_cities, plot_cities!, plot_tour, plot_tour!
 export totoro_tsp, got_coords
 
@@ -43,11 +45,11 @@ Base.isvalid(tsp::TravelingSalesmanProblem, tour) = length(tour) == length(tsp) 
     Set(tour) == Set(cities(tsp))
 
 """
-    cost(tsp::TravelingSalesmanProblem, tour)
+    computecost(tsp::TravelingSalesmanProblem, tour)
 
 Computes the cost of travessing a tour.
 """
-function cost(tsp::TravelingSalesmanProblem{Tc,Td}, tour) where {Tc,Td}
+function computecost(tsp::TravelingSalesmanProblem{Tc,Td}, tour) where {Tc,Td}
     !isvalid(tsp, tour) && throw(AssertionError("invalid tour provided"))
     c = zero(Td)
     for (i, j) in zip(tour[1:end-1], tour[2:end])
@@ -60,7 +62,7 @@ end
 split_coord(X) = X[:,1], X[:,2]
 
 plot_cities(tsp::TravelingSalesmanProblem; kwargs...) = scatter(split_coord(coordinates(tsp))...,
-                color=myblue, label=""; kwargs...)
+                color=myblue, label="", aspect_ratio=:equal; kwargs...)
 
 plot_cities!(tsp::TravelingSalesmanProblem; kwargs...) = scatter!(split_coord(coordinates(tsp))...,
                 color=myblue, label=""; kwargs...)
@@ -69,7 +71,7 @@ coords_tour(tsp, tour) = [coordinates(tsp)[tour,:];coordinates(tsp)[[tour[1]],:]
 
 plot_tour(tsp::TravelingSalesmanProblem, tour; kwargs...) = plot(
                 split_coord(coords_tour(tsp, tour))...,
-                color=myred, label=""; kwargs...)
+                color=myred, label="", aspect_ratio=:equal; kwargs...)
 
 plot_tour!(tsp::TravelingSalesmanProblem, tour; kwargs...) = plot!(
                 split_coord(coords_tour(tsp, tour))...,

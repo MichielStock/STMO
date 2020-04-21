@@ -10,13 +10,15 @@ tsp = TravelingSalesmanProblem(X)
 
 tour = [4, 1, 2, 3]
 
+@test Set(cities(tsp)) == Set(tour)
+
 @test isvalid(tsp, tour)
 @test !isvalid(tsp, [1, 2, 3])
 @test !isvalid(tsp, [1, 2, 3, 4, 5])
 @test !isvalid(tsp, [3, 1, 2, 3])
 
 @test dist(tsp, 2, 3) ≈ sqrt(2)
-@test cost(tsp, tour) ≈ 2 + sqrt(2) + 1 + 1
+@test computecost(tsp, tour) ≈ 2 + sqrt(2) + 1 + 1
 
 
 end
