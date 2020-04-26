@@ -1,6 +1,6 @@
 #=
 Created on Sunday 19 April 2020
-Last update: Tuesday 21 April 2020
+Last update: Sunday 26 April 2020
 
 @author: Michiel Stock
 michielfmstock@gmail.com
@@ -11,6 +11,9 @@ Currently implements:
     - nearest neighbors
     - greedy
     - random insertion
+    - hill climbing
+    - simulated annealing
+    - tabu search
 =#
 
 using STMO
@@ -20,6 +23,8 @@ using Plots
 
 tsp = totoro_tsp()
 name = "totoro"
+
+n = length(tsp)
 
 # NEAREST NEIGHBORS
 
@@ -49,6 +54,9 @@ end
 nearestneighbors(tsp::TravelingSalesmanProblem) = nearestneighbors(tsp, start=rand(cities(tsp)))
 
 """
+    bestnearestneighbors(tsp::TravelingSalesmanProblem;
+                        ntry::Union{Nothing,Int}=nothing)
+
 Chooses the best nearest neighbor solution over all cities. If `ntry` is provided,
 a random number of cities is tried. This is done if searching all cities is too
 involved.
@@ -176,71 +184,30 @@ tour_insertion, cost_insertion = insertion(tsp)
 
 p_insertion = plot_cities(tsp, markersize=1)
 plot_tour!(tsp, tour_insertion)
-
 title!("Insertion (random)\ncost=$cost_insertion")
 
 
 # 2-opt
 
-#=
 """
-    deltaswapcost(tsp, tour, i, j)
+    hillclimbing!(tsp, tour; verbose=false, maxitter=Inf)
 
-Compute the change in tour cost if the cities at positions `i` and `j` are
-swapped.
+Uses hill climbing to improve a tour by finding each iteration the best path
+between two cities to flip.
 """
-function deltaswapcost(tsp, tour, i, j)
-    n = length(tsp)
-    # choose indices respecting cyclic  invariance
-    if abs(i - j) > 1
-        i₋₁ = i == 1 ? n : i - 1
-        i₊₁ = i == n ? 1 : i + 1
-        j₋₁ = j == 1 ? n : j - 1
-        j₊₁ = j == n ? 1 : j + 1
-        ci₋₁, ci, ci₊₁, cj₋₁, cj, cj₊₁ = tour[[i₋₁, i, i₊₁, j₋₁, j, j₊₁]]
-        Δc = (dist(tsp, ci₋₁, cj) + dist(tsp, cj, ci₊₁) +
-                    dist(tsp, cj₋₁, ci) + dist(tsp, ci, cj₊₁)) -
-                    (dist(tsp, ci₋₁, ci) + dist(tsp, ci, ci₊₁) +
-                    dist(tsp, cj₋₁, cj) + dist(tsp, cj, cj₊₁))
-    else
-        # sort the values
-        i₋₁ = i == 1 ? n : i - 1
-        i₊₁ = i == n ? 1 : i + 1
-        j₋₁ = j == 1 ? n : j - 1
-        j₊₁ = j == n ? 1 : j + 1
-        ci₋₁, ci, ci₊₁, cj₋₁, cj, cj₊₁ = tour[[i₋₁, i, i₊₁, j₋₁, j, j₊₁]]
-        Δc = (dist(tsp, ci₋₁, cj) + dist(tsp, cj, ci) + dist(tsp, ci, cj₊₁)) -
-                    (dist(tsp, ci₋₁, ci) + dist(tsp, ci, cj) + dist(tsp, cj, cj₊₁))
-    end
-    return Δc
-end
-=#
-
-function Δc_flip(tsp, tour, i, j)
-    @assert i < j + 1 "i should be smaller than j"
-
-    Δc = (dist(tsp, ci₋₁, cj) + dist(tsp, cj, ci) + dist(tsp, ci, cj₊₁)) -
-                (dist(tsp, ci₋₁, ci) + dist(tsp, ci, cj) + dist(tsp, cj, cj₊₁))
-
-
-function swap!(tour, i, j)
-    tour[i], tour[j] = tour[j], tour[i]
-    return tour
-end
-
-
-function hillclimbing(tsp, tour; verbose=false, maxitter=Inf)
+function hillclimbing!(tsp, tour; verbose=false, maxitter=Inf)
     n = length(tsp)
     improved = true
     cost = computecost(tsp, tour)
     iter = 0
+    costs = [cost]
     while improved
         best_Δc = 0.0  # any change is sufficient to continue
         improved = false
         best_i, best_j = 0, 0
         for i in 1:n-2
             for j in (i+1):n
-                Δc = deltaswapcost(tsp, tour, i, j)
+                Δc = deltaflipcost(tsp, tour, i, j)
                 if Δc < best_Δc
                     best_Δc = Δc
                     best_i, best_j = i, j
@@ -248,13 +215,149 @@ function hillclimbing(tsp, tour; verbose=false, maxitter=Inf)
                 end
             end
         end
-        swap!(tour, best_i, best_j)
+        !improved && break
+        flip!(tour, best_i, best_j)
         iter += 1
         cost += best_Δc
-        @show best_i, best_j, best_Δc
-        verbose && println("Iteration $iter: Δccost = $best_Δc")
+        push!(costs, cost)
+        verbose && println("Iteration $iter: Δcost = $best_Δc (flipped $best_i, $best_j)")
         iter > maxitter && break
     end
     println("converged in $iter steps")
-    return tour, cost
+    return tour, cost, costs
 end
+
+"""
+    hillclimbing(tsp; verbose=false, maxitter=Inf)
+
+Uses hill climbing to improve a tour by finding each iteration the best path
+between two cities to flip. Starts from the given order of the cities.
+"""
+hillclimbing(tsp; kwargs...) = hillclimbing!(tsp, collect(1:length(tsp)); kwargs...)
+
+tour_hc, cost_hc, costs_hc = hillclimbing(tsp, verbose=true)
+
+p_hc = plot_cities(tsp, markersize=1)
+plot_tour!(tsp, tour_hc)
+title!("Hill climbing\ncost=$cost_hc")
+
+# SIMULATED ANNEALING
+
+"""
+    simulatedannealing!tsp, tour;
+                    Tmax, Tmin, r, kT::Int, verbose=false)
+
+Uses simulated annealing to improve a tour by finding each iteration the best path
+between two cities to flip.
+"""
+function simulatedannealing!(tsp, tour;
+                Tmax, Tmin, r, kT::Int, verbose=false)
+    n = length(tsp)
+    improved = true
+    cost = computecost(tsp, tour)
+    T = Tmax
+    n_steps = (log(Tmin) - log(Tmax)) / log(r) |> ceil |> Int
+    costs = Vector{typeof(cost)}(undef, n_steps)
+    iter = 0
+    while T > Tmin
+        iter += 1
+        acc = 0
+        for k in 1:kT
+            # choose two cities to swap
+            i, j = rand(1:n, 2)
+            # improvement
+            Δc = deltaflipcost(tsp, tour, i, j)
+            if Δc < 0.0 || rand() < exp(- Δc / T)
+                cost += Δc
+                flip!(tour, i, j)
+                acc += 1
+            end
+        end
+        verbose && println("T = $T : cost = $cost (acc % = $(acc / kT))")
+        costs[iter] = cost
+        T *= r
+    end
+    return tour, cost, costs
+end
+
+
+simulatedannealing(tsp; kwargs...) = simulatedannealing!(tsp,
+                                            collect(1:length(tsp)); kwargs...)
+
+tour_sa = collect(1:n)
+
+tour_sa, cost_sa, costs_sa = simulatedannealing!(tsp, tour_sa;
+                Tmax=1e7, Tmin=1e-4, r=0.95, kT=100000, verbose=true)
+
+p_sa = plot_cities(tsp, markersize=1)
+plot_tour!(tsp, tour_sa)
+title!("Simulated Annealing\ncost=$cost_sa")
+
+
+# TABU SEARCH
+
+"""
+    tabusearch!(tsp::TravelingSalesmanProblem, tour; ntabu::Int, niter::Int,
+                            verbose=false)
+
+Improves a tour by iteratively performing the best local improvement, similarly
+to `hillclimbing`. In tabu search however, after a position of the tour is
+modified, it is blocked for `ntabu` steps. This behaviour is meant to escape
+local minima.
+"""
+function tabusearch!(tsp::TravelingSalesmanProblem, tour; ntabu::Int, niter::Int,
+                            verbose=false)
+    n = length(tsp)
+    cost = computecost(tsp, tour)
+    # positions in the tour that are tabood
+    tabood = zeros(Int, n)
+    costs = Vector(undef, niter)
+    for iter in 1:niter
+        best_Δc = Inf64
+        best_i, best_j = 0, 0
+        for i in 1:n-2
+            # if i is tabood skip it
+            tabood[i] > iter && continue
+            for j in (i+1):n
+                # if j is tabood skip it
+                tabood[j] > iter && continue
+                Δc = deltaflipcost(tsp, tour, i, j)
+                if Δc < best_Δc
+                    best_Δc = Δc
+                    best_i, best_j = i, j
+                end
+            end
+        end
+        flip!(tour, best_i, best_j)
+        cost += best_Δc
+        # tabu these for ntabu steps
+        tabood[best_i] = iter + ntabu
+        tabood[best_j] = iter + ntabu
+        costs[iter] = cost
+        verbose && println("Iteration $iter: Δcost = $best_Δc (flipped $best_i, $best_j)")
+    end
+    return tour, cost, costs
+end
+
+tabusearch(tsp; kwargs...) = tabusearch!(tsp, collect(1:length(tsp)); kwargs...)
+
+tour_tabu, cost_tabu, costs_tabu = tabusearch(tsp, ntabu=50,
+                niter=2_000, verbose=true)
+
+p_tabu = plot_cities(tsp, markersize=1)
+plot_tour!(tsp, tour_tabu)
+title!("Tabu search\ncost=$cost_tabu")
+
+# SUMMARIZE
+# ---------
+
+plot(p_nn, p_greedy, p_insertion, p_hc, p_sa, p_tabu, size=(1000, 1000))
+savefig("figures/tsp_algorithms_$name.png")
+
+
+plot(costs_hc, label="hill climbing")
+plot!(costs_sa, label="simulated annealing")
+plot!(costs_tabu, label="tabu search")
+xlabel!("Iteration")
+ylabel!("Tour cost")
+savefig("figures/tsp_convergence_$name.png")
