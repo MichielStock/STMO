@@ -37,5 +37,17 @@ n = length(tour)
     end
 end
 
+@testset "flipping" begin
+    cost = computecost(tsp, tour)
+
+    for i in 1:n
+        for j in 1:n
+            Δc = deltaflipcost(tsp, tour, i, j)
+            flip!(tour, i, j)
+            @test computecost(tsp, tour) ≈ cost + Δc
+            flip!(tour, i, j)
+        end
+    end
+end
 
 end
