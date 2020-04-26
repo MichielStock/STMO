@@ -1,6 +1,6 @@
 #=
 Created on Sunday 19 April 2020
-Last update:
+Last update: Sunday 26 April 2020
 
 @author: Michiel Stock
 michielfmstock@gmail.com
@@ -10,14 +10,21 @@ Illustration of the algorithms for solving TSP.
 Currently implements:
     - nearest neighbors
     - greedy
+    - random insertion
+    - hill climbing
+    - simulated annealing
+    - tabu search
 =#
 
-using STMO.TSP
 using STMO
+using STMO.TSP
+
 using Plots
 
 tsp = totoro_tsp()
 name = "totoro"
+
+n = length(tsp)
 
 # NEAREST NEIGHBORS
 
@@ -47,6 +54,9 @@ end
 nearestneighbors(tsp::TravelingSalesmanProblem) = nearestneighbors(tsp, start=rand(cities(tsp)))
 
 """
+    bestnearestneighbors(tsp::TravelingSalesmanProblem;
+                        ntry::Union{Nothing,Int}=nothing)
+
 Chooses the best nearest neighbor solution over all cities. If `ntry` is provided,
 a random number of cities is tried. This is done if searching all cities is too
 involved.
@@ -60,7 +70,7 @@ function bestnearestneighbors(tsp::TravelingSalesmanProblem;
     end
     best_cost = Inf64
     best_tour = [1, 2]
-    for start in cities(tsp)
+    for start in cities_to_try
         tour, cost = nearestneighbors(tsp, start=start)
         if cost < best_cost
             best_cost = cost
@@ -71,13 +81,12 @@ function bestnearestneighbors(tsp::TravelingSalesmanProblem;
 end
 
 tour_nn, cost_nn = nearestneighbors(tsp)
-tour_nnbest, cost_nnbest = bestnearestneighbors(tsp)
+tour_nnbest, cost_nnbest = bestnearestneighbors(tsp, ntry=100)  # try 100 starts
 
-p_nn = plot_cities(tsp, markersize=2)
+p_nn = plot_cities(tsp, markersize=1)
 plot_tour!(tsp, tour_nn, label="random")
 plot_tour!(tsp, tour_nnbest, label="best", color=mygreen)
 title!("Nearest neighbor\n cost = $cost_nnbest")
-
 
 # GREEDY
 
@@ -109,6 +118,7 @@ function greedy(tsp::TravelingSalesmanProblem)
     current = findfirst(c->times_added[c]==1, cities(tsp))
     # knit edges in a tour
     tour = [current]
+    sizehint!(tour, n)
     used = Set([current])
     while length(tour) < n
         for (i, j) in selected_edges
@@ -130,38 +140,224 @@ end
 
 tour_greedy, cost_greedy = greedy(tsp)
 
-p_greedy = plot_cities(tsp, markersize=2)
+p_greedy = plot_cities(tsp, markersize=1)
 plot_tour!(tsp, tour_greedy)
 title!("Greedy\n cost = $cost_greedy")
 
+"""
+    insertion(tsp::TravelingSalesmanProblem)
 
-function insertion_farthest(tsp::TravelingSalesmanProblem;
-                start=nothing)
-    if start isa Nothing
-        current = rand(cities(tsp))
-    else
-        current = start
-    end
+Randomly inserts cities in a tour at a place where it has the lowest cost.
+"""
+function insertion(tsp::TravelingSalesmanProblem)
     n = length(tsp)
-    tour = [current]
+    start = rand(cities(tsp))
+    tour = [start]
+    sizehint!(tour, n)
     cities_to_try = Set(cities(tsp))
-    delete!(cities_to_try, current)
+    delete!(cities_to_try, start)
+    cost = 0.0
     while length(tour) < n
-        best_crit = -Inf
-        best_city = 0
+        city = rand(cities_to_try)
+        connection_cost = Inf64
         best_pos = 0
-        for c in cities_to_try
-            for pos in 1:length(tour)-1
-                crit = criterion(tsp, tour, pos, c)
-                if crit > best_crit
-                    best_crit = crit
-                    best_pos = pos
-                    best_city = c
-                end
+        # find cheapest place to insert city
+        for pos in 1:length(tour)
+            ci = (pos > 1) ? tour[pos-1] : tour[end]
+            cj = tour[pos]
+            # cost of connecting
+            Δc = dist(tsp, ci, city) + dist(tsp, city, cj) - dist(tsp, ci, cj)
+            if Δc < connection_cost
+                connection_cost = Δc
+                best_pos = pos
             end
         end
-        insert!(tour, best_pos, best_city)
-        delete!(cities_to_try, best_city)
+        insert!(tour, best_pos, city)
+        delete!(cities_to_try, city)
+        cost += connection_cost
     end
     return tour, computecost(tsp, tour)
 end
+
+
+tour_insertion, cost_insertion = insertion(tsp)
+
+p_insertion = plot_cities(tsp, markersize=1)
+plot_tour!(tsp, tour_insertion)
+title!("Insertion (random)\ncost=$cost_insertion")
+
+
+# 2-opt
+
+"""
+    hillclimbing!(tsp, tour; verbose=false, maxitter=Inf)
+
+Uses hill climbing to improve a tour by finding each iteration the best path
+between two cities to flip.
+"""
+function hillclimbing!(tsp, tour; verbose=false, maxitter=Inf)
+    n = length(tsp)
+    improved = true
+    cost = computecost(tsp, tour)
+    iter = 0
+    costs = [cost]
+    while improved
+        best_Δc = 0.0  # any change is sufficient to continue
+        improved = false
+        best_i, best_j = 0, 0
+        for i in 1:n-2
+            for j in (i+1):n
+                Δc = deltaflipcost(tsp, tour, i, j)
+                if Δc < best_Δc
+                    best_Δc = Δc
+                    best_i, best_j = i, j
+                    improved = true
+                end
+            end
+        end
+        !improved && break
+        flip!(tour, best_i, best_j)
+        iter += 1
+        cost += best_Δc
+        push!(costs, cost)
+        verbose && println("Iteration $iter: Δcost = $best_Δc (flipped $best_i, $best_j)")
+        iter > maxitter && break
+    end
+    println("converged in $iter steps")
+    return tour, cost, costs
+end
+
+"""
+    hillclimbing(tsp; verbose=false, maxitter=Inf)
+
+Uses hill climbing to improve a tour by finding each iteration the best path
+between two cities to flip. Starts from the given order of the cities.
+"""
+hillclimbing(tsp; kwargs...) = hillclimbing!(tsp, collect(1:length(tsp)); kwargs...)
+
+tour_hc, cost_hc, costs_hc = hillclimbing(tsp, verbose=true)
+
+p_hc = plot_cities(tsp, markersize=1)
+plot_tour!(tsp, tour_hc)
+title!("Hill climbing\ncost=$cost_hc")
+
+# SIMULATED ANNEALING
+
+"""
+    simulatedannealing!tsp, tour;
+                    Tmax, Tmin, r, kT::Int, verbose=false)
+
+Uses simulated annealing to improve a tour by finding each iteration the best path
+between two cities to flip.
+"""
+function simulatedannealing!(tsp, tour;
+                Tmax, Tmin, r, kT::Int, verbose=false)
+    n = length(tsp)
+    improved = true
+    cost = computecost(tsp, tour)
+    T = Tmax
+    n_steps = (log(Tmin) - log(Tmax)) / log(r) |> ceil |> Int
+    costs = Vector{typeof(cost)}(undef, n_steps)
+    iter = 0
+    while T > Tmin
+        iter += 1
+        acc = 0
+        for k in 1:kT
+            # choose two cities to swap
+            i, j = rand(1:n, 2)
+            # improvement
+            Δc = deltaflipcost(tsp, tour, i, j)
+            if Δc < 0.0 || rand() < exp(- Δc / T)
+                cost += Δc
+                flip!(tour, i, j)
+                acc += 1
+            end
+        end
+        verbose && println("T = $T : cost = $cost (acc % = $(acc / kT))")
+        costs[iter] = cost
+        T *= r
+    end
+    return tour, cost, costs
+end
+
+
+simulatedannealing(tsp; kwargs...) = simulatedannealing!(tsp,
+                                            collect(1:length(tsp)); kwargs...)
+
+tour_sa = collect(1:n)
+
+tour_sa, cost_sa, costs_sa = simulatedannealing!(tsp, tour_sa;
+                Tmax=1e7, Tmin=1e-4, r=0.95, kT=100000, verbose=true)
+
+p_sa = plot_cities(tsp, markersize=1)
+plot_tour!(tsp, tour_sa)
+title!("Simulated Annealing\ncost=$cost_sa")
+
+
+# TABU SEARCH
+
+"""
+    tabusearch!(tsp::TravelingSalesmanProblem, tour; ntabu::Int, niter::Int,
+                            verbose=false)
+
+Improves a tour by iteratively performing the best local improvement, similarly
+to `hillclimbing`. In tabu search however, after a position of the tour is
+modified, it is blocked for `ntabu` steps. This behaviour is meant to escape
+local minima.
+"""
+function tabusearch!(tsp::TravelingSalesmanProblem, tour; ntabu::Int, niter::Int,
+                            verbose=false)
+    n = length(tsp)
+    cost = computecost(tsp, tour)
+    # positions in the tour that are tabood
+    tabood = zeros(Int, n)
+    costs = Vector(undef, niter)
+    for iter in 1:niter
+        best_Δc = Inf64
+        best_i, best_j = 0, 0
+        for i in 1:n-2
+            # if i is tabood skip it
+            tabood[i] > iter && continue
+            for j in (i+1):n
+                # if j is tabood skip it
+                tabood[j] > iter && continue
+                Δc = deltaflipcost(tsp, tour, i, j)
+                if Δc < best_Δc
+                    best_Δc = Δc
+                    best_i, best_j = i, j
+                end
+            end
+        end
+        flip!(tour, best_i, best_j)
+        cost += best_Δc
+        # tabu these for ntabu steps
+        tabood[best_i] = iter + ntabu
+        tabood[best_j] = iter + ntabu
+        costs[iter] = cost
+        verbose && println("Iteration $iter: Δcost = $best_Δc (flipped $best_i, $best_j)")
+    end
+    return tour, cost, costs
+end
+
+tabusearch(tsp; kwargs...) = tabusearch!(tsp, collect(1:length(tsp)); kwargs...)
+
+tour_tabu, cost_tabu, costs_tabu = tabusearch(tsp, ntabu=50,
+                niter=2_000, verbose=true)
+
+p_tabu = plot_cities(tsp, markersize=1)
+plot_tour!(tsp, tour_tabu)
+title!("Tabu search\ncost=$cost_tabu")
+
+# SUMMARIZE
+# ---------
+
+plot(p_nn, p_greedy, p_insertion, p_hc, p_sa, p_tabu, size=(1000, 1000))
+savefig("figures/tsp_algorithms_$name.png")
+
+
+plot(costs_hc, label="hill climbing")
+plot!(costs_sa, label="simulated annealing")
+plot!(costs_tabu, label="tabu search")
+xlabel!("Iteration")
+ylabel!("Tour cost")
+savefig("figures/tsp_convergence_$name.png")

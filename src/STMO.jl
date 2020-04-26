@@ -42,4 +42,7 @@ export Words
 include("cancer.jl")
 export CancerData
 
+include("tsp.jl")
+export TSP
+
 end # module
