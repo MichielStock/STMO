@@ -33,7 +33,6 @@ function nearestneighbors(tsp::TravelingSalesmanProblem; start::Int)
     cities_to_add = Set(cities(tsp))
     delete!(cities_to_add, start)
     tour = [start]
-    sizehint!(tour, n)
     current = start
     cost = 0.0
     while length(cities_to_add) > 0
@@ -159,9 +158,9 @@ function insertion(tsp::TravelingSalesmanProblem)
             ci = (pos > 1) ? tour[pos-1] : tour[end]
             cj = tour[pos]
             # cost of connecting
-            δ = dist(tsp, ci, city) + dist(tsp, city, cj) - dist(tsp, ci, cj)
-            if δ < connection_cost
-                connection_cost = δ
+            Δc = dist(tsp, ci, city) + dist(tsp, city, cj) - dist(tsp, ci, cj)
+            if Δc < connection_cost
+                connection_cost = Δc
                 best_pos = pos
             end
         end
@@ -183,4 +182,79 @@ title!("Insertion (random)\ncost=$cost_insertion")
 
 # 2-opt
 
-function swap(tsp, tour, )
+#=
+"""
+    deltaswapcost(tsp, tour, i, j)
+
+Compute the change in tour cost if the cities at positions `i` and `j` are
+swapped.
+"""
+function deltaswapcost(tsp, tour, i, j)
+    n = length(tsp)
+    # choose indices respecting cyclic  invariance
+    if abs(i - j) > 1
+        i₋₁ = i == 1 ? n : i - 1
+        i₊₁ = i == n ? 1 : i + 1
+        j₋₁ = j == 1 ? n : j - 1
+        j₊₁ = j == n ? 1 : j + 1
+        ci₋₁, ci, ci₊₁, cj₋₁, cj, cj₊₁ = tour[[i₋₁, i, i₊₁, j₋₁, j, j₊₁]]
+        Δc = (dist(tsp, ci₋₁, cj) + dist(tsp, cj, ci₊₁) +
+                    dist(tsp, cj₋₁, ci) + dist(tsp, ci, cj₊₁)) -
+                    (dist(tsp, ci₋₁, ci) + dist(tsp, ci, ci₊₁) +
+                    dist(tsp, cj₋₁, cj) + dist(tsp, cj, cj₊₁))
+    else
+        # sort the values
+        i₋₁ = i == 1 ? n : i - 1
+        i₊₁ = i == n ? 1 : i + 1
+        j₋₁ = j == 1 ? n : j - 1
+        j₊₁ = j == n ? 1 : j + 1
+        ci₋₁, ci, ci₊₁, cj₋₁, cj, cj₊₁ = tour[[i₋₁, i, i₊₁, j₋₁, j, j₊₁]]
+        Δc = (dist(tsp, ci₋₁, cj) + dist(tsp, cj, ci) + dist(tsp, ci, cj₊₁)) -
+                    (dist(tsp, ci₋₁, ci) + dist(tsp, ci, cj) + dist(tsp, cj, cj₊₁))
+    end
+    return Δc
+end
+=#
+
+function Δc_flip(tsp, tour, i, j)
+    @assert i < j + 1 "i should be smaller than j"
+
+    Δc = (dist(tsp, ci₋₁, cj) + dist(tsp, cj, ci) + dist(tsp, ci, cj₊₁)) -
+                (dist(tsp, ci₋₁, ci) + dist(tsp, ci, cj) + dist(tsp, cj, cj₊₁))
+
+
+function swap!(tour, i, j)
+    tour[i], tour[j] = tour[j], tour[i]
+    return tour
+end
+
+
+function hillclimbing(tsp, tour; verbose=false, maxitter=Inf)
+    n = length(tsp)
+    improved = true
+    cost = computecost(tsp, tour)
+    iter = 0
+    while improved
+        best_Δc = 0.0  # any change is sufficient to continue
+        improved = false
+        best_i, best_j = 0, 0
+        for i in 1:n-2
+            for j in (i+1):n
+                Δc = deltaswapcost(tsp, tour, i, j)
+                if Δc < best_Δc
+                    best_Δc = Δc
+                    best_i, best_j = i, j
+                    improved = true
+                end
+            end
+        end
+        swap!(tour, best_i, best_j)
+        iter += 1
+        cost += best_Δc
+        @show best_i, best_j, best_Δc
+        verbose && println("Iteration $iter: Δccost = $best_Δc")
+        iter > maxitter && break
+    end
+    println("converged in $iter steps")
+    return tour, cost
+end
