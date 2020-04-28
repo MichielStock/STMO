@@ -64,10 +64,10 @@ end
 split_coord(X) = X[:,1], X[:,2]
 
 plot_cities(tsp::TravelingSalesmanProblem; kwargs...) = scatter(split_coord(coordinates(tsp))...,
-                color=myblue, label="", aspect_ratio=:equal; kwargs...)
+                color=myblue, markersize=1, label="", aspect_ratio=:equal; kwargs...)
 
 plot_cities!(tsp::TravelingSalesmanProblem; kwargs...) = scatter!(split_coord(coordinates(tsp))...,
-                color=myblue, label=""; kwargs...)
+                color=myblue, markersize=1, label=""; kwargs...)
 
 coords_tour(tsp, tour) = [coordinates(tsp)[tour,:];coordinates(tsp)[[tour[1]],:]]
 
