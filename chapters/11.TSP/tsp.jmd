@@ -1,0 +1,319 @@
+---
+title : The Travelling Salesman Problem
+author : Michiel Stock
+date: 2019-2020
+---
+
+```julia; echo=false
+using STMO
+using STMO.TSP
+using Plots
+using Random: randperm
+```
+
+The traveling salesman problem (TSP) is arguably one of the best-known optimization problems. It attracts both significant theoretical as well as practical interest. In this lab, we will explore some simple heuristic algorithms to solve the TSP.
+
+# Definition
+
+> **Traveling salesman problem**: Given a list of cities and the distances between each pair of cities, find
+the *tour* with the lowest possible total cost that visits each city exactly once and returns to
+the origin city.
+
+-  $n$ cities $x_1,\ldots,x_n$.
+- Cost matrix $C[x_i, x_j]$ (possibly symmetric and/or triangle inequality).
+- Search space is all permutations of cities: size of $(n-1)!$.
+- Objective function: the sum of costs of the paths.
+
+# Representation in Julia
+
+In the STMO package, we provide the basic functionality for working with instances of the TSP. These instances are stored in a `TravelingSalesmanProblem` type. To construct an instance, one has to provide a matrix with coordinates.
+
+```julia
+citycoordinates = [1.0 1.5; 2.1 0.3; -0.3 1.2; -2.0 -2.3]  # four cities in 2 dimensions
+exampletsp = TravelingSalesmanProblem(citycoordinates)
+```
+
+We have two challenging instances you can use for benchmark purposes. You can load them as follows.
+
+```julia
+tsp = totoro_tsp()  # for fans of Studio Ghibli
+#tsp = got_tsp()  # for fans of Game of Thrones
+```
+
+The data can easily be accessed.
+
+```julia
+n = length(tsp)  # number of cities
+```
+
+```julia
+coordinates(tsp)  # get the coordinates
+```
+
+```julia
+cities(tsp)  # get the cities
+```
+
+```julia
+dist(tsp)  # get distance matrix
+```
+
+```julia
+dist(tsp, 10, 40)  # distance between city 10 and 40
+```
+
+A given tour is just a list containing all the cities in a particular order. For example, if we visit all the cities in a given order, we have.
+
+```julia
+tour = 1:n
+```
+
+We can check whether this is a valid tour (i.e., all cities are visited exactly once) using `isvalid`.
+
+```julia
+isvalid(tsp, tour)  # true
+```
+
+Computing the cost of this tour is easiest using the `computecost` function:
+
+```julia
+cost = computecost(tsp, tour)
+```
+
+We might be interested in taking a look at our solution. We have the functions `plot_tour` and `plot_cities` (and their counterparts `plot_tour!` and `plot_cities!`) to do this directly.
+
+```julia
+plot_tour(tsp, tour)
+plot_cities!(tsp)
+title!("A tour with a cost of $cost")
+```
+It is not very good, as of yet.
+
+Note that all the keyword arguments for adjusting things like marker size and line colour.
+
+# Constructive algorithms
+
+The constructive algorithms generate a tour directly. We will consider three that you can complete.
+
+## Nearest neighbour
+
+> **Nearest neighbors**
+> **Start** at an arbitrary city and add it to the empty tour.
+> **While** tour does not contain all cities:
+>> add the closest, not-visited city to the tour.
+
+
+```julia; eval=false
+"""
+    nearestneighbors(tsp::TravelingSalesmanProblem; start::Int)
+
+Solves the TSP using the nearest neighbors. Provide a starting city using `start`.
+If none is provided, a random city is chosen.
+"""
+function nearestneighbors(tsp::TravelingSalesmanProblem; start::Int)
+    ...  # for you to complete
+    return tour, cost
+end
+
+# random start by default
+nearestneighbors(tsp::TravelingSalesmanProblem) = nearestneighbors(tsp, start=rand(cities(tsp)))
+```
+
+Since the staring city might have a big influence on the quality of the tour, it might make sense to write a function `bestnearestneighbors` that gives the best result using all or a subset of the cities as a starting point.
+
+```julia
+
+```
+
+```julia
+
+```
+
+```julia
+
+```
+
+## Greedy
+
+> Consider edges in a shortest-first order, adding an edge to the solution only if it joins two subpaths into a longer subpath.
+
+```julia; eval=false
+"""
+    greedy(tsp::TravelingSalesmanProblem)
+
+Uses the greedy algorithm to solve the TSP.
+"""
+function greedy(tsp::TravelingSalesmanProblem)
+    ...  # for you to complete
+    return tour, cost
+end
+```
+
+```julia
+
+```
+
+```julia
+
+```
+
+## Insertion tour
+
+> Start with a subtour and add cities at the best point.
+
+Different criteria for adding the next cities:
+
+- cheapest;
+- nearest;
+- farthest;
+- random.
+
+```julia; eval=false
+"""
+    insertion(tsp::TravelingSalesmanProblem)
+
+Inserts cities in a tour at a place where it has the lowest cost.
+
+SPECIFY WHICH STRATEGY YOU ARE USING (OR LET THE USER SPECIFY IT USING A
+FUNCTION ARGUMENT)
+"""
+function insertion(tsp::TravelingSalesmanProblem)
+    ...  # to complete
+    return tour, cost
+end
+```
+
+# Iterative improvement algorithms
+
+Rather than start from scratch, we might take a given tour (obtained by one of the above algorithms or elsewise) and improve this one. Let us discuss two types of changes we can perform and three algorithms to make use of them.
+
+## Strategies
+
+We can *switch the place* of two cities in the tour. For this we can use the function `swap!` (caution it changes the tour). Before doing this, we can compute the change in the cost function.
+
+```julia
+exampletour = [2, 3, 1, 4]
+computecost(exampletsp, exampletour)
+```
+
+```julia
+deltaswapcost(exampletsp, exampletour, 2, 3)  # change by swapping the cities at positions 2 and 3
+```
+
+This is negative, so swapping is an improvement!
+
+```julia
+swap!(exampletour, 2, 3)
+```
+
+Another mutation we consider is *flipping*, i.e., taking a path of a tour and inverting it.
+
+```julia
+longertour = collect(1:10)
+flip!(longertour, 3, 7)
+```
+
+This cost can also be computed efficiently:
+
+```julia
+deltaflipcost(exampletsp, exampletour, 2, 3)  # in this case the same as swapping
+```
+
+## Hill climbing
+
+A hill climber will just go over all potential changes and do the one that results in the greatest improvement. Continue until no further improvements can be found.
+
+
+```julia; eval=false
+"""
+    hillclimbing!(tsp, tour; verbose=false, maxitter=Inf)
+
+Uses hill climbing to improve a tour by finding each iteration the best path
+between two cities to flip.
+"""
+function hillclimbing!(tsp, tour; verbose=false, maxitter=Inf)
+    ...  # complete me!
+    return tour, cost
+end
+```
+
+Note that `hillclimbing!` is a function that improves a given tour. We can use dispatch to make a method that departs from a random tour.
+
+```julia
+
+"""
+    hillclimbing(tsp; verbose=false, maxitter=Inf)
+
+Uses hill climbing to improve a tour by finding each iteration the best path
+between two cities to flip. Starts from a random tour.
+"""
+hillclimbing(tsp; kwargs...) = hillclimbing!(tsp, randperm(length(tsp)); kwargs...)
+```
+
+```julia
+
+```
+
+```julia
+
+```
+
+## Simulated annealing
+
+Simulated annealing improves a tour by randomly proposing changes, which are accepted according to a temperature-dependent scheme.
+
+```julia; eval=false
+"""
+    simulatedannealing!tsp, tour;
+                    Tmax, Tmin, r, kT::Int, verbose=false)
+
+Uses simulated annealing to improve a tour by finding each iteration the best path
+between two cities to flip.
+"""
+function simulatedannealing!(tsp, tour;
+                Tmax, Tmin, r, kT::Int, verbose=false)
+    ... # complete me!
+    return tour, cost
+end
+
+
+simulatedannealing(tsp; kwargs...) = simulatedannealing!(tsp,
+                                            randperm(length(tsp)); kwargs...)
+```
+
+```julia
+
+```
+```julia
+
+```
+
+## Tabu search
+
+Tabu search is similar to hill climbing. Though throughout the search, whenever a part of the tour is changed, it is tabood for a fixed number of steps. This means that during this period, this part cannot be changed. This behavior is a way to drive the solution away from local minima.
+
+```julia; eval=false
+"""
+    tabusearch!(tsp::TravelingSalesmanProblem, tour; ntabu::Int, niter::Int,
+                            verbose=false)
+
+Improves a tour by iteratively performing the best local improvement, similarly
+to `hillclimbing`. In tabu search however, after a position of the tour is
+modified, it is blocked for `ntabu` steps. This behavior is meant to escape
+local minima.
+"""
+function tabusearch!(tsp::TravelingSalesmanProblem, tour; ntabu::Int, niter::Int,
+                            verbose=false)
+    ... # you can do it!
+    return tour, cost, costs
+end
+
+tabusearch(tsp; kwargs...) = tabusearch!(tsp, randperm(length(tsp))); kwargs...)
+```
+
+```julia
+
+```
+```julia
+
+```
