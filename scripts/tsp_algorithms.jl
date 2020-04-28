@@ -86,7 +86,7 @@ tour_nnbest, cost_nnbest = bestnearestneighbors(tsp, ntry=100)  # try 100 starts
 p_nn = plot_cities(tsp, markersize=1)
 plot_tour!(tsp, tour_nn, label="random")
 plot_tour!(tsp, tour_nnbest, label="best", color=mygreen)
-title!("Nearest neighbor\n cost = $cost_nnbest")
+title!("Nearest Neighbor\n cost = $cost_nnbest")
 
 # GREEDY
 
@@ -239,7 +239,7 @@ tour_hc, cost_hc, costs_hc = hillclimbing(tsp, verbose=true)
 
 p_hc = plot_cities(tsp, markersize=1)
 plot_tour!(tsp, tour_hc)
-title!("Hill climbing\ncost=$cost_hc")
+title!("Hill Climbing\ncost=$cost_hc")
 
 # SIMULATED ANNEALING
 
@@ -287,7 +287,7 @@ simulatedannealing(tsp; kwargs...) = simulatedannealing!(tsp,
 tour_sa = collect(1:n)
 
 tour_sa, cost_sa, costs_sa = simulatedannealing!(tsp, tour_sa;
-                Tmax=1e7, Tmin=1e-4, r=0.95, kT=100000, verbose=true)
+                Tmax=1e7, Tmin=1e-4, r=0.975, kT=100000, verbose=true)
 
 p_sa = plot_cities(tsp, markersize=1)
 plot_tour!(tsp, tour_sa)
@@ -341,12 +341,12 @@ end
 
 tabusearch(tsp; kwargs...) = tabusearch!(tsp, collect(1:length(tsp)); kwargs...)
 
-tour_tabu, cost_tabu, costs_tabu = tabusearch(tsp, ntabu=50,
+tour_tabu, cost_tabu, costs_tabu = tabusearch(tsp, ntabu=20,
                 niter=2_000, verbose=true)
 
 p_tabu = plot_cities(tsp, markersize=1)
 plot_tour!(tsp, tour_tabu)
-title!("Tabu search\ncost=$cost_tabu")
+title!("Tabu Search\ncost=$cost_tabu")
 
 # SUMMARIZE
 # ---------

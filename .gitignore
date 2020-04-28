@@ -15,6 +15,8 @@ chapters/07.MST/Slides/*
 chapters/08.ShortestPath/Slides/*
 chapters/08.ShortestPath/Figures/*
 chapters/09.NP-Complete/Figures/*
+chapters/10.Metaheuristics/Slides/*
+
 
 ## Core latex/pdflatex auxiliary files:
 *.aux

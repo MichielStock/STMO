@@ -18,11 +18,12 @@ dirs = [#="00.Introduction",
         "02.Quadratic",
         "03.Unconstrained",
         "04.Constrained",
-        "05.AutoDiff",=#
+        "05.AutoDiff",
         "06.OptimalTransport",
         "07.MST",
-        "08.ShortestPath",
-        "09.NP-Complete"
+        "08.ShortestPath",=#
+        "09.NP-Complete",
+        "11.TSP"
         ]
 
 
