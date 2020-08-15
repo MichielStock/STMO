@@ -1,10 +1,12 @@
 @testset "test functions" begin
 
-    import STMO.TestFuns: branin, rosenbrock, rastrigine, flower, booth, fquadr, fnonquadr
+    import STMO.TestFuns: ackley, branin, rosenbrock, rastrigine, flower, booth, fquadr, fnonquadr
 
-    for fun in [branin, rosenbrock, rastrigine, flower, booth]
+    for fun in [ackley, branin, rosenbrock, rastrigine, flower, booth]
 
         @test fun([3, 4]) isa Real
         @test fun([0.0, 0.0]) isa Real
+        @test fun(3, 4) isa Real
+        @test fun(0.0, 0.0) isa Real
     end
 end
