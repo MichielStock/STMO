@@ -16,7 +16,6 @@ fun = TestFuns.ackley
 x1lims = (-10, 10)
 x2lims = (-10, 10)
 
-
 mutable struct Particle{T}
     x::T
     v::T
@@ -27,10 +26,17 @@ Particle(x) = Particle(x, zero(x), x)
 
 init_population(n_particles, lims...) = [Particle([(u - l) * rand() + l for (l, u) in lims]) for i in 1:n_particles]
 
+"""
+    particle_swarm_optimization!(f, population, k_max;
+            w=1, c1=1, c2=1, tracker=nothing)
 
+Performs Particle Swarm Optimization to minimize a function `f`. Give an initial
+vector of particles (type `Particle`) and the `k_max`, the number of iterations.
 
-function particle_swarm_optimization(f, population, k_max;
-        w=1, c1=1, c2=1)
+Optionally set hyperparameters `w`, `c1` and `c2` (default value of 1).
+"""
+function particle_swarm_optimization!(f, population::Vector{Particle}, k_max;
+        w=1, c1=1, c2=1, tracker=nothing)
     # find best point
     y_best, x_best = minimum((((f(part.x), part.x)) for part in population))
     for k in 1:k_max
@@ -49,13 +55,13 @@ function particle_swarm_optimization(f, population, k_max;
                 x_best .= particle.x
             end
         end
+        tracker isa Nothing || tracker(population)
     end
     return y_best, x_best
 end
 
 population = init_population(50, x1lims, x2lims)
-particle_swarm_optimization(fun, population, 100, w=1)
-
+particle_swarm_optimization!(fun, population, 100, w=1)
 
 function pso_animation(f, population, k_max;
         w=1, c1=1, c2=1)

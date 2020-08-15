@@ -1,0 +1,122 @@
+---
+title : Particle Swarm Optimization
+author : Michiel Stock
+date: 2021-2020
+---
+
+```julia; echo=false
+using Plots
+```
+
+# Description
+
+Particle Swarm Optimization (PSO) is a stochastic metaheuristic to solve non-convex continuous optimization problems. It based on the flocking behavior of birds and insects. PSO holds a list of 'particles', containing a position and a velocity in the design space. In every step, the velocity of each particle is updated according to
+- towards the particle's personal best design point;
+- towards the best design point found over all the groups.
+The particles' velocities are subsequently used to update their positions.
+
+Specifically, the position $\mathbf{x}^{(i)}$ and velocity $\mathbf{v}^{(i)}$ of the $i$-th particle are updated according to
+
+$$
+\mathbf{x}^{(i)} := \mathbf{x}^{(i)} + \mathbf{v}^{(i)}\,,
+$$
+
+$$
+\mathbf{v}^{(i)} := w\mathbf{w}^{(i)} +c_1r_1 (\mathbf{x}^{(i)}_\text{best}-\mathbf{x}^{(i)}) +c_2r_2 (\mathbf{x}_\text{best}-\mathbf{x}^{(i)})\,,
+$$
+with $w$, $c_1$, $c_2$ three parameters dermining the behavior, $r_1$ and $r_2$ two random uniform numbers from the [0,1] interval and $\mathbf{x}^{(i)}_\text{best}$ the best design point of particle $i$ and $\mathbf{x}_\text{best}$ the current global best design point.
+
+Because all particles perform both a partly independent search and share information, PSO exhibits an emerging intelligent swarming behavior.
+
+# Implementation
+
+We will construct a new structure for particles containing their position, velocity, and best point.
+
+```julia
+mutable struct Particle{T}
+    x::T
+    v::T
+    x_best::T
+end
+
+Particle(x) = Particle(x, zero(x), x)
+```
+
+Note that we use parametric typing to infer the type of our design points automatically.
+
+A simple function can generate an intial population:
+
+```julia
+"""Generate an intiation population with `n_particles` randomly positioned between the given limits."""
+init_population(n_particles, lims...) = [Particle([(u - l) * rand() + l for (l, u) in lims]) for i in 1:n_particles]
+```
+
+Then we can move to the bulk of the code.
+
+
+```julia
+"""
+    particle_swarm_optimization!(f, population, k_max;
+            w=1, c1=1, c2=1, tracker=nothing)
+
+Performs Particle Swarm Optimization to minimize a function `f`. Give an initial
+vector of particles (type `Particle`) and the `k_max`, the number of iterations.
+
+Optionally set hyperparameters `w`, `c1` and `c2` (default value of 1).
+"""
+function particle_swarm_optimization!(f, population::Vector{Particle}, k_max;
+        w=1, c1=1, c2=1, tracker=nothing)
+    # find best point
+    y_best, x_best = minimum((((f(part.x_best), part.x_best)) for part in population))
+    for k in 1:k_max
+        # update population
+        for particle in population
+            # For you to complete
+        end
+        # this allows us to keep track of things if we want so.
+        tracker isa Nothing || tracker(population)
+    end
+    return y_best, x_best
+end
+```
+
+# Illustration
+
+We will illustrate it on the Ackley function.
+
+```julia
+using STMO.TestFuns
+
+fun = TestFuns.ackley
+
+x1lims = (-10, 10)
+x2lims = (-10, 10)
+
+pobj = heatmap(-10:0.01:10, -10:0.01:10,
+                fun, color=:speed)
+```
+
+We initialize a population.
+
+```julia
+population = init_population(50, x1lims, x2lims)
+```
+
+Adding the points is easy!
+
+```julia
+pobj = heatmap(-10:0.01:10, -10:0.01:10,
+                fun, color=:speed)
+
+for particle in population
+    x = particle.x
+    scatter!([x[1]], [x[2]], color=:orange, label="",
+            markersize=2)
+end
+pobj
+```
+
+**Assignments**:
+1. Complete the `particle_swarm_optimization!` code.
+2. Minimize the `ackley` function (or a different one). What are the effects of the hyperparameters?
+3. (optional) Make an animation of the swarming behavior of the particles. See the [documentation](https://docs.juliaplots.org/latest/animations/) on how to do this. HINT: you might find it useful to run `particle_swarm_optimization!` for a single iteration `k_max` times.
