@@ -6,5 +6,7 @@
 
         @test fun([3, 4]) isa Real
         @test fun([0.0, 0.0]) isa Real
+        @test fun(3, 4) isa Real
+        @test fun(0.0, 0.0) isa Real
     end
 end
