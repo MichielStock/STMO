@@ -200,7 +200,7 @@ Solving this linear system gives both the constrained minimizer $\mathbf{x}^\sta
 1. Complete the code to solve linearly constrained quadratic systems.
 2. Use this code to solve the quadratic toy problem defined above.
 
-```julia; eval=false
+```julia
 """
     solve_constrained_quadratic_problem(P, q, A, b)
 
@@ -216,17 +216,22 @@ Outputs:
     - nustar: the optimal Lagrange multipliers
 """
 function solve_constrained_quadratic_problem(P, q, A, b)
-    p, n = ...  # size of the problem
+    p, n = size(A)  # size of the problem
     # complete this code
-    solution = ...
-    xstar = ...
-    nustar = ...
+    solution = [P A'; A zeros(p, p)] \ [-q; b]
+    xstar = solution[1:n]
+    nustar = solution[(n+1):end]
     return xstar, nustar
 end
 ```
 
 ```julia
   # solve the quadratic system with the linear constraint
+contour(-10:0.1:10, -10:0.1:10, (x1, x2)->fquadr((x1, x2)), xlabel=:x1, ylabel=:x2)
+plot!(x1->-(3-x1)/2, -10, 10, color=mygreen, label=:constraint)
+xstar, nustar = solve_constrained_quadratic_problem([1 0;0 4], [0,0], [1 -2], 3)
+x1star, x2star = xstar
+scatter!([x1star], [x2star], color=myorange, label=:minimizer)
 ```
 
 ## Newton's method with equality constraints
@@ -288,7 +293,7 @@ In this chapter, we will use a fixed step size. For Newton's method this usually
 Again, the convergence can be monitored using the Newton decrement:
 
 $$
-\lambda^2(\mathbf{x}) = \Delta \mathbf{x}_{nt}^\top \nabla^2 f(\mathbf{x})\Delta \mathbf{x}_{nt}\,.
+\lambda^2(\mathbf{x}) = \lambda^2(\mathbf{x}) = \Delta \mathbf{x}_{nt}^\top \nabla^2 f(\mathbf{x})\Delta \mathbf{x}_{nt}\,.
 $$
 
 The algorithm terminates when
@@ -304,14 +309,13 @@ The Newton decrement also indicates whether we are in or close to the feasible r
 1. Complete the code for the linearly constrained Newton method.
 2. Use this code to find the minimum of the non-quadratic toy problem, defined above (compare a feasible and infeasible start).
 
-```julia; eval=false
+```julia
 """
 linear_constrained_newton(f, x₀, Df,
               DDf, A, b; t::Real=0.25, ϵ::Real=1e-3,
               tracker::Tracker=notrack)
 
 Newton's method for minimizing functions with linear constraints.
-Expects a feasible x₀!
 
 Inputs:
     - f: function to be minimized
@@ -327,23 +331,23 @@ Outputs:
     - xstar: the found minimum
 """
 function linear_constrained_newton(f, x₀, Df,
-              DDf, A, b; t::Real=0.25, ϵ::Real=1e-4, verbose=false)
+              DDf, A, b; t::Real=0.9, ϵ::Real=1e-4, verbose=false)
     @assert 0.0 < t <= 1.0 "stepsize t should be in (0, 1]"
-    @assert ... # test if x₀ is feasible
+    @assert A * x₀ ≈ b
     x = x₀  # initial value
     p, n = size(A)
     nsteps = 0
     while true
-        dfx = Df(x)
         ddfx = DDf(x)
+        dfx = Df(x)
         # calculate residual
-        Dx, _ = solve_constrained_quadratic_problem(...) # complete!
-        λ² = ...
-        if ...  # stopping criterion
+        Dx, _ = solve_constrained_quadratic_problem(ddfx, dfx, A, b - A * x) # complete!
+        λ² = Dx' * ddfx * Dx
+        if λ² < ϵ  # stopping criterion
             break  # converged
         end
         # perform step
-        ...
+        x .+= t * Dx
         nsteps += 1
     end
     verbose && println("Converged in $nsteps steps")
@@ -351,8 +355,15 @@ function linear_constrained_newton(f, x₀, Df,
 end
 ```
 
-```julia
- # solve the nonlinear system
+```julia; term =true
+contour(-5:0.1:5, -5:0.1:5, (x1, x2)->fnonquadr((x1, x2)), xlabel=:x1, ylabel=:x2)
+plot!(x1-> -x1/3, -5, 5, color=mygreen, label=:constraint)
+x₀ = [-0.0, 0.0]
+A = [1 3]
+b = [0]
+xstar = linear_constrained_newton(fnonquadr, x₀, grad_fnonquadr, hess_fnonquadr, [1 3], [0], verbose=true, t=1)
+x1star, x2star = xstar
+scatter!([x1star], [x2star], color=myorange, label=:minimizer)
 ```
 # References
 

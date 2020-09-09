@@ -1,11 +1,11 @@
 ---
 title : Bracket search
 author : Michiel Stock
-date: 2019-2020
+date : 2020-2021
 ---
 
 ```julia; echo=false
-using Plots, LaTeXStrings
+using Plots
 using STMO: myred, myblue, mygreen, myyellow, myorange,myblack
 ```
 
@@ -43,7 +43,7 @@ f(x) = 0.003x^4 + 8x^3 - 3x - 8
 ```
 
 ```julia
-plot(f, -0.5:0.01:0.5, xlabel="\$ x\$", label="\$ f(x) \$", color=myblue, lw=2)
+plot(f, -0.5:0.01:0.5, xlabel="x", label="f(x)", color=myblue, lw=2)
 vline!([a, b], label="", color=myorange, lw=2)
 vline!([0], label="", color=mygreen, lw=2)
 xticks!([a, b, 0], ["a", "b", "x"])
@@ -71,10 +71,10 @@ g(x) = tanh(sin(x))
 
 a, b = -0.75, 1.2
 
-plot(g, -pi/2:0.1:pi/2, label="\$g(x)\$", lw=2, color=myblue, xlabel="\$ x\$", legend=:left)
+plot(g, -pi/2:0.1:pi/2, label="g(x)", lw=2, color=myblue, xlabel="x", legend=:left)
 scatter!([a], [g(a)], color=myorange, label=:a)
 scatter!([b], [g(b)], color=mygreen, label=:b)
-vline!([(b+a)/2], color=myred, label="\$x = (b-a)/2\$", lw=2)
+vline!([(b+a)/2], color=myred, label="x = (b-a)/2", lw=2)
 hline!([0], label="", color=myblack, ls=:dash)
 title!("Illustration of the bisection method")
 ```
@@ -196,10 +196,10 @@ x = quadratic_fit_min(a, b, c, ya, yb, yc)
 ```
 
 ```julia; echo=false
-plot(f, -3:0.1:5, label="\$f(x)\$", lw=2, xlabel="\$x\$", color=myblue)
-scatter!([a, b, c], [ya, yb, yc], label="\$a, b, c\$", color=myorange)
-plot!(quadratic_fit(a, b, c, ya, yb, yc), -3:0.1:5, label="\$ q(x) \$", lw=2, color=mygreen)
-vline!([x], label="\$x\$", lw=2, color=myred)
+plot(f, -3:0.1:5, label="f(x)", lw=2, xlabel="x", color=myblue)
+scatter!([a, b, c], [ya, yb, yc], label="a, b, c", color=myorange)
+plot!(quadratic_fit(a, b, c, ya, yb, yc), -3:0.1:5, label=" q(x) ", lw=2, color=mygreen)
+vline!([x], label="x", lw=2, color=myred)
 ```
 
 Given the minimizer $x^\star$ of the quadratic approximation, we can update the interval closer to this value. The quadratic fit search repeats this approach $n$ times. The pseudocode is given below.

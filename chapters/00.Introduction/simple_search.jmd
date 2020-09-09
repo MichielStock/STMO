@@ -1,7 +1,7 @@
 ---
 title : Simple search
 author : Michiel Stock
-date: 2020-2021
+date : 2020-2021
 ---
 
 ```julia; echo=false

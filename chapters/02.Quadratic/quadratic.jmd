@@ -1,11 +1,11 @@
 ---
 title : Quadratic optimization
 author : Michiel Stock
-date: 2019-2020
+date : 2020-2021
 ---
 
 ```julia; echo=false
-using Plots, LaTeXStrings
+using Plots
 using LinearAlgebra
 using STMO
 import STMO.Quadratic: plot_quadratic, fquad
@@ -178,7 +178,7 @@ The condition for $\mathbf{x}^\star$ to be the minimizer of $f(\mathbf{x})$ is t
 
 A matrix is positive-definite if (and only if) all its eigenvalues as positive. In Julia, we can easily check whether a matrix is positive-define using `isposdef`:
 
-````julia; term=true
+```julia; term=true
 using LinearAlgebra
 
 A = [5 -1; -1 2]
@@ -187,7 +187,7 @@ isposdef(A)  # true
 ```julia
 B = [0.5 3; 3 1]
 isposdef(B)  # false
-````
+```
 
 However, this is an expensive operation (it is based on attempting a Cholesky decomposition), so one should avoid performing unnecessary checks for positive definiteness.
 
@@ -433,7 +433,7 @@ function gradient_descent(P::AbstractArray, q::AbstractVector,
   end
 ```
 
-```julia
+```julia; eval=false
 # solve the quadratic system using gradient descent
 ```
 
@@ -459,7 +459,7 @@ gdtracker = PathTrack(x₀)
 xstar = Quadratic.gradient_descent(P, q, copy(x₀), tracker=gdtracker)
 
 p1 = plotobj(x -> fquad(x, P, q, r), gdtracker, yscale=:log10, label="GD",
-    ylabel="\$f(x) - f(x^\\star)\$");
+    ylabel="f(x) - f(x*)");
 p2 = plot_quadratic(P, q, r, (-10, 10), (-5, 5));
 path!(gdtracker, label="GD");
 plot(p1, p2)
@@ -511,16 +511,16 @@ plot!(cumerrors[:,2], fillrange=cumerrors[:,1], color=myred, fillcolor=myred, la
 plot!(cumerrors[:,3], fillrange=cumerrors[:,2], color=mygreen, fillcolor=mygreen, label="lam 3 = $(λs[3])")
 plot!(cumerrors[:,4], fillrange=cumerrors[:,3], color=myorange, fillcolor=myorange, label="lam 4 = $(λs[4])")
 plot!(cumerrors[:,5], fillrange=cumerrors[:,4], color=myyellow, fillcolor=myyellow, label="lam 5 = $(λs[5])")
-xlabel!("\$k+1\$")
-ylabel!("\$f(x) - f(x^\\star)\$")
+xlabel!("k+1")
+ylabel!("f(x) - f(x*)")
 title!("Error of gradient descent\n(cumulative eigencomponents)")
 ```
 ```julia; echo=false
 plot(errors, ylims=(1e-15,7), lw=2, xscale=:log10, yscale=:log10,
              color = [myblue myred myorange mygreen myyellow],
-             label=["\$ \\lambda  $i = $(λs[i])\$" for j in 1:1, i in 1:5])
-xlabel!("\$k+1\$")
-ylabel!("\$f(x) - f(x^\\star)\$")
+             label=[" lambda  $i = $(λs[i])" for j in 1:1, i in 1:5])
+xlabel!("k+1")
+ylabel!("f(x) - f(x*)")
 title!("Error of gradient descent\n(individual contributions)")
 ```
 
@@ -543,15 +543,15 @@ bestt(κ) = 2 / (1 + κ)
 errors = [(1 - bestt(κ))^(2k) + (1-bestt(κ) * κ)^(2k) * κ for k in 1:10000, κ in κs]
 
 plot(errors, color = reshape(mycolors, 1, :),
-        labels = ["\$ \\kappa = $κ\$" for i in 1:1, κ in κs],
+        labels = [" kappa = $κ" for i in 1:1, κ in κs],
         xscale=:log10, yscale=:log10, ylims=(1e-10, 100), lw=2)
 
 κ2c(κ) = 1 - 1 / κ
 bounds = [exp(log(1+κ) - k * log(1/κ2c(κ))) for k in 1:10000, κ in κs]
 
 plot!(bounds, lw=2, ls=:dash, color = reshape(mycolors, 1, :), label="")
-ylabel!("\$f(x) - f(x^\\star)\$")
-xlabel!("\$k + 1\$")
+ylabel!("f(x) - f(x*)")
+xlabel!("k + 1")
 title!("Convergence (-) and bound (--) of GD\n for different condition numbers")
 ```
 # Gradient descent with momentum
@@ -600,7 +600,7 @@ gdmtracker = PathTrack(x₀)
 xstar = Quadratic.gradient_descent(P, q, copy(x₀), β=0.4, tracker=gdmtracker)
 
 p1 = plotobj(x -> fquad(x, P, q, r), gdtracker, yscale=:log10, label="GD",
-    ylabel="\$f(x) - f(x^\\star)\$");
+    ylabel="f(x) - f(x*)");
 plotobj!(x -> fquad(x, P, q, r), gdmtracker, label="GDM")
 p2 = plot_quadratic(P, q, r, (-10, 10), (-5, 5));
 path!(gdtracker, label="GD");
@@ -661,10 +661,10 @@ end
 
 ```
 
-```julia
+```julia; eval=false
 
 ```
-```julia
+```julia; eval=false
 
 ```
 
@@ -697,9 +697,9 @@ import STMO.Quadratic.SignalRecovery: signalfun, generate_noisy_measurements, ma
 
 n, m = 1000, 100
 y, ind = generate_noisy_measurements(m, n);
-plot(x -> signalfun(x, n), 1:n, label="\$ x_i \$", color=myblue,
-            xlabel="\$ j \$", ylabel="value", lw=2)
-scatter!(ind, y, color=myorange, label="\$ y_j\$")
+plot(x -> signalfun(x, n), 1:n, label=" x_i ", color=myblue,
+            xlabel=" j ", ylabel="value", lw=2)
+scatter!(ind, y, color=myorange, label=" y_j")
 ```
 
 If $m<n$, then we do not have a single measurement for every element of $\mathbf{x}$. Even if $m>n$, it is likely that some elements of $\mathbf{x}$ are not observed due to chance (for large $n$, if $n=m$, then about 37% of the elements will not be sampled). Recovering $\mathbf{x}$ from $\mathbf{y}$ is an impossible assumption if we do not make some assumptions, this seems an impossible problem in general.
