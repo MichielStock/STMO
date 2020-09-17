@@ -11,16 +11,9 @@ Let's get going with Julia! This summary-based guide into programming with Julia
 
 ## The basics
 
-What is Julia again?
-https://julialang.org/learning/getting-started/
+Let's start at the beginning. [What is Julia again?](https://julialang.org/learning/getting-started/) and [why should you learn about it](https://blog.goodaudience.com/10-reasons-why-you-should-learn-julia-d786ac29c6ca)?
 
-Why should you learn Julia?
-https://blog.goodaudience.com/10-reasons-why-you-should-learn-julia-d786ac29c6ca
-
-Let's download & install Julia. You can either download the language itself and engage with it through the command-line (or notebooks, see below):
-https://julialang.org/downloads/
-or you can download JuliaPro (requires a free account) which comes with Juno, an IDE to work in:
-https://juliacomputing.com/products/juliapro.html
+OK, now let's download & install Julia. You can either [download the language](https://julialang.org/downloads/) itself and engage with it through the terminal using the built-in Julia command-line (or notebooks, see below), or you can [download JuliaPro](https://juliacomputing.com/products/juliapro.html) (requires a free account) which comes with Juno, an IDE to work in. A third way of using Julia is in [Visual Studio Code](https://www.julia-vscode.org/docs/stable/setup/), through a Julia extension.
 
 First baby steps around the block:
 https://docs.julialang.org/en/v1/manual/getting-started/
@@ -29,7 +22,7 @@ Learn the basics of Julia:
 https://juliabyexample.helpmanual.io/
 https://learnxinyminutes.com/docs/julia/
 
-Learn more about types, multiple dispatch and structs:
+Learn more about types, multiple dispatch and structs (not needed to understand into detail for STMO):
 https://towardsdatascience.com/how-to-learn-julia-when-you-already-know-python-641ed02b3fa7
 
 
@@ -42,6 +35,8 @@ https://www.youtube.com/watch?v=oyx8M1yoboY
 ### Pluto
 Pluto is a lightweight, reactive notebook for Julia, with a lot of useful features:
 https://github.com/fonsp/Pluto.jl
+
+During STMO, Jupyter notebooks will be used during the exercises, while Pluto will be used for the project. 
 
 ### Visualization in Julia
 Plots are really straightforward in Julia:
@@ -142,6 +137,8 @@ https://github.com/crstnbr/JuliaWorkshop19/blob/master/1_One/3_specialization.ip
 
 
 ## Where to get additional help?
+
+During the STMO course, you can ask question on our Gitter: https://gitter.im/STMOUGent/community
 
 A Julia (vs Python vs MATLAB) cheatsheet! https://cheatsheets.quantecon.org/
 
