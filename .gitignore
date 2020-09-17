@@ -2,6 +2,7 @@
 *.pdf
 Manifest.toml
 figures/*
+chapters/00.Introduction/solution_*
 chapters/01.Brackets/slides/*
 chapters/02.Quadratic/Slides/*
 chapters/02.Quadratic/solution_*

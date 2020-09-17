@@ -1,7 +1,7 @@
 ---
 title : Unconstrained convex optimization
 author : Michiel Stock
-date: 2019-2020
+date : 2020-2021
 ---
 
 ```julia; echo=false
@@ -63,7 +63,7 @@ Convex functions frequently arise:
 
 - If $f$ and $g$ are both convex, then $m(x)=\max(f(x), g(x))$ and $h(x)=f(x)+g(x)$ are also convex.
 - If $f$ and $g$ are convex functions and $g$ is non-decreasing over a univariate domain, then $h(x)=g(f(x))$ is convex. Example: $e^{f(x)}$ is convex if $f({x})$ is convex.
-- If $f$ is concave and $g$ is convex and non-increasing over a univariate domain, then $h(x)=g(f(x))$ is convex.
+- If $f$ is concave and g is convex and non-increasing over a univariate domain, then ${\displaystyle h(x)=g(f(x))}$ is convex.
 
 Note, the convexity of expected value in probability theory gives rise to *Jensen's inequality*. For any convex function $\varphi$, if holds that
 $$
@@ -115,11 +115,11 @@ import STMO.TestFuns: fnonquadr, grad_fnonquadr, hess_fnonquadr
 
 ```julia; echo=false
 pq = contour(-10:0.1:10, -5:0.1:5, (x1, x2) -> fquadr((x1, x2)), xlabel="\$ x_1 \$",
-                ylabel="\$ x_2 \$", title="quadratic", fill=true)
+                ylabel="\$ x_2 \$", title="quadratic", fill=false)
 ```
 ```julia; echo=false
 pnq = contour(-2:0.1:2, -1:0.1:1, (x1, x2) -> fnonquadr((x1, x2)), xlabel="\$ x_1 \$",
-                ylabel="\$ x_2 \$", title="non-quadratic", fill=true)
+                ylabel="\$ x_2 \$", title="non-quadratic", fill=false)
 ```
 
 ## General descent methods (recap)
@@ -191,7 +191,7 @@ The backtracking line search has two parameters:
 1. Complete the code for the backtracking line search
 2. Use this function find the step size $t$ to (approximately) minimize $f(x) = x^2 - 2x - 5$ starting from the point $0$. Choose a $\Delta x=10$.
 
-```julia; eval=false
+```julia
 """
     backtracking_line_search(f, x, Δx, grad_f, α::Real=0.1,
                         β::Real=0.7)
@@ -213,17 +213,27 @@ function backtracking_line_search(f, x, Δx, grad_f; α::Real=0.1,
                         β::Real=0.7)
     @assert 0 < α < 0.5 && 0 < β < 1 "incorrect values for α and/or β"
     t = 1.0
-    while ...  # complete
-        ...  # complete
+    θ = Δx' * grad_f(x)  # store these to avoid recomputing them
+    fx = f(x)
+    while f(x .+ t * Δx) > fx + α * t * θ # complete
+        t *= β  # complete
     end
     return t
 end
 ```
 
-```julia; eval=false
-fun(x) = ...
-grad_fun(x) = ...
-backtracking_line_search(...)
+```julia
+fun(x) = x^2 - 2x - 5
+grad_fun(x) = 2x - 2
+x = -0.0
+Δx = -grad_fun(x)
+t = backtracking_line_search(fun, x, Δx, grad_fun)
+```
+
+```julia
+plot(fun, -3, 3)
+vline!([x], label="x")
+vline!([x + Δx * t], label="x + t * Dx")
 ```
 
 **Question 1**
@@ -272,7 +282,7 @@ We conclude:
 2. Plot the paths for the two toy problems. Use $\mathbf{x}^{(0)}=[10,1]^\top$ for the quadratic function and $\mathbf{x}^{(0)}=[-0.5,0.9]^\top$ for the non-quadratic function as starting points.
 3. Analyze the convergence.
 
-```julia; eval=false
+```julia
 """
     gradient_descent(f, x₀, grad_f; α::Real=0.2, β::Real=0.7,
         ν::Real=1e-3)
@@ -292,17 +302,17 @@ Outputs:
 """
 function gradient_descent(f, x₀, grad_f; α::Real=0.2, β::Real=0.7,
       ν::Real=1e-7)
-
     x = x₀  # initial value
     Δx = similar(x)
     nsteps = 0
     while true
-        ... # choose direction
-        if ...
+        # note the in-place update of Δx!
+        Δx .= -grad_f(x) # choose direction
+        if norm(Δx) < ν
             break  # converged
         end
-        t = ...
-        ... # do a step
+        t = backtracking_line_search(f, x, Δx, grad_f, α=α, β=β)
+        x .+= t * Δx # do a step, INPLACE!
         nsteps += 1
     end
     println("converged after $nsteps steps")
@@ -311,11 +321,13 @@ end
 ```
 
 ```julia
-
+x0q = [10.0, 1.0]
+xstarq = gradient_descent(fquadr, copy(x0q), grad_fquadr)
 ```
 
 ```julia
-
+x0nq = [-0.5,0.9]
+xstarnq = gradient_descent(fnonquadr, copy(x0nq), grad_fnonquadr)
 ```
 
 ## Steepest descent
@@ -368,7 +380,7 @@ Examples:
 **Normalized steepest descent direction**:
 
 $$
-\Delta x_\text{nsd} = \text{arg min}_\mathbf{v}\, \{\nabla f(\mathbf{x})^T \mathbf{v} \mid ||\mathbf{v}||_1\leq 1 \}\,.
+\Delta x_\text{nsd} = \text{arg min}_\mathbf{v}\, \{\nabla f(\mathbf{x})^T \mathbf{v} \mid ||\mathbf{v}||\leq 1 \}\,.
 $$
 
 **Unnormalized steepest descent direction**:
@@ -416,7 +428,7 @@ Coordinate descent optimizes every dimension in turn, for this reason it is some
 2. Plot the paths for the two toy problems. Use the same stating points as before.
 3. Analyze the convergence.
 
-```julia; eval=false
+```julia
 """
     coordinate_descent(f, x₀, grad_f; α::Real=0.2, β::Real=0.7,
         ν::Real=1e-3)
@@ -440,13 +452,15 @@ function coordinate_descent(f, x₀::Vector, grad_f; α::Real=0.2, β::Real=0.7,
     Δx = zero(x)
     nsteps = 0
     while true
-        ...   # choose direction
-
-        if ...
+        Δx .= grad_f(x)  # store gradient here
+        absδ, δ, i =  maximum((abs(δ), δ, i) for (i, δ) in  (enumerate(Δx)))
+        if norm(Δx) < ν
             break  # converged
         end
-        ...  # BLS for optimal step size
-        ...  # do a step
+        Δx .= 0
+        Δx[i] = -δ
+        t = backtracking_line_search(f, x, Δx, grad_f, α=α, β=β)  # BLS for optimal step size
+        x .+= t * Δx  # do a step
         nsteps += 1
     end
     println("converged after $nsteps steps")
@@ -455,11 +469,11 @@ end
 ```
 
 ```julia
-
+xstarq = coordinate_descent(fquadr, copy(x0q), grad_fquadr)
 ```
 
 ```julia
-
+xstarnq = coordinate_descent(fnonquadr, copy(x0nq), grad_fnonquadr)
 ```
 
 ## Newton's method
@@ -497,7 +511,7 @@ This quadratic model will be particularly accurate when $\mathbf{x}$ is close to
 
 The Newton step is the steepest descent step if a quadratic norm using the Hessian is used, i.e.
 $$
-||\mathbf{u}||_{\nabla^2f(\mathbf{x})}=(\mathbf{u}^\top(\nabla^2f(\mathbf{x}))^{-1}\mathbf{u})^\frac{1}{2}\,.
+||\mathbf{u}||_{\nabla^2f(\mathbf{x})}=(\mathbf{u}^\top\nabla^2f(\mathbf{x})\mathbf{u})^\frac{1}{2}\,.
 $$
 
 **Affine invariance of the Newton step**
@@ -566,7 +580,7 @@ After a sufficiently large number of iterations, the number of correct digits do
 1. Complete the code for Newton's method.
 2. Find the minima of the two toy problems. Use the same starting points as for gradient descent.
 
-```julia; eval=false
+```julia
 """
     newtons_method(f, x₀, Df, DDf; α::Real=0.2, β::Real=0.7,
         ϵ::Real=1e-7)
@@ -594,13 +608,15 @@ function newtons_method(f, x₀, Df, DDf; α::Real=0.2, β::Real=0.7,
     Dfx = similar(x)
     nsteps = 0
     while true
-        ... # choose direction
-        λ² = ...  # newton decrement
+        Dfx .= Df(x) # choose direction
+        Δx .= - DDf(x) \ Dfx
+        λ² = - Δx' * Dfx  # newton decrement
         if λ² < ϵ
             break  # converged
         end
-        ...
-        ...  # do a step
+        # show to illustrate the change of the regimes
+        @show t = backtracking_line_search(f, x, Δx, Df, α=α, β=β)
+        x .+= t * Δx  # do a step
         nsteps += 1
     end
     println("converged after $nsteps steps")
@@ -609,11 +625,11 @@ end
 ```
 
 ```julia
-
+xstarq = newtons_method(fquadr, copy(x0q), grad_fquadr, hess_fquadr)
 ```
 
 ```julia
-
+xstarnq = newtons_method(fnonquadr, copy(x0nq), grad_fnonquadr, hess_fnonquadr)
 ```
 
 ### Summary Newton's method
@@ -626,6 +642,48 @@ end
 ## Quasi-Newton methods
 
 Quasi-Newton methods try to emulate the success of the Newton method, but without the high computational burden of constructing the Hessian matrix every step. One of the most popular quasi-Newton algorithms is the *Broyden-Fletcher-Goldfarb-Shanno* (BFGS) algorithm. Here, the Hessian is approximated by a symmetric rank-one matrix.
+
+## Illustration on a high-dimensional problem
+
+The optimization methods on a larger problem:
+
+$$
+\min_\mathbf{x} -\sum_{i=1}^n\log(1-\mathbf{x_i}^2) - \sum_{1=1}^m\log(b_i - \mathbf{a_i}^\top\mathbf{x})
+$$
+
+with $n=100$ and $m=1000$.
+
+```julia
+n, m = 100, 1000
+
+b = rand(m)
+A = 0.1randn(m, n)
+
+f(x; A=A, b=b) = - sum(log.(max.(1 .- x.*x, 0.0))) - sum(log.(max.(b .- A * x, 0.0)))
+```
+Compute the gradient and Hessian using automatic differentiation.
+
+```julia
+using Zygote
+
+Df(x) = f'(x)
+DDf(x) = Zygote.hessian(f, x)
+```
+
+```julia
+x0 = zeros(n)
+
+@time gradient_descent(f, copy(x0), Df, ν=1e-4)
+```
+
+```julia; eval=false
+# takes a really long time...
+@time coordinate_descent(f, copy(x0), Df, ν=1e-3)
+```
+
+```julia
+@time newtons_method(f, copy(x0), Df, DDf)
+```
 
 ## Exercise: logistic regression
 
@@ -698,7 +756,7 @@ logistic_map(x) = 1 / (1.0 + exp(-x));
 cross_entropy(l::Bool, p) = l ? -log(p) : -log(1.0 - p)
 ```
 
-```julia; eval=false
+```julia
 """
     logistic_loss(w, y, X; λ)
 
@@ -706,7 +764,8 @@ Implement the logistic loss
 returns a scalar
 """
 function logistic_loss(w, y, X; λ)
-    return ...
+    p = logistic_map.(X * w)
+    return sum(cross_entropy.(y, p)) + λ * w' * w
 end
 
 """
@@ -716,7 +775,7 @@ Implement the gradient of the logistic loss
 returns a column vector
 """
 function grad_logistic_loss(w, y, X; λ)
-    return ...
+    return X' * (logistic_map.(X * w) .- y) + 2λ * w
 end
 
 """
@@ -725,11 +784,12 @@ Implement the Hessian of the logistic loss
 returns a matrix
 """
 function hess_logistic_loss(w, y, X; λ)
-    return ...
+    p = logistic_map.(X * w)
+    return X' * (X .* (p .* (1.0 .- p))) + 2λ * I
 end
 ```
 
-```julia; eval=false
+```julia
 # functions for first question
 l_loss(w) = logistic_loss(w, binary_response, features, λ=0.1);
 l_grad(w) = grad_logistic_loss(w, binary_response, features, λ=0.1);
@@ -741,27 +801,21 @@ l_hess(w) = hess_logistic_loss(w, binary_response, features, λ=0.1);
 Use gradient descent, coordinate descent and Newton's method to find the parameters of the logistic model ($\lambda=0.1$).
 
 ```julia
-
+w0 = zeros(size(features, 2))
 ```
 
 ```julia
-
-```
-**Assignment 3**
-
-Make a plot for each of the four optimization method in which you show the convergence for $\lambda = [10^{-3}, 10^{-1}, 1, 10, 100]$.
-
-```julia
-
+@time wgd = gradient_descent(l_loss, copy(w0), l_grad, ν=1e-5)
 ```
 
 ```julia
-
+@time wgd = coordinate_descent(l_loss, copy(w0), l_grad, ν=1e-5)
 ```
 
 ```julia
-
+@time wnm = newtons_method(l_loss, copy(w0), l_grad, l_hess)
 ```
+
 
 ## References
 

@@ -2,7 +2,7 @@
 
 ![](totoro.png)
 
-*Edition 2019-2020*
+*Edition 2020-2021*
 
 **Michiel Stock**
 
@@ -13,6 +13,19 @@ This repository contains the notes and exercises of the optimization course give
 The goal of this course is to give students a general overview of the rich field of mathematical optimization. This course will put a particular emphasis on practical implementations and performance. After this course, students should be able to formulate problems from computational biology as optimization problems and be able to interpret, understand, and implement new optimization algorithms.
 
 As of 2020, we have chosen to move this course from Python to the new [Julia programming language](https://julialang.org/). This is not because we are too cool for Python, but because Julia is supremely suited for scientific computing. Furthermore, Julia code can be made extremely performant, on par with optimized C code. We don't expect students to fully optimized code, but throughout, we will give hint and guidelines on how to generally improve implementations, in Julia or other programming languages. No prior knowledge of Julia is needed. We will learn while doing it! If you get lost, we recommend taking a look at the [cheat sheet](https://juliadocs.github.io/Julia-Cheat-Sheet/).
+
+## Course content
+
+1. Intro to Julia and bracket search
+2. Quadratic optimization
+3. Automatic differentiation
+4. Unconstrained convex optimization
+5. Constrained convex optimization
+6. Optimal transportation
+7. Minimum spanning trees
+8. Shortest path problems
+9. NP-hard problems
+10. Heuristics and metaheuristics
 
 ## Using this repo
 
@@ -28,7 +41,9 @@ All notebooks and pdf notes are generated from the `.jmd` files in all the chapt
 include("build.jl")
 ```
 
-In addition to the Jupyter notebooks and PDF notes, running this script also generates some example figures. All PDF notes will also be made available on Ufora.
+Beware that building the course will take a while.
+
+In addition to the Jupyter notebooks and PDF notes, running this script also generates some example figures. We encourage students to take a look in the `scrips/` folder for some examples illustrating the theory. All PDF notes will also be made available on Ufora.
 
 This repository also represents a Julia package, which can be loaded in the Julia REPL.
 
@@ -37,20 +52,6 @@ using STMO
 ```
 
 This package contains the solution to most implementation exercises in this course. It also includes a wealth of helper functions for plotting etc.
-
-## Course content
-
-1. Intro to Julia and bracket search
-2. Quadratic optimization
-3. Unconstrained convex optimization
-4. Constrained convex optimization
-5. Automatic differentiation
-6. Optimal transportation
-7. Minimum spanning trees
-8. Shortest path problems
-9. NP-hard problems
-10. Meta-heuristics
-
 
 ## Installation instructions
 
