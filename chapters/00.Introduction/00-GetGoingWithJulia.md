@@ -11,7 +11,7 @@ Let's get going with Julia! This summary-based guide into programming with Julia
 
 ## The basics
 
-Let's start at the beginning. [What is Julia again?](https://julialang.org/learning/getting-started/) and [why should you learn about it](https://blog.goodaudience.com/10-reasons-why-you-should-learn-julia-d786ac29c6ca)?
+Let's start at the beginning. [What is Julia again](https://julialang.org/learning/getting-started/) and [why should you learn about it](https://blog.goodaudience.com/10-reasons-why-you-should-learn-julia-d786ac29c6ca)?
 
 OK, now let's download & install Julia. You can either [download the language](https://julialang.org/downloads/) itself and engage with it through the terminal using the built-in Julia command-line (or notebooks, see below), or you can [download JuliaPro](https://juliacomputing.com/products/juliapro.html) (requires a free account) which comes with Juno, an IDE to work in. A third way of using Julia is in [Visual Studio Code](https://www.julia-vscode.org/docs/stable/setup/), through a Julia extension.
 
