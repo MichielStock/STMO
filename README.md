@@ -66,7 +66,7 @@ In the command prompt, after navigating to where you want to save the course fil
 ### Installing Julia
 
 1. Download the *Julia* binaries for your system [here](https://julialang.org/downloads/) we suggest installing the Long-term support release, v1.0.5
-2. Check the [Platform Specific Instructions](https://julialang.org/downloads/platform.html) of the official website to install *Julia*
+2. Check the [Platform Specific Instructions](https://julialang.org/downloads/platform/) of the official website to install *Julia*
 
 ### Installing the STMO package
 
