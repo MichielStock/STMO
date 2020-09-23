@@ -65,14 +65,14 @@ In the command prompt, after navigating to where you want to save the course fil
 
 ### Installing Julia
 
-1. Download the *Julia* binaries for your system [here](https://julialang.org/downloads/) we suggest installing the Long-term support release, v1.0.5
+1. Download the *Julia* binaries for your system [here](https://julialang.org/downloads/) we suggest installing the current stable release, v1.5.0
 2. Check the [Platform Specific Instructions](https://julialang.org/downloads/platform/) of the official website to install *Julia*
 
 ### Installing the STMO package
 
 All required packages for this course are bundled together in the STMO package, which can be installed as follows.
 
-In Julia, enter *package mode* by pressing the "`]`" key.  All required packages will be installed by then typing (or copying) at the `(v1.2) pkg> ` prompt:
+In Julia, enter *package mode* by pressing the "`]`" key.  All required packages will be installed by then typing (or copying) at the `(v1.5) pkg> ` prompt:
 ```
 add https://github.com/MichielStock/STMO.git
 ```
