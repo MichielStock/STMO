@@ -16,7 +16,7 @@ vector of ones as the intercept. The binary responses have true denote Malignant
 and false Benign. Internet connection is needed for this function.
 """
 function getcancerdata()
-    io = HTTP.get("https://raw.githubusercontent.com/MichielStock/STMO/master/chapters/03.Unconstrained/Data/BreastCancer.csv")
+    io = HTTP.get("https://raw.githubusercontent.com/MichielStock/STMO/master/chapters/04.Unconstrained/Data/BreastCancer.csv")
     cancer_data = CSV.read(io.body)
     binary_response = cancer_data.y .== "M"
     # extract feature matrix X
