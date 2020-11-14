@@ -41,7 +41,7 @@ for dir in dirs
   for filename in files
     filename = filename[1:end-4]
     println("Building $(filename)...")
-    weave(joinpath(dir, filename * ".jmd"); doctype="md2pdf")
+   # weave(joinpath(dir, filename * ".jmd"); doctype="md2pdf")
     #cleanTemps(filename, dir)
     convert_doc(joinpath(dir, filename * ".jmd"), dir * filename * ".ipynb")
   end
