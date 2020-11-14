@@ -22,7 +22,7 @@ $$
 $$
 
 $$
-\mathbf{v}^{(i)} := w\mathbf{w}^{(i)} +c_1r_1 (\mathbf{x}^{(i)}_\text{best}-\mathbf{x}^{(i)}) +c_2r_2 (\mathbf{x}_\text{best}-\mathbf{x}^{(i)})\,,
+\mathbf{v}^{(i)} := w\mathbf{v}^{(i)} +c_1r_1 (\mathbf{x}^{(i)}_\text{best}-\mathbf{x}^{(i)}) +c_2r_2 (\mathbf{x}_\text{best}-\mathbf{x}^{(i)})\,,
 $$
 with $w$, $c_1$, $c_2$ three parameters dermining the behavior, $r_1$ and $r_2$ two random uniform numbers from the [0,1] interval and $\mathbf{x}^{(i)}_\text{best}$ the best design point of particle $i$ and $\mathbf{x}_\text{best}$ the current global best design point.
 
@@ -64,7 +64,7 @@ vector of particles (type `Particle`) and the `k_max`, the number of iterations.
 
 Optionally set hyperparameters `w`, `c1` and `c2` (default value of 1).
 """
-function particle_swarm_optimization!(f, population::Vector{Particle}, k_max;
+function particle_swarm_optimization!(f, population, k_max;
         w=1, c1=1, c2=1, tracker=nothing)
     # find best point
     y_best, x_best = minimum((((f(part.x_best), part.x_best)) for part in population))

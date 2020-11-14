@@ -212,15 +212,6 @@ sign(num) * significand(num) * 2^exponent(num)
 # ╔═╡ d9f2d114-f2b4-11ea-32b0-43fa1a872a97
 md"The *machine precision* of a number can be retained using `eps`. This is the relative error."
 
-# ╔═╡ de1fd700-f2b4-11ea-36dd-4bfba5ecc134
-eps(1.2)
-
-# ╔═╡ df14ce72-f2b4-11ea-307b-8fac2889681b
-eps(1.2e10)
-
-# ╔═╡ e584f976-f2b4-11ea-0245-67f6bcc4be0e
-eps(1.2e-10)
-
 # ╔═╡ eb68674c-f2b4-11ea-0cc2-f792d17a5005
 md"""
 This brings us with numerical issues we might encounter using numerical differentiation.
@@ -371,6 +362,21 @@ struct Dual{T}
     v::T
     vdot::T
 end
+
+# ╔═╡ 9e22156e-0880-11eb-24a8-3d0a41262c36
+eps = Dual(0.0, 1.0)
+
+# ╔═╡ de1fd700-f2b4-11ea-36dd-4bfba5ecc134
+eps(1.2)
+
+# ╔═╡ df14ce72-f2b4-11ea-307b-8fac2889681b
+eps(1.2e10)
+
+# ╔═╡ e584f976-f2b4-11ea-0245-67f6bcc4be0e
+eps(1.2e-10)
+
+# ╔═╡ ab39b554-0880-11eb-05de-71949f71b440
+2.0 + 3.0eps
 
 # ╔═╡ 0aba93a6-f2b8-11ea-1461-d96878b7a5c1
 md"Let's implement some basic rules showing linearity."
@@ -722,6 +728,8 @@ md"""
 # ╠═bebbd674-f2b5-11ea-19c6-4fe1257b0277
 # ╟─d6c6d4ea-f2b7-11ea-0b41-d7f629cdcd2f
 # ╠═fe18341e-f2b7-11ea-0236-03b44eebd328
+# ╠═9e22156e-0880-11eb-24a8-3d0a41262c36
+# ╠═ab39b554-0880-11eb-05de-71949f71b440
 # ╟─0aba93a6-f2b8-11ea-1461-d96878b7a5c1
 # ╠═014ec92c-f2b8-11ea-3986-8d74a8c2458d
 # ╟─3f5a58da-f2b8-11ea-3ab0-5db5e9199bb1

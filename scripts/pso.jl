@@ -35,7 +35,7 @@ vector of particles (type `Particle`) and the `k_max`, the number of iterations.
 
 Optionally set hyperparameters `w`, `c1` and `c2` (default value of 1).
 """
-function particle_swarm_optimization!(f, population::Vector{Particle}, k_max;
+function particle_swarm_optimization!(f, population::Vector{Particle{T}} where T, k_max;
         w=1, c1=1, c2=1, tracker=nothing)
     # find best point
     y_best, x_best = minimum((((f(part.x), part.x)) for part in population))
