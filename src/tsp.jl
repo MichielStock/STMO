@@ -17,7 +17,7 @@ using Plots: plot!, scatter, scatter!, plot
 export TravelingSalesmanProblem, cities, computecost, coordinates
 export plot_cities, plot_cities!, plot_tour, plot_tour!
 export swap!, deltaswapcost, deltaflipcost, flip!
-export totoro_tsp, got_coords
+export totoro_tsp, got_tsp
 
 struct TravelingSalesmanProblem{Tc}
     coordinates::Matrix{Tc}
