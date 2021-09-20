@@ -15,8 +15,6 @@ using STMO
 
 Up to now, we confidently assumed that we would always be able to compute the derivative or gradient of any function. Despite differentiation being a relatively easy operation, it is frequenty not feasible (or desirable) to compute this by hand. *Numerical differentiation* can provide approximations of th derivate or gradient at a particular point. *Automatic differentiation* directly manipulates the computational graph to generate a function that computes the (exact) derivate. Such methods have advanced greatly in the last years and it is no exageration that their easy use in popular software libraries such as TenserFlow and PyTorch are a cornerstone of deep learning and other machine learning and scientific computing fields.
 
-# Definition of a derivative
-
 ```julia; echo=false
 using Plots, BenchmarkTools
 using STMO
