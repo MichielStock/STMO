@@ -4,8 +4,17 @@
 using Markdown
 using InteractiveUtils
 
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    quote
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
+        el
+    end
+end
+
 # ╔═╡ f811543d-b7e6-4f7a-b60c-048f1bf380bf
-using Plots
+using Plots, PlutoUI
 
 # ╔═╡ b9505974-1b92-11ec-2f68-b3324d215555
 md"""
@@ -47,12 +56,12 @@ We will explore both methods using the [Ackley alpine function](https://en.wikip
 md"""
 **Assignments**
 
-1. Complete the code `grid_search` and use it to minimize the Ackley function using 10 and 50 function evaluations. (hint: use `:` to generate a grid, e.g. `0:0.1:10`)
+1. Complete the code `grid_search` and use it to minimize the Ackley function using 10 and 50 function evaluations. (hint: use `:` to generate a grid, e.g. `0:0.1:10` **or** the function `range`)
 2. Complete the code `random_search` and use it to minimize the Ackley function using 50 function evaluations. (hint `rand()` generates an uniform random number in $[0,1]$.
 3. Compare the solutions.
-4. Compare their running time using the `@time` macro.
+4. Compare their running time using the `@time` macro. (you need to check the terminal to see this)
 5. Plot the quality of your solution using the two algorithms as a function of the number of evaluations (use $n=10, 50, 100, 500, 1000, 5000$ or so). 
-6. (optional programming exercise) Extend the functions so that you can perform a higher-dimensional search. E.g., `grid_search(Ackley, (-pi, pi), (-pi, pi))` would search in two dimensions.
+6. (optional exercise) Can you use dispatch such that your function perform search in 2D, e.g. `grid_search(f, (a₁, b₁), (a₂, b₂); n=10)` works as well?
 7. (optional exercise) Use dispatch such that there are two versions for grid search, i.e., `grid_search(f, (a, b); n=10)` works as before, but the second method `grid_search(f, grid::Vector)` recognizes that the grid is already given.
 
 Can you see why I suggested the interval $[-π, π]$? I have been sneaky in question 5...
@@ -74,7 +83,7 @@ end
 """
     random_search(f, (a, b); n=10)
 
-Performs a randoom search in [`a`, `b`] on `f` using `n` samples.
+Performs a random search in [`a`, `b`] on `f` using `n` samples.
 Returns the best found value of `x`.
 """
 function random_search(f, (a, b); n=10)
@@ -129,13 +138,113 @@ plot(ackley, -pi, pi, label="Ackley", color=myblue, xlabel="x")
 # ╔═╡ 16d863f7-8157-4c7d-a5fc-e4a3c905ed69
 contourf(-pi:0.01:pi, -pi:0.01:pi, ackley, color=:speed, xlabel="x1", ylabel="x2")
 
+# ╔═╡ 961dcf96-482b-4e28-b650-feeadfb89a42
+module Solution
+	export grid_search, grid_search_oneline, random_search, random_search_oneline
+
+	"""
+		grid_search(f, (a, b); n=10)
+
+	Performs a grid search in [`a`, `b`] on `f` with a grid of size `n`.
+	Returns the best found value of `x`.
+	"""
+	function grid_search(f, (a, b); n=10)
+		@assert a < b "Not a valid interval!"
+		xbest = a
+		objbest = Inf
+		dx = (b - a) / (n - 1)
+		for xi in a:dx:b
+			obj = f(xi)
+			if obj < objbest
+				xbest, objbest = xi, obj
+			end 
+		end
+		return xbest
+	end
+
+	function grid_search(f, grid::Vector)
+		xbest = first(grid)
+		objbest = Inf
+		dx = (b - a) / (n - 1)
+		for xi in grid
+			obj = f(xi)
+			if obj < objbest
+				xbest, objbest = xi, obj
+			end 
+		end
+		return xbest
+	end
+
+	
+	
+	# oneliner: 
+	grid_search_oneline(f, (a, b); n=10) = maximum(x->(f(x), x),
+												range(a, b, length=n))[2]
+
+
+	"""
+		random_search(f, (a, b); n=10)
+
+	Performs a random search in [`a`, `b`] on `f` using `n` samples.
+	Returns the best found value of `x`.
+	"""
+	function random_search(f, (a, b); n=10)
+		@assert a < b "Not a valid interval!"
+		xbest = a
+		objbest = Inf
+		for i in 1:n
+			xi =  (b - a) * rand() + a
+			obj = f(xi)
+			if obj < objbest
+				xbest, objbest = xi, obj
+			end 
+		end
+		return xbest
+	end
+	
+
+	random_search_oneline(f, (a, b); n=10) = maximum(x->(f(x), x), (a+(b-a)*rand() for  i in 1:n))[2]
+end
+
+# ╔═╡ 6d6cce92-225c-4862-957a-6e6522cbd34f
+md"show solution: $(@bind showsol CheckBox())"
+
+# ╔═╡ 354c2771-45a7-45ff-aabb-4d15fad3682a
+if showsol
+	md"""
+Solution: 
+	
+See hidden cell for the code.
+
+```julia
+a, b = -pi, pi
+grid_search(ackley, (a, b), n=50)
+random_search(ackley, (a, b), n=50)
+```
+
+Place between a `begin ... end` block.
+	
+```julia
+n_size = [10, 50, 100, 500, 1000, 5000]
+fstar = ackley(0)  # best objective
+sols_grid = [grid_search(ackley, (a, b), n=n) for n in n_size]
+sols_random = [random_search(ackley, (a, b), n=n) for n in n_size]
+plot(n_size, ackley.(sols_grid) .- fstar, label="grid search", xlab="n",
+            ylab="objective gap", yscale=:log10, xscale=:log10)
+plot!(n_size, ackley.(sols_random) .- fstar, label="random search")
+```
+"""
+end
+
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 
 [compat]
 Plots = "~1.22.1"
+PlutoUI = "~0.7.10"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -347,6 +456,11 @@ deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll",
 git-tree-sha1 = "8a954fed8ac097d5be04921d595f741115c1b2ad"
 uuid = "2e76f6c2-a576-52d4-95c1-20adfe4de566"
 version = "2.8.1+0"
+
+[[HypertextLiteral]]
+git-tree-sha1 = "72053798e1be56026b81d4e2682dbe58922e5ec9"
+uuid = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
+version = "0.9.0"
 
 [[IniFile]]
 deps = ["Test"]
@@ -591,6 +705,12 @@ git-tree-sha1 = "4c2637482176b1c2fb99af4d83cb2ff0328fc33c"
 uuid = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 version = "1.22.1"
 
+[[PlutoUI]]
+deps = ["Base64", "Dates", "HypertextLiteral", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "Suppressor"]
+git-tree-sha1 = "26b4d16873562469a0a1e6ae41d90dec9e51286d"
+uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+version = "0.7.10"
+
 [[Preferences]]
 deps = ["TOML"]
 git-tree-sha1 = "00cfd92944ca9c760982747e9a1d0d5d86ab1e5a"
@@ -698,6 +818,11 @@ deps = ["Adapt", "DataAPI", "StaticArrays", "Tables"]
 git-tree-sha1 = "2ce41e0d042c60ecd131e9fb7154a3bfadbf50d3"
 uuid = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 version = "0.6.3"
+
+[[Suppressor]]
+git-tree-sha1 = "a819d77f31f83e5792a76081eee1ea6342ab8787"
+uuid = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
+version = "0.2.0"
 
 [[TOML]]
 deps = ["Dates"]
@@ -964,7 +1089,10 @@ version = "0.9.1+5"
 # ╠═d9ad90a1-ada9-4165-ab43-6415591cc96e
 # ╠═7b0542ab-38c0-4255-ba56-1a2eb0d6a390
 # ╟─ed771cc5-f20a-41dc-82a2-390dba65ebab
-# ╠═aa38d4e8-5a55-42d3-9cfe-85c1b6f59f78
+# ╟─aa38d4e8-5a55-42d3-9cfe-85c1b6f59f78
 # ╠═36a19aa4-f282-4d00-895d-a923439a2c3f
+# ╟─961dcf96-482b-4e28-b650-feeadfb89a42
+# ╟─6d6cce92-225c-4862-957a-6e6522cbd34f
+# ╟─354c2771-45a7-45ff-aabb-4d15fad3682a
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

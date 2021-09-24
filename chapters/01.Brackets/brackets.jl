@@ -47,7 +47,7 @@ function bracket_minimum(f, x=0.0; s=1e-2, k=2.0)
 end
 
 # ╔═╡ 42131c7f-2980-4bc9-be00-64e25ecd238e
-
+md"Example of finding an initial bracket, starting from point $x$."
 
 # ╔═╡ 143801cb-25ee-4a49-882a-a8ab377a25f8
 md"""
@@ -125,7 +125,7 @@ bracket_minimum(f, k=1.2)
 md"> To type `f′` just type `f\prime<tab>`. Whenever you are unsure how to type a unicode character you can call it using the help, e.g. `?ϵ`."
 
 # ╔═╡ 90e525e6-ac62-4299-ac42-cda344074051
-f′(x) = missing
+f′(x) = missing  # use Wolfram alpha for now
 
 # ╔═╡ 62d84643-d26f-475b-8431-e8f4b82f77a5
 
@@ -245,6 +245,9 @@ The system receives a constant input with a concentration of 0.3. What is the st
 # ╔═╡ b106794f-c997-499a-8bc6-cc2117105f06
 
 
+# ╔═╡ a093d875-235f-4606-b6ff-85cf05a0f779
+
+
 # ╔═╡ 57847e93-2316-4d1d-912d-646b0d8b8d24
 md"""
 ## References
@@ -295,6 +298,48 @@ let
 	scatter!([a, b, c], [ya, yb, yc], label="a, b, c", color=myorange)
 	plot!(quadratic_fit(a, b, c, ya, yb, yc), -3:0.1:5, label=" q(x) ", lw=2, color=mygreen)
 	vline!([x], label="x", lw=2, color=myred)
+end
+
+# ╔═╡ 7a5b2671-44b1-4382-a9a6-3ed86ecf4fae
+module Solution
+	export bisection, quadratic_fit_search
+
+	function bisection(g, a, b; ϵ=1e-3)
+	  @assert a < b "a should be smaller than b"
+
+	  # a is minizer?
+	  g(a) == 0 && return a, a
+	  # b is minizer?
+	  g(b) == 0 && return b, b
+
+	  ga,gb = g(a),g(b)
+	  while (b-a)/2 > ϵ
+			x = (a+b)/2
+			gx = g(x)
+			gx == 0 && return x,x
+			if sign(gx) == sign(ga)
+				a,ga = x,gx
+			else
+				b,gb = x,gx
+			end
+	  end
+	  return a, b
+	end
+
+	function quadratic_fit_search(f, a, b, c, n)
+	  @assert a < b < c "a, b, c not consecutive "
+	  @assert f(a) > f(b) && f(c) > f(b) "f(b) should be less than f(a) and f(c)"
+
+	  for i in 1:n
+		x = quadratic_fit_min(a,b,c,f(a),f(b),f(c))
+			if a < x < b
+				a,b,c = a,x,b
+				else b < x < c
+				a,b,c = b,x,c
+			end
+	  end
+	  return a, b, c
+	end
 end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
@@ -1120,7 +1165,7 @@ version = "0.9.1+5"
 # ╟─6b30fe20-f321-4cb8-a2fc-0a2820d71bc0
 # ╟─bdf6c059-db72-4d90-b98f-2e77b7d89f37
 # ╠═662b4d13-505c-4202-b104-0db80d8b1822
-# ╠═42131c7f-2980-4bc9-be00-64e25ecd238e
+# ╟─42131c7f-2980-4bc9-be00-64e25ecd238e
 # ╟─5eecd08d-0567-440b-97a3-121882800d79
 # ╠═a3259f42-3ab2-4cca-9179-ecf9c019aa4e
 # ╟─143801cb-25ee-4a49-882a-a8ab377a25f8
@@ -1150,7 +1195,9 @@ version = "0.9.1+5"
 # ╟─26036622-b1e7-480c-9a60-fde35c9d6a8b
 # ╠═412c4bc9-87c3-4e1b-9968-b2f8ebb05d3a
 # ╠═b106794f-c997-499a-8bc6-cc2117105f06
+# ╠═a093d875-235f-4606-b6ff-85cf05a0f779
 # ╟─57847e93-2316-4d1d-912d-646b0d8b8d24
-# ╠═c486a4da-d50c-49f5-98a0-46b417469b06
+# ╟─c486a4da-d50c-49f5-98a0-46b417469b06
+# ╟─7a5b2671-44b1-4382-a9a6-3ed86ecf4fae
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
