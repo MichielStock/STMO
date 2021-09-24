@@ -10,6 +10,7 @@ Build all the notebooks and stuff. Based on a file by Bram De Jaegher.
 
 t₀ = time()
 
+#=
 using Weave
 
 
@@ -41,12 +42,12 @@ for dir in dirs
   for filename in files
     filename = filename[1:end-4]
     println("Building $(filename)...")
-   # weave(joinpath(dir, filename * ".jmd"); doctype="md2pdf")
-    #cleanTemps(filename, dir)
+    weave(joinpath(dir, filename * ".jmd"); doctype="md2pdf")
+    cleanTemps(filename, dir)
     convert_doc(joinpath(dir, filename * ".jmd"), dir * filename * ".ipynb")
   end
 end
-
+=#
 
 # FIGURES
 
