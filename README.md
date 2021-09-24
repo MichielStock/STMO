@@ -2,17 +2,17 @@
 
 ![](totoro.png)
 
-*Edition 2020-2021*
+*Edition 2021-2022*
 
 **Michiel Stock**
 
-**Maxime Van Haeverbeke**
+With help from **Maxime Van Haeverbeke** and **Kirsten Van Huffel**.
 
-This repository contains the notes and exercises of the optimization course given in the Master of Bioinformatics Bioscience Engineering and Systems Biology at Ghent University.
+This repository contains the notes and exercises of the optimization course given in the Masters of Bioinformatics and Bioscience Engineering at Ghent University.
 
-The goal of this course is to give students a general overview of the rich field of mathematical optimization. This course will put a particular emphasis on practical implementations and performance. After this course, students should be able to formulate problems from computational biology as optimization problems and be able to interpret, understand, and implement new optimization algorithms.
+This course aims to give students a general overview of the rich field of mathematical optimization. This course will put a particular emphasis on practical implementations and performance. After this course, students should be able to formulate problems from computational biology as optimization problems and interpret, understand, and implement new optimization algorithms.
 
-As of 2020, we have chosen to move this course from Python to the new [Julia programming language](https://julialang.org/). This is not because we are too cool for Python, but because Julia is supremely suited for scientific computing. Furthermore, Julia code can be made extremely performant, on par with optimized C code. We don't expect students to fully optimize code, but throughout, we will give hints and guidelines on how to generally improve implementations, in Julia or other programming languages. No prior knowledge of Julia is needed. We will learn while doing it! To get started, you can check out our [quick start guide](chapters/00.Introduction/00-GetGoingWithJulia.md) and if you get lost, we recommend taking a look at the [cheat sheet](https://juliadocs.github.io/Julia-Cheat-Sheet/).
+As of 2020, we have moved this course from Python to the new [Julia programming language](https://julialang.org/). This is not because we are too cool for Python (though we are too cool for Python 😎), but because Julia is supremely suited for scientific computing.  Julia code can be made highly performant, on par with optimized C code. We don't expect students to optimize code fully, but we will give hints and guidelines on improving implementations in Julia or other programming languages. No prior knowledge of Julia is needed. We will learn while doing it! To get started, you can check out our [quick start guide](chapters/00.Introduction/00-GetGoingWithJulia.md), and if you get lost, we recommend taking a look at the [cheat sheet](https://juliadocs.github.io/Julia-Cheat-Sheet/).
 
 ## Course content
 
@@ -26,24 +26,25 @@ As of 2020, we have chosen to move this course from Python to the new [Julia pro
 8. Shortest path problems
 9. NP-hard problems
 10. Heuristics and metaheuristics
+11. Travelling Salesman Problem
 
 ## Using this repo
 
-If you have *Julia* and *IJulia*-notebooks installed, clone the repo (check the section on GitHub below if you don't know what this means) and work locally in the notebooks, this is recommended as it is the only way to save your work. Otherwise, click on the badge below to open a Binder session or check the *installation instructions* below to install *Julia* and *IJulia*-notebooks.
+As of 2021, we migrated from Jupyter notebooks to [Pluto](https://github.com/fonsp/Pluto.jl) notebooks. The folder `chapters/` contains notebooks. You can also find them on Ufora together with the slides etc, so you don't need to keep track of this repo.
 
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/MichielStock/STMO/master)
+This repo also contains the source code in `src/`. Most of this is now copied in the respective independent notebooks, which is mainly of historical importance. If you activate the environment of the repo
 
-While using Binder is convenient in the short term, it will take a while to start up every time, and it will only allow you to follow along with the notebooks, without having the ability to save your work.
+```julia
+using Pkg; Pkg.activate(".")
+```
 
-All notebooks and pdf notes are generated from the `.jmd` files in all the chapter folders. These can be build by running the `build.jl` script in Julia:
+ you can run the build file
 
 ```julia
 include("build.jl")
 ```
 
-Beware that building the course will take a while.
-
-In addition to the Jupyter notebooks and PDF notes, running this script also generates some example figures. We encourage students to take a look in the `scrips/` folder for some examples illustrating the theory. All PDF notes will also be made available on Ufora.
+In addition to the Jupyter notebooks and PDF notes, running this script also generates some example figures. We encourage students to look in the `scrips/` folder for some examples illustrating the theory. All PDF notes will also be made available on Ufora.
 
 This repository also represents a Julia package, which can be loaded in the Julia REPL.
 
@@ -57,38 +58,49 @@ This package contains the solution to most implementation exercises in this cour
 
 ### Github
 
-Using Git or Github desktop is recommended for this course. In case you don't already have git or Github installed, this can be done by following the instructions for your operating system here [here](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) for Git and [here](https://desktop.github.com/) for GitHub desktop. Using git, clone (i.e., download the files of) the course repository by typing
+Using Git or Github desktop is can be helpful for this course. In case you don't already have Git or Github installed, this can be done by following the instructions for your operating system here [here](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) for Git and [here](https://desktop.github.com/) for GitHub desktop. Using Git, clone (i.e., download the files of) the course repository by typing
 ```
 git clone https://github.com/MichielStock/STMO.git
 ```
 In the command prompt, after navigating to where you want to save the course files.
 
+Again the notebooks are all you need, so you don't have to maintain a local version of this repo.
+
 ### Installing Julia
 
-1. Download the *Julia* binaries for your system [here](https://julialang.org/downloads/) we suggest installing the current stable release, v1.5.0
+1. Download the *Julia* binaries for your system [here](https://julialang.org/downloads/) we suggest installing the current stable release, v1.6.2
 2. Check the [Platform Specific Instructions](https://julialang.org/downloads/platform/) of the official website to install *Julia*
 
-### Installing the STMO package
+### OPTIONAL: Installing the STMO package
 
 All required packages for this course are bundled together in the STMO package, which can be installed as follows.
 
-In Julia, enter *package mode* by pressing the "`]`" key.  All required packages will be installed by then typing (or copying) at the `(v1.5) pkg> ` prompt:
+In Julia, enter *package mode* by pressing the "`]`" key.  All required packages will be installed by then typing (or copying) at the `(v1.6) pkg> ` prompt:
 ```
 add https://github.com/MichielStock/STMO.git
 ```
 
-> This course is work in progress and will likely be updated throughout the year. At the start of every lecture, it is a good idea to update the package by typing `update STMO` in the package mode and rebasing your repository to be in sync with the `master` branch.
 
-### Running the IJulia Notebook
+### Installing and using the Pluto notebooks
 
-If you are comfortable managing your own Python/Jupyter installation, you can just run `jupyter notebook` yourself in a terminal. To simplify installation, you can alternatively type the following in Julia, at the `julia>` prompt:
+In a Julia REPL the Pluto notebooks can be installed using:
 ```julia
-using IJulia
+using Pkg; Pkg.add("Pluto")
 ```
-to install the IJulia kernel.
+
+When installed, load Pluto by typing
+
+```julia
+using Pluto
+Pluto.run()
+```
+
+This will open Pluto in your browser. You can either open a new or sample notebook or navigate to an existing notebook.
+
+✨ Yes, it is that simple! ✨
 
 ## Gitter
 
-While the course is given remotely, you can ask questions about the project and chapters via Gitter:
+You can ask questions about the project and chapters via Gitter:
 
 [![Gitter](https://badges.gitter.im/STMOUGent/community.svg)](https://gitter.im/STMOUGent/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
