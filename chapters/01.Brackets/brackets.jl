@@ -17,13 +17,13 @@ md"""
 """
 
 # ╔═╡ 6b30fe20-f321-4cb8-a2fc-0a2820d71bc0
-md"As a first introduction to mathematical optimization, we will study two *bracketing methods*. Bracketing methods can be used to minimize scalar function with a single input variable. These algorithms identify an interval $[a, b]$ containing the desired minimum. We will assume that the functions are *unimodal* they contain a single minimum."
+md"As a first introduction to mathematical optimization, we will study two *bracketing methods*. Bracketing methods can be used to minimize scalar function with a single input variable. These algorithms identify an interval $[a, b]$ containing the desired minimum. We will assume that the functions are *unimodal*, i.e. they contain a single minimum."
 
 # ╔═╡ bdf6c059-db72-4d90-b98f-2e77b7d89f37
 md"""
 ## Finding an initial bracket
 
-The following function will generate from an initial $x$ an interval containing a local minimum. It works by moving one of the limits of the interval until the function value at that limit starts to decrease.
+The following function will generate from an initial $x$ an interval containing a local minimum. It works by moving one of the limits of the interval until the function value at that limit starts to increase.
 """
 
 # ╔═╡ 662b4d13-505c-4202-b104-0db80d8b1822
@@ -61,9 +61,9 @@ We can use the bisection method to find a minimum of a function $f(x)$ by findin
 
 > **Question**: in addition to the first derivative being equal to zero, which other criteria should hold for $x^\star$ to be a minimizer?
 
-The bisection method departs from an initial bracket $[a, b]$, where $g(a)$ and $g(b)$ have opposing signs. If $g(x)$ is a continious function, the *intermediate value theorem* states that there is at least one $x\in[a,b]$ such that $g(x)$.
+The bisection method departs from an initial bracket $[a, b]$, where $g(a)$ and $g(b)$ have opposing signs. If $g(x)$ is a continuous function, the *intermediate value theorem* states that there is at least one $x\in[a,b]$ such that $g(x)$.
 
-In every step of the bisection method, the interval it cut into half. The midpoint $x = (a+b)/2$ is computed, and a new bracket is formed from the midpoint and the side that contains zero.
+In every step of the bisection method, the interval is cut into half. The midpoint $x = (a+b)/2$ is computed, and a new bracket is formed from the midpoint and the side that contains zero.
 
 """
 

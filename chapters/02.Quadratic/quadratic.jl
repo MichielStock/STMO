@@ -192,7 +192,7 @@ $$\frac{\mathrm{d}f(x)}{\mathrm{d}x} = px + q$$
 
 $$px^\star+q = 0 \Leftrightarrow x^\star=\frac{-q}{p}\,.$$
 
-To show that this is the sole minimizer of $f(x)$, we have to prove that the second-order derivative is positive at this point. This means that at that point, the derivative of the function is increasing: a little to the left the function is increasing, a little to the right and the function is decreasing. We have
+To show that this is the sole minimizer of $f(x)$, we have to prove that the second-order derivative is positive at this point. This means that at that point, the derivative of the function is increasing: a little to the left the function is decreasing, a little to the right and the function is increasing. We have
 
 $$\left.\frac{\mathrm{d}^2f(x)}{\mathrm{d}x^2}\right|_{x^\star} = p\,,$$
 
