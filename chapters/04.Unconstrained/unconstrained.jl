@@ -896,7 +896,7 @@ md"**Assignments**
 "
 
 # ╔═╡ 851bfa30-1a9b-414c-8584-4e544b84a3ab
-logistic_map(x) = 1 / (1.0 + exp(-x));
+logistic_map(x) = 1 / (1.0 + exp(-x))
 
 # ╔═╡ 9abb8ced-16e8-413d-91cd-7f5b108ad044
 σ(x) = logistic_map(x)
