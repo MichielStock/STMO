@@ -396,7 +396,7 @@ As an illustration, we provide the graph of the famous boardgame *Ticket To Ride
 md"The weighted edges. The weight represents the connection cost."
 
 # ╔═╡ cda14c79-7a39-4ef5-8c59-1dd2f0fac202
-md"Let us plot this graph. We also have the coordinates of the cities in `cities_coordinates`. It is not needed to find the MST, but can help us make a draw the map."
+md"Let us plot this graph. We also have the coordinates of the cities in `cities_coordinates`. It is not needed to find the MST, but can help us make a draw a map of the USA."
 
 # ╔═╡ 44609196-e3f2-446b-9ca9-d8741c43fb05
 md"Your turn! Use the functions above to find a minimal spanning tree for this graph."

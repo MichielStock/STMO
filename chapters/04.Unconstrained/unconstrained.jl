@@ -303,7 +303,7 @@ If a function is $m$-strongly convex, this also implies that there exists an $M>
 
 $$\nabla^2 f(\mathbf{x}) \preceq MI\,.$$
 
-Stated differently, for strongly convex functions the exist both a quadratic function with a smaller as well as a lower local curvature.
+Stated differently, for strongly convex functions there exist both a quadratic function with a higher as well as a lower local curvature.
 
 ![For strongly convex functions, it holds that there are two constants $m$ and $M$ such that $mI\preceq\nabla^2 f(\mathbf{x}) \preceq MI$. ](https://github.com/MichielStock/STMO/blob/master/chapters/04.Unconstrained/Figures/strong_convexity.png?raw=true)
 """
@@ -334,7 +334,7 @@ The outline of a general descent algorithm is given in the following pseudocode.
 > **repeat**
 >
 >>    1. Determine a descent direction $\Delta \mathbf{x}$.
->>    2. *Line seach*. Choose a step size $t>0$.
+>>    2. *Line search*. Choose a step size $t>0$.
 >>    3. *Update*. $\mathbf{x}:=\mathbf{x}+t\Delta \mathbf{x}$.
 >
 > **until** stopping criterion is satisfied.
@@ -463,7 +463,7 @@ md"""
 >**repeat**
 >
 >>    1. *Choose direction*. $\Delta \mathbf{x} := -\nabla f(\mathbf{x})$.
->>    2. *Line seach*. Choose a step size $t$ via exact or backtracking line search.
+>>    2. *Line search*. Choose a step size $t$ via exact or backtracking line search.
 >>    3. *Update*. $\mathbf{x}:=\mathbf{x}+t\Delta \mathbf{x}$.
 >
 >**until** stopping criterion is satisfied.
@@ -618,7 +618,7 @@ Using the $L_1$ norm results in coordinate descent. For every iteration in this 
 >
 >>    1. *Direction*. Choose $i$ such that $|\nabla f(\mathbf{x})_i|$ is maximal.
 >>    2. *Choose direction*. $\Delta \mathbf{x} := -\nabla f(\mathbf{x})_i \mathbf{e}_i$
->>    3. *Line seach*. Choose a step size $t$ via exact or backtracking line search.
+>>    3. *Line search*. Choose a step size $t$ via exact or backtracking line search.
 >>    4. *Update*. $\mathbf{x}:=\mathbf{x}+t\Delta \mathbf{x}$.
 >
 >**until** stopping criterion is satisfied.
@@ -759,7 +759,7 @@ Thus $\frac{1}{2} \lambda(\mathbf{x})^2$ is an estimate of $f(\mathbf{x}) - p^*$
 >
 >>    1. Compute the Newton step and decrement $\Delta \mathbf{x}_\text{nt} := -\nabla^2f(\mathbf{x})^{-1} \nabla f(\mathbf{x})$; $\lambda^2:=\nabla f(\mathbf{x})^\top\nabla^2 f(\mathbf{x})^{-1}\nabla f(\mathbf{x})$.
 >>    2. *Stopping criterion* **break** if $\lambda^2/2 \leq \epsilon$.
->>    3. *Line seach*. Choose a step size $t$ via exact or backtracking line search.
+>>    3. *Line search*. Choose a step size $t$ via exact or backtracking line search.
 >>    4. *Update*. $\mathbf{x}:=\mathbf{x}+t\Delta \mathbf{x}_\text{nt}$.
 >
 >**output** $\mathbf{x}$

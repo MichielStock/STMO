@@ -71,7 +71,7 @@ md"""
 md"""
 ## Motivation
 
-Optimal transportation deals with transforming one distribution into another while minizing a cost function. The problem can be formulated as a maximum entropy function, leading to an elegant solution using the *Sinkhorn algorithm*. Optimal transportation is used in computer vision, machine learning, astonomy, bioinformatics, ecology etc.
+Optimal transportation deals with transforming one distribution into another while minimizing a cost function. The problem can be formulated as a maximum entropy function, leading to an elegant solution using the *Sinkhorn algorithm*. Optimal transportation is used in computer vision, machine learning, astonomy, bioinformatics, ecology etc.
 """
 
 # ╔═╡ 65a73b72-967d-4a62-af17-f71b286f3303
@@ -178,9 +178,9 @@ C_cells = missing
 
 # ╔═╡ da2cc178-64c7-4b30-909a-24fb402a489b
 md"""
-## The optimal transportion problem
+## The optimal transportation problem
 
-Let us introduce some notation so we can formally state this as an optimization problem. Let $\mathbf{a}$ be the vector containing the amount of dessert every person may eat. In this case $\mathbf{a} = [3,3,3,4,2,2,2,1]^\intercal$ (in general the dimension of $\mathbf{r}$ is $n$). Similarly, $\mathbf{c}$ denotes the vector of how much there is of every dessert, i.e. $\mathbf{b}=[4, 2, 6, 4, 4]^\intercal$ (in general the dimension of $\mathbf{b}$ is $m$). Often $\mathbf{a}$ and $\mathbf{b}$ represent marginal probability distributions, hence their values are nonzero sum to one.
+Let us introduce some notation so we can formally state this as an optimization problem. Let $\mathbf{a}$ be the vector containing the amount of dessert every person may eat. In this case $\mathbf{a} = [3,3,3,4,2,2,2,1]^\intercal$ (in general the dimension of $\mathbf{r}$ is $n$). Similarly, $\mathbf{b}$ denotes the vector of how much there is of every dessert, i.e. $\mathbf{b}=[4, 2, 6, 4, 4]^\intercal$ (in general the dimension of $\mathbf{b}$ is $m$). Often $\mathbf{a}$ and $\mathbf{b}$ represent marginal probability distributions, hence their values are nonzero and sum to one.
 
 Let $U(\mathbf{a}, \mathbf{b})$ be the set of positive $n\times m$ matrices for which the rows sum to $\mathbf{a}$ and the columns sum to $\mathbf{b}$:
 
@@ -288,7 +288,7 @@ The cost matrix determines a direction in which distributions are better or wors
 md"""
 ## Application: color transfer
 
-In this exercise, we will apply optimal transportation to transfer the color scheme of one image to the other. We will read two images and exact the colors of the pixels (RGB encoded). Using optimal transport, a softmatching can be obtained between the pixels of te repective images. Then, every pixel of the first image can be recomputed using a weighted sum of the pixels of the second image (or vice versa).
+In this exercise, we will apply optimal transportation to transfer the color scheme of one image to the other. We will read two images and extract the colors of the pixels (RGB encoded). Using optimal transport, a softmatching can be obtained between the pixels of te repective images. Then, every pixel of the first image can be recomputed using a weighted sum of the pixels of the second image (or vice versa).
 
 First, we will load two images. Feel free to use your own!
 """
@@ -333,7 +333,7 @@ n_colors1 = length(colors1)
 n_colors2 = length(colors2)
 
 # ╔═╡ e52d67d0-b161-403a-85c6-1bb59354f2ee
-md"The `Colors` package contains a function `colordiff` that quantifies the perceptive difference between two colors. It it an ideal cost function!"
+md"The `Colors` package contains a function `colordiff` that quantifies the perceptive difference between two colors. It is an ideal cost function!"
 
 # ╔═╡ dfe40afd-5153-4315-8511-cba00806d7e5
 md"Use this to compute the pairwise distances between all the colors!"

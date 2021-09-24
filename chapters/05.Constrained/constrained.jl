@@ -106,7 +106,7 @@ md"""
 md"""
 ## Motivation
 
-Many more realistic optimization problems are characterized by constraints. For example, real-word systems often satisfy conservation laws, such as conservation of mass, of atoms or of charge. When designing objects, there are practical constraints of feasible dimensions, range of operations and limitations in materials. Another example is in probability, where a solution should satisfy the axioms of probability theory (probabilities are real values between 0 and 1 and the probabilities of all events should sum to 1).
+Many more realistic optimization problems are characterized by constraints. For example, real-world systems often satisfy conservation laws, such as conservation of mass, of atoms or of charge. When designing objects, there are practical constraints of feasible dimensions, range of operations and limitations in materials. Another example is in probability, where a solution should satisfy the axioms of probability theory (probabilities are real values between 0 and 1 and the probabilities of all events should sum to 1).
 
 Other cases, we include constraints in our problem because they encode prior knowledge about the problem or to obtain solutions with certain desirable properties.
 
@@ -119,7 +119,7 @@ md"""
 
 Lagrange multipliers are elegant ways of finding stationary points of a function of several variables given one or more constraints. We give a short introduction based on a geometric perspective.
 
-> IMPORTANT: most textbooks treat Lagrange multipliers from as maximization problems. Here they are treated as minimization problems to be consistent with other chapters.
+> IMPORTANT: most textbooks treat Lagrange multipliers as maximization problems. Here they are treated as minimization problems to be consistent with other chapters.
 """
 
 # ╔═╡ e6bebf18-4b13-462b-acf4-c02a3855ddbe
@@ -463,7 +463,7 @@ $$\lambda_if_i(\mathbf{x}^\star)=0, \quad i=1,\ldots,m\,.$$
 md"""
 ### Implicit constraints
 
-Rather than solving a minimization problems with inequality constraints, we can reformulate the objective function to include only the feasible regions:
+Rather than solving a minimization problem with inequality constraints, we can reformulate the objective function to include only the feasible regions:
 
 $$\min_{\mathbf{x}} f_0(\mathbf{x})+\sum_{i=1}^m I_{-}(f_i(\mathbf{x}))$$
 
