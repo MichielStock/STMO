@@ -416,7 +416,7 @@ Outputs:
     - xstar: the found minimum
 """
 function gradient_descent(P::AbstractArray, q::AbstractVector,
-            x₀::AbstractVector; ϵ::Real=1e-4, trace=False):
+            x₀::AbstractVector; ϵ::Real=1e-4, trace=False)
 
     x = x0  # initial value
     n_steps = 0

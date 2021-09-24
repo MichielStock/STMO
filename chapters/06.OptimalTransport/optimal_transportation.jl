@@ -71,7 +71,7 @@ md"""
 md"""
 ## Motivation
 
-Optimal transportation deals with transforming one distribution into another while minizing a cost function. The problem can be formulated as a maximum entropy function, leading to an elegant solution using the *Sinkhorn algorithm*. Optimal transportation is used in computer vision, machine learning, astonomy, bioinformatics, ecology etc.
+Optimal transportation deals with transforming one distribution into another while minimizing a cost function. The problem can be formulated as a maximum entropy function, leading to an elegant solution using the *Sinkhorn algorithm*. Optimal transportation is used in computer vision, machine learning, astonomy, bioinformatics, ecology etc.
 """
 
 # ╔═╡ 65a73b72-967d-4a62-af17-f71b286f3303
@@ -178,7 +178,7 @@ C_cells = missing
 
 # ╔═╡ da2cc178-64c7-4b30-909a-24fb402a489b
 md"""
-## The optimal transportion problem
+## The optimal transportation problem
 
 Let us introduce some notation so we can formally state this as an optimization problem. Let $\mathbf{a}$ be the vector containing the amount of dessert every person may eat. In this case $\mathbf{a} = [3,3,3,4,2,2,2,1]^\intercal$ (in general the dimension of $\mathbf{r}$ is $n$). Similarly, $\mathbf{c}$ denotes the vector of how much there is of every dessert, i.e. $\mathbf{b}=[4, 2, 6, 4, 4]^\intercal$ (in general the dimension of $\mathbf{b}$ is $m$). Often $\mathbf{a}$ and $\mathbf{b}$ represent marginal probability distributions, hence their values are nonzero sum to one.
 
