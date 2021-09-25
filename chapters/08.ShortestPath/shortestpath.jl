@@ -4,378 +4,419 @@
 using Markdown
 using InteractiveUtils
 
-# ╔═╡ be17c905-4bc7-4e1a-8132-3c0626fd4e08
-using Plots, DataStructures
+# ╔═╡ b0020dc0-78a7-483f-877f-719f42b0c044
+using Plots, PlutoUI, DataStructures
 
-# ╔═╡ bf1571b3-9840-4bb0-a623-ccc53b49c177
+# ╔═╡ aec0517c-01e7-4d3f-b9b4-3e4ec8acdfc3
+begin
+
+	using HTTP
+
+	hamming(s,t) = sum((si != ti for (si, ti) in zip(s, t)))
+
+	"""Get all English words"""
+	function getwords()
+		io = HTTP.get("https://github.com/dwyl/english-words/raw/master/words_alpha.txt")
+		words = split(String(io.body), "\n") .|> rstrip .|> String
+		return words
+	end
+
+	"""Get all English words of length `wordsize`"""
+	function getwords(wordsize::Integer)
+		return filter(w -> length(w) == wordsize, getwords())
+	end
+
+	"""
+		getwordedges(words; cutoff=5)
+
+	Returns all the weigthed edges between a list of `words` where the Hamming
+	distance is less than `cutoff`.
+	"""
+	function getwordedges(words; cutoff=5)
+		edges = Tuple{Int,String,String}[]
+		for (i, w1) in enumerate(words[1:end-1])
+			for w2 in words[(i+1):end]
+				d = hamming(w1, w2)
+				d ≤ cutoff && push!(edges, (d, w1, w2))
+			end
+		end
+		return edges
+	end
+
+end #Words
+
+# ╔═╡ 9803aaf0-08c3-4501-8865-318a988210c9
 module Solution
+	export reconstruct_path, dijkstra, a_star
 
-using DataStructures
+	using DataStructures
 
-export prim, kruskal
 
-# special types for graphs
-EdgeList{T} = Array{Tuple{T,T},1}
-WeightedEdgeList{R,T} = Array{Tuple{R,T,T},1}
-Vertices{T} = Array{T,1}
-AdjList{R,T} = Dict{T,Array{Tuple{R,T},1}}
+	WeightedEdgeList{R,T} = Array{Tuple{R,T,T},1}
+	AdjList{R,T} = Dict{T,Array{Tuple{R,T},1}}
 
-"""
-Turns a list of weighted edges in an adjacency matrix (implemented as a Dict).
-If the keyword `double` is set to `true`, every edge is added twice: `(w, u, v)`
-and `(w, v, u)`. This is the default behaviour.
-"""
-function edges2adjlist(edges::WeightedEdgeList{R,T}; double=true) where {R<:Real,T}
-    adjlist = AdjList{R,T}()
-    for (w, i, j) in edges
-        if !haskey(adjlist, i); adjlist[i] = [] end
-        if !haskey(adjlist, j); adjlist[j] = [] end
-        push!(adjlist[i], (w, j))
-        double && push!(adjlist[j], (w, i))
-    end
-    return adjlist
+	"""
+		reconstruct_path(previous::Dict{T,T}, source::T, sink::T) where {T}
+
+	Reconstruct the path from the output of the Dijkstra algorithm.
+
+	Inputs:
+			- previous : a Dict with the previous node in the path
+			- source : the source node
+			- sink : the sink node
+	Ouput:
+			- the shortest path from source to sink
+	"""
+	function reconstruct_path(previous::Dict{T,T}, source::T, sink::T) where {T}
+		path = T[sink]
+		current = sink
+		while current != source
+			current = previous[current]
+			push!(path, current)
+		end
+		return reverse!(path)
+	end
+
+
+	"""
+		dijkstra(graph::AdjList{R,T}, source::T) where {R<:Real,T}
+
+	Dijkstra without a specified sink. Give the `graph` and a `source` and this
+	function uses Dijkstra's algorithm to compute all distances between the nodes
+	and the source. Returns
+		- `distances`: a dictionary with the distances
+		- `previous`: a dictionary representing the tree of the shortest paths.
+	"""
+	function dijkstra(graph::AdjList{R,T}, source::T) where {R<:Real,T}
+		# initialize the tentative distances
+		distances = Dict(v => Inf for v in keys(graph))
+		distances[source] = 0.0
+		previous = Dict{T,T}()
+		vertices_to_check = [(0.0, source)]
+		while length(vertices_to_check) > 0
+			dist, u = heappop!(vertices_to_check)
+			for (dist_u_v, v) in graph[u]
+				new_dist = dist + dist_u_v
+				if distances[v] > new_dist
+					distances[v] = new_dist
+					previous[v] = u
+					heappush!(vertices_to_check, (new_dist, v))
+				end
+			end
+		end
+		return distances, previous
+	end
+
+	"""
+		dijkstra(graph::AdjList{R,T}, source::T, sink::T) where {R<:Real,T}
+
+	Dijkstra's shortest path algorithm.
+
+	Inputs:
+		- `graph` : adjacency list representing a weighted directed graph
+		- `source`
+		- `sink`
+
+	Outputs:
+		- the shortest path
+		- the cost of this shortest path
+	"""
+	function dijkstra(graph::AdjList{R,T}, source::T, sink::T) where {R<:Real,T}
+		# initialize the tentative distances
+		distances = Dict(v => Inf for v in keys(graph))
+		distances[source] = 0.0
+		previous = Dict{T,T}()
+		vertices_to_check = [(0.0, source)]
+		while length(vertices_to_check) > 0
+			dist, u = heappop!(vertices_to_check)
+			if u == sink
+				return reconstruct_path(previous, source, sink), dist
+			end
+			for (dist_u_v, v) in graph[u]
+				new_dist = dist + dist_u_v
+				if distances[v] > new_dist
+					distances[v] = new_dist
+					previous[v] = u
+					heappush!(vertices_to_check, (new_dist, v))
+				end
+			end
+		end
+	end
+
+	"""
+		a_star(graph::AdjList{R,T}, source::T, sink::T, heuristic) where {R<:Real,T}
+
+	A* shortest path algorithm.
+
+	Inputs:
+		- `graph` : adjacency list representing a weighted directed graph
+		- `source`
+		- `sink`
+		- `heuristic` : a function that inputs a node and returns an lower bound
+				for the distance to the source. Note that a distance can be turned into
+				a heuristic using `n -> d(n, sink)`
+
+	Outputs:
+		- the shortest path
+		- the cost of this shortest path
+	"""
+	function a_star(graph::AdjList{R,T}, source::T, sink::T, heuristic) where {R<:Real,T}
+		# initialize the tentative distances
+		distances = Dict(v => Inf for v in keys(graph))
+		distances[source] = 0.0
+		previous = Dict{T,T}()
+		vertices_to_check = [(heuristic(source), source)]
+		while length(vertices_to_check) > 0
+			dist, u = heappop!(vertices_to_check)
+			if u == sink
+				return reconstruct_path(previous, source, sink), distances[sink]
+			end
+			for (dist_u_v, v) in graph[u]
+				new_dist = dist + dist_u_v
+				if distances[v] > new_dist
+					distances[v] = new_dist
+					min_dist_to_sink = new_dist + heuristic(v)
+					previous[v] = u
+					heappush!(vertices_to_check, (min_dist_to_sink, v))
+				end
+			end
+		end
+	end
 end
 
-"""
-Turns an adjacency list (implemented as a Dict) into an edge list.
-"""
-adjlist2edges(adjlist::AdjList{R,T}) where {R<:Real, T} =
-            [(w, v, n) for (v, neighbors) in adjlist for (w, n) in neighbors]
-
-"""
-Returns the number of vertices in a graph.
-"""
-nvertices(adjlist::AdjList) = length(adjlist)
-
-"""
-Returns the vertices of a graph.
-"""
-vertices(adjlist::AdjList) = Set(keys(adjlist))
-
-"""
-Returns the vertices of a graph.
-"""
-function vertices(edgelist::WeightedEdgeList{R,T}) where {R<:Real,T}
-    vertices = Set{T}()
-    for (w, u, v) in edgelist
-        push!(vertices, u)
-        push!(vertices, v)
-    end
-    return vertices
-end
-
-"""
-Returns the number of vertices in a graph.
-"""
-nvertices(edgelist::WeightedEdgeList) = length(vertices(edgelist))
-
-function isconnected(adjlist::AdjList{R,T}) where {R<:Real, T}
-    visited = Set{T}()
-    to_explore = [first(keys(adjlist))]
-    while length(to_explore) > 0
-        u = pop!(to_explore)
-        push!(visited, u)
-        for (w, n) in adjlist[u]
-            n ∉ visited && push!(to_explore, n)
-        end
-    end
-    return length(visited) == nvertices(adjlist)
-end
-
-isconnected(edges::WeightedEdgeList) = isconnected(edges2adjlist(edges))
-
-"""
-    prim(vertices, edges[, start])
-
-Prim's algorithm for finding the minimum spanning tree. Inputs the vertices
-(`vertices`), a list of weighted edges (`vertices`) and a starting vertex (`start`).
-A random starting vertex will be chosen by default.
-"""
-function prim(vertices, edges,
-                start=rand(vertices))
-    u = start
-    adjlist = edges2adjlist(edges)
-    mst_edges = eltype(edges)[]
-    mst_vertices = Set([u])
-    edges_to_check = [(w, u, n) for (w, n) in adjlist[u]]
-    cost = zero(edges[1][1])
-    heapify!(edges_to_check)
-    while length(mst_edges) < length(vertices) && length(edges_to_check) > 0
-        # pop shortest edge, u part of tree, v might be new
-        w, u, v = heappop!(edges_to_check)
-        if v ∉ mst_vertices
-            # add to MST
-            push!(mst_edges, (w, u, v))
-            push!(mst_vertices, v)
-            # update cost
-            cost += w
-            # add neighbours of v
-            for (wn, n) in adjlist[v]
-                n ∉ mst_vertices && heappush!(edges_to_check, (wn, v, n))
-            end
-        end
-    end
-    return mst_edges, cost
-end
-
-
-
-"""
-    kruskal(vertices, edges)
-
-Kruskal's algorithm for finding the minimum spanning tree. Inputs the vertices
-(`vertices`) and a list of weighted edges (`vertices`).
-"""
-function kruskal(vertices, edges)
-    usf = DisjointSets(vertices)
-    mst_edges = eltype(edges)[]
-    mst_vertices = Set{eltype(vertices)}()
-    sort!(edges)
-    cost = zero(edges[1][1])
-    for (w, u, v) in edges
-        if !in_same_set(usf, u, v)
-            push!(mst_edges, (w, u, v))
-            union!(usf, u, v)
-            push!(mst_vertices, u)
-            push!(mst_vertices, v)
-            cost += w
-            if length(mst_vertices) == length(vertices)
-                break
-            end
-        end
-    end
-    return mst_edges, cost
-end
-
-
-
-end  # module MST
-
-
-# ╔═╡ cc4ba764-1c81-11ec-25ba-bbe4fc081aaa
+# ╔═╡ 2ab0b80e-1e02-11ec-1596-8bd8e81d347c
 md"""
-# Minimal spanning trees
+# Shortest path problems
 
 *STMO*
 
 **Michiel Stock**
-
-![](https://github.com/MichielStock/STMO/blob/master/chapters/07.MST/Figures/logo.png?raw=true)
 """
 
-# ╔═╡ 2eb01866-ce3a-4866-bfcf-155489efa173
-md"In this chapter, we will introduce minimization problems on graphs. We will study an elementary problem in computer science: finding the *minimum spanning tree* (MST). The minimum spanning tree has plenty of real-world applications, such as designing computer-, telecommunication- or other supply networks, computer graphics, and bioinformatics. Interestingly, there are efficient algorithms that can find the minimum spanning tree for even huge problems! Along our way, we will also be getting acquainted with some new types of data structures other than simple matrices.
-"
+# ╔═╡ b4977f9f-2bcc-405f-b875-99cde2ccb77d
+md"## Dijkstra's shortest path algorithm
 
-# ╔═╡ e6cc2cc2-af23-4676-8422-cc3ddd964034
-md"
-## Graphs in Julia
+Dijkstra's algorithm is a popular algorithm to find the shortest path between the nodes of a graph. The algorithm can be used in two ways:
 
-Graphs are principal tools in computer science. Most programming languages provide interfaces for graphs; Julia is no exception. A simple package for working with is [`LightGraphs.jl`](https://github.com/JuliaGraphs/LightGraphs.jl). In this course, we will limit ourselves to using the basic data structures provided by these languages, arrays, sets, and dictionaries. The type system allows us to formally encode how we will represent graph structures.
-"
+- when both a source and a sink node are provided, the algorithm gives the list of nodes of the shortest path, together with the length (distance of the path).
+- when only a source is given, the shortest distance between the source and all (accessable) nodes is returned together with a dictionary representing the tree of the shortest paths between the source and other nodes.
 
-# ╔═╡ 0cb7f29e-17f8-4234-9c08-7b17a7cd5acf
-EdgeList{T} = Array{Tuple{T,T},1}
+The pseudocode can be found below."
 
-# ╔═╡ 34e3960e-52f3-48e0-b8a8-4b739aa1005f
-WeightedEdgeList{R,T} = Array{Tuple{R,T,T},1}
-
-# ╔═╡ 447d22ff-89b1-4b1c-ad7c-6be373367108
-Vertices{T} = Array{T,1}
-
-# ╔═╡ c99e1156-1f0d-479c-bd54-9dd3aaa936b3
-AdjList{R,T} = Dict{T,Array{Tuple{R,T},1}}
-
-# ╔═╡ 3fef1399-0d42-4785-91cd-8db2b67fbee6
-md""""
-Don't worry if you don't fully understand the above. It makes use of the type system and it allows us to use dispatch to select the best function.
-
-Consider the following example graph:
-
-![A small example to show how to implement graphs in Julia.](https://github.com/MichielStock/STMO/blob/master/chapters/07.MST/Figures/graph.png?raw=true)
-
-This graph can be represented using an *adjacency list*. We do this using a `Dict`. Every vertex is a key with the adjacent vertices given as a `set` containing tuples `(weight, neighbor)`. The weight is first because this makes it easy to compare the weights of two edges. Note that for every ingoing edge, there is also an outgoing edge, this is an undirected graph.
-"""
-
-# ╔═╡ 63ebac28-66a7-4e7c-8576-1e96bb0df0fa
-graph = Dict(
-    'A' => [(2, 'B'), (3, 'D')],
-    'B' => [(2, 'A'), (1, 'C'), (2, 'E')],
-    'C' => [(1, 'B'), (2, 'D'), (1, 'E')],
-    'D' => [(2, 'C'), (3, 'A'), (3, 'E')],
-    'E' => [(2, 'B'), (1, 'C'), (3, 'D')]
-)
-
-# ╔═╡ 8c25749b-8fec-4404-bc1b-b2e15edd4d58
-graph isa AdjList
-
-# ╔═╡ 675e5833-081e-429d-9ae6-adc51c62e2bf
-md"Sometimes we will use an *edge list*, i.e., a list of (weighted) edges. The edge list is often a more compact way of storing a graph. We show the edge list for the example graph below. Note that again every edge is double: we include an in- and outgoing edge."
-
-# ╔═╡ 1f8aa16e-9a2a-41de-a6e6-3a5b37121e18
-edges = [
- (2, 'B', 'A'),
- (3, 'D', 'A'),
- (2, 'C', 'D'),
- (3, 'A', 'D'),
- (3, 'E', 'D'),
- (2, 'B', 'E'),
- (3, 'D', 'E'),
- (1, 'C', 'E'),
- (2, 'E', 'B'),
- (2, 'A', 'B'),
- (1, 'C', 'B'),
- (1, 'E', 'C'),
- (1, 'B', 'C'),
- (2, 'D', 'C')];
-
-# ╔═╡ d0be86e9-0cdb-4dbd-b6dd-536c921ea56d
+# ╔═╡ 2492a904-77da-4a36-baf4-65d40aa89d74
 md"""
-## Some useful data structures
-
-### Disjoint-set data structure
-
-Implementing an algorithm for finding the minimum spanning tree is reasonably straightforward. The only bottleneck is that the algorithm requires the disjoint-set data structure to keep track of a set partitioned in several disjoined subsets.
-
-For example, consider the following initial set of eight elements.
-
-![](https://github.com/MichielStock/STMO/blob/master/chapters/07.MST/Figures/disjointset1.png?raw=true)
-
-We decide to group elements A, B, and C together in a subset and F and G in another subset.
-
-![](https://github.com/MichielStock/STMO/blob/master/chapters/07.MST/Figures/disjointset2.png?raw=true)
-
-The disjoint-set data structure supports the following operations:
-
-- **Find**: check which subset an element is in. Is typically used to check whether two objects are in the same subset;
-- **Union** merges two subsets into a single subset.
-
-A Julia implementation of a disjoint-set is available in the `DataStructures` library. The function `DisjointSets` turns a list in a union set forest. The function `union!` will merge the sets of two elements while `in_same_set` can be used to check whether two items are in the same set. A simple example will make everything clear!
-
+### Pseudocode of Dijkstra's shortest path algorithm
+Source: Wikipedia.org
+```
+1  function Dijkstra(Graph, source, sink (optional)):
+2      distance[source] := 0  // initialize a dictionary with distance
+3                             // to source
+4      for each vertex V in Graph:
+5          if V ≠ source
+6              distance[V] := infinity
+7      previous := empty dict   // stores the previous node in path
+8
+10     make empty priority queue Q for vertices to check
+11     Q.add_with_priority(source, 0)  # first check the source
+12
+13
+14     while Q is not empty:                     // The main loop
+15         get node U with smallest distance from Q
+16         if U is the sink (if provided)
+17              break the loop
+17         for every neighbor V of U:
+18             alternative := distance[U] + dist(U, V)
+18             if alternative < distance[V]
+19                 distance[V] := alternative
+20                 previous[V] := U
+21                 Q.add_with_priority(V, alternative)
+22
+23     if sink is given
+24         reconstruct shortest path
+25         return shortest path and length of path
+26     else
+27         return distance, previous
+```
 """
 
-# ╔═╡ 27c15a60-e6b2-4cf4-86e9-ee7bbfce4abc
-animals = ["mouse", "bat", "robin", "trout", "seagull", "hummingbird",
-           "salmon", "goldfish", "hippopotamus", "whale", "sparrow"]
+# ╔═╡ 194250f8-c94d-4732-b179-0ebead51110b
+md"""
+### Pseudocode of path reconstruction  algorithm
+```
+1 function reconstruct_path(previous, source, sink)
+2    if the source is not in previous
+3          return empty path
+4    V := sink   \\ path is reconstructed backwards
+5    path := [V]  \\ path is a list of nodes
+6    while V is not source
+7         V := previous node in path
+8         add V in beginning of the path
+9    return the path
+```
+"""
 
-# ╔═╡ 906c4cef-639c-46b0-950e-f0b113ca6bed
-union_set_forest = DisjointSets(animals)
+# ╔═╡ 40b7b2f4-ec2b-4b89-b2f0-adc368ee15bc
+"""
+    reconstruct_path(previous::Dict{T,T}, source::T, sink::T) where {T}
 
-# ╔═╡ 2f70b1f4-b494-4d91-ade9-3164ee7b3e4a
-md"Let us do some operations on the USF!"
+Reconstruct the path from the output of the Dijkstra algorithm.
 
-# ╔═╡ 4984d6c4-94c2-470a-90f9-90873e2e65df
-begin
-	# group mammals together
-	union!(union_set_forest, "mouse", "bat")
-	union!(union_set_forest, "mouse", "hippopotamus")
-	union!(union_set_forest, "whale", "bat")
-	
-	# group birds together
-	union!(union_set_forest, "robin", "seagull")
-	union!(union_set_forest, "seagull", "sparrow")
-	union!(union_set_forest, "seagull", "hummingbird")
-	union!(union_set_forest, "robin", "hummingbird")
-	
-	# group fishes together
-	union!(union_set_forest, "goldfish", "salmon")
-	union!(union_set_forest, "trout", "salmon")
+Inputs:
+        - previous : a Dict with the previous node in the path
+        - source : the source node
+        - sink : the sink node
+Ouput:
+        - the shortest path from source to sink
+"""
+function reconstruct_path(previous::Dict{T,T}, source::T, sink::T) where {T}
+    path = T[sink]
+    missing
+    return missing
 end
 
-# ╔═╡ 21dae9d6-1ef9-4213-b7ed-6a4f98336c16
-# mouse and whale in same subset?
-in_same_set(union_set_forest, "mouse", "whale")
-
-# ╔═╡ a61124a5-33e8-4b8f-bdf0-53417adb99ca
-# mouse and whale in same subset?
-in_same_set(union_set_forest, "robin", "salmon")
-
-# ╔═╡ 7d451006-6199-478b-83d6-e3432d5eee6d
+# ╔═╡ 67729a4c-df55-4fdb-8962-25b133eaaaf5
 md"""
-### Heap queue
 
-One can use a heap queue to find the minimum of a changing list without having to sort the list every update. Heaps are also implemented in `DataStructures`. The function `heapify!` will rearrange a list to satisisfy the heap property. `heappop!` and `heappush!` can be used to extract, resp. add, elements while maintaining the heap property.
+**Assignment 1: Dijkstra**
+
+1. Complete the implementation for Dijstra's algorithm and the path reconstruction function
+2. Find the shortest path from node A to I in the example graph below.
+3. Find the shortest path from Portland to Nashville on the Ticket to Ride graph.
+3. (optional, medium hard) Modify `dijkstra` such that the sink is optional. When no sink is given, the dictionary `previous` (where `previous[u] = v` indicates that the shortest path from `v` is via `u`) and `distances`, a dictionary containing the minimal distance from every node to the sink.
+
+![Example network](https://github.com/MichielStock/STMO/blob/master/chapters/08.ShortestPath/Figures/example_graph.png?raw=true)
 """
 
-# ╔═╡ 32fb96a6-9a1f-4e53-b618-a63440c3231f
-heap = [(5, 'A'), (3, 'B'), (2, 'C'), (7, 'D')]
+# ╔═╡ a47b09eb-7441-4441-98de-d48111e172a7
+# the above graph as an adjacency list
+graph = Dict('A' => [(2, 'B'), (3, 'D')],
+        'B' => [(1, 'C'), (5, 'E')],
+        'C' => [(2, 'D'), (1, 'E')],
+        'D' => [(3, 'E')],
+        'E' => [(2, 'B'), (3, 'F')],
+        'F' => [(5, 'G'), (8, 'I')],
+        'G' => [(2, 'H'), (5, 'I')],
+        'H' => [(3, 'I')],
+        'I' => [(7, 'G')]);
 
-# ╔═╡ feed3e33-b48a-45ca-9786-95c52a1601c8
-md"Turn a list into a heap:"
+# ╔═╡ c12360cc-5208-417c-9003-5ce1308e8081
+# find the shortest path
 
-# ╔═╡ 8ff87d66-1cf7-4b0d-a0e8-dc2eb15c3a16
-heapify!(heap)
+# ╔═╡ 47e0c111-83c1-4c3f-b293-a337b19feee9
 
-# ╔═╡ e270de77-8537-49ae-b1bf-c986d054afe7
-md"Return item lowest value while retaining heap property:"
 
-# ╔═╡ 5658dee9-65e0-4fb8-9584-a5090d207bed
-heappop!(heap)
-
-# ╔═╡ c668a422-3aa1-4061-9f05-af4f09188470
-heap
-
-# ╔═╡ cffe5be7-bf2e-4d97-8ac6-2d0ce30bab9a
-md"Add new item and retain heap property:"
-
-# ╔═╡ 13f2f4d8-6afb-454f-b8d9-fb15dbed0200
-heappush!(heap, (4, 'E'))
-
-# ╔═╡ 9645b70d-06ce-4b2c-a980-2ba9e3068799
+# ╔═╡ a7cb520d-d221-45e9-83ac-e1927aafd0ab
 md"""
-## Two algorithms for finding minimum spanning trees
+## A* shortest path algorithm
 
-### Prim's algorithm
+It is hard to explain the algorithm into more depth than [here](http://theory.stanford.edu/~amitp/GameProgramming/) and [here](http://www.redblobgames.com/pathfinding/a-star/introduction.html).
 
-Prim's algorithm starts with a single vertex and adds $|V|-1$ edges to it, always taking the next edge with a minimal weight that connects a vertex on the MST to a vertex not yet in the MST. Complete the code below.
+The A\* algorithm is exact (like Dijkstra's algorithm), but it can also use a **heuristic** to speed up the search. In each iteration, the next neighbor $v$ of the current vertex that the algorithm considers is chosen based on the heuristic
+
+$$f(v) = g(v) + h(v)$$
+
+with $g(v)$ the cost of the path so far and $h(v)$ a heuristic that estimates the cost of the cost of the shortest path from $v$ to the goal. The heuristic $h(v)$ should satify two properties:
+1. To guaranty that a shortest path is found, the heuristic should be **admissible**, i.e. it should never overestimate the true distance to goal.
+2. Evaluating the heuristic should be cheap (it is either pre-computed or is a function).
+
+So the A\* algorithm is basically the same as Dijkstra's algorithm, but with the main difference that the the latter chooses nodes to explore based on the distance from the starting node, while the latter chooses nodes **based on an estimate of distance to the goal**.
+
+When using A\* to find the shortest path between two physical locations, each vertex corresponds to a point in space. A good heuristic is the (Euclidian) distance between the vertexs, as this will always be a lower bound for the actual distance to travel to the goal.
+
+Consider the following example of finding the path from vertex $a$ to vertex $h$.
+
+![Example how A\* uses the heuristics](https://github.com/MichielStock/STMO/blob/master/chapters/08.ShortestPath/Figures/astarexample.png?raw=true)
+
+The shortest path so far is $[a, e]$ and the algorithm needs to choose to explore vertex $d$ or vertex $g$. Since the path of $ed$ is shorter than the path $eg$, Dijkstra will choose this vertex, even though it is farther removed from the goal $h$ (Dijkstra chooses a neighbor $n$ only based on the current path length form the starting vertex $g(n)$. The A\* algorithm will chose vertex $g$ to explore, because the estimated path length $f(e) = g(e) + h(e) > f(d)$ and hence will approach the goal.
 """
 
-# ╔═╡ f7adca17-925c-4ee5-ad93-8d2b27c3157c
+# ╔═╡ a2906480-383f-4456-9a80-04d172f85c41
 md"""
-### Kruskal's algorithm
-
-
-Kruskal's algorithm is a straightforward algorithm to find the minimum spanning tree. The main idea is to start with an initial 'forest' of the individual nodes of the graph. In each step of the algorithm, we add an edge with the smallest possible value that connects two disjoint trees in the forest. This process is continued until we have a single tree, which is a minimum spanning tree, or until all edges are considered. In the latter case, the algorithm returns a minimum spanning forest.
+### Pseudocode of A\* shortest path algorithm
+Source from Wikipedia (modified)
+```
+1  function Astar(Graph, source, sink, heuristic):
+2      make empty priority queue Q for vertices to check
+3
+4      add source to Q with priority f(source)
+5          // use the estimated path length for priority
+6
+7      distance[V] := 0   // initialize a dictionary with distance
+8                           // to source
+9      previous := empty dict   // stores the previous node in path
+10
+11     while Q is not empty:                     // The main loop
+12         pop node U with lowest estimated path length to sink
+13         if U is the sink
+14              break the loop
+15         for every neighbor V of U:
+16             distance_source_U := distance[U] + dist(U, V)
+17             if V not in distance or distance_source_U < distance[V]
+18                 distance[V] := distance_source_U
+19                 previous[V] := U
+20                 heuristic_V_sink := distance[V] + heuristic(V)
+21                 Q.add_with_priority(V, heuristic_V_sink)
+22
+23     reconstruct shortest path
+24     return shortest path and length of path
+```
 """
 
-# ╔═╡ 1f49a5fa-8232-4901-88bb-9ffa382e5fc1
-"""
-    kruskal(vertices, edges)
-
-Kruskal's algorithm for finding the minimum spanning tree. Inputs the vertices
-(`vertices`) and a list of weighted edges (`vertices`).
-"""
-function kruskal(vertices, edges)
-    missing  # complete this
-    return mst_edges, cost
-end
-
-# ╔═╡ a44b2f20-98a6-4162-b48c-2725b3663e69
+# ╔═╡ f8bc5419-054e-4b8f-807e-b594784661f6
 md"""
-## Ticket to ride
+**Assignment 2: A**\*
 
-As an illustration, we provide the graph of the famous boardgame *Ticket To Ride* (USA version). The goal of this game is to connect two cities on a map by placing a number of trains between them. Let's load the graph!
+1. Complete the implementation for the A\* algorithm.
+2. Compute the shortest path between Portland to Nashville. The function `tickettoride_dist` returns the shortest distance (as the bird flies) between two cities.
+3. Compare running time of the two shortest path algorithms using `@time`.
 """
 
-# ╔═╡ d2c92e1d-a3cb-4070-8f2c-cf01e943ad45
-md"The weighted edges. The weight represents the connection cost."
-
-# ╔═╡ cda14c79-7a39-4ef5-8c59-1dd2f0fac202
-md"Let us plot this graph. We also have the coordinates of the cities in `cities_coordinates`. It is not needed to find the MST, but can help us make a draw a map of the USA."
-
-# ╔═╡ 44609196-e3f2-446b-9ca9-d8741c43fb05
-md"Your turn! Use the functions above to find a minimal spanning tree for this graph."
-
-# ╔═╡ f25d22aa-287e-42d9-8631-1b17926835be
+# ╔═╡ 74b62c2b-58b5-4c37-9399-266855086f9b
 
 
-# ╔═╡ f50f0928-7598-4e36-9a65-876a42b8982e
+# ╔═╡ 54b185a7-7b4e-4756-9663-db0b6419de27
+md"""
+## Word problem
+
+Let us use shortest path for some word problems? What is the shortest chain from one word to another if you can only change 5 letters at a time? We will explore this on all words of length 12.
+"""
+
+# ╔═╡ db00faa4-1d04-47aa-a062-4cf9b8cbe208
+words12 = getwords(12)
+
+# ╔═╡ fddb2f51-e5dc-47eb-81d9-9485435c60ea
+md"We have the function `hamming` to compute the hamming distance between two stings."
+
+# ╔═╡ 6a1dae01-b78b-4e8b-9a4d-d20bc6a025a5
+w1, w2 = rand(words12, 2)
+
+# ╔═╡ 4a867566-14eb-4d8a-ae17-a267054840fd
+hamming(w1, w2)
+
+# ╔═╡ cf659c75-b8b9-488d-b937-36ea1e0cadbe
+md"We can compute the weighted graph where two words are connected if they have a Hamming distance of at most 5."
+
+# ╔═╡ 94a53663-6dba-4e9b-8c30-bc1f2be3a43e
+words_edges = getwordedges(words12, cutoff=5);
+
+# ╔═╡ 9fd3c33d-275d-420b-a03b-8ceb81a56ad3
+md"""
+**Assignment 3: word salad**
+
+1. Use Dijkstra and A* to find the distance between two randomly chosen words.
+2. Can you find the longest word chain?
+"""
+
+# ╔═╡ 9d467594-8a33-4e1d-a272-744379bf2722
 
 
-# ╔═╡ d16daa50-aff5-447c-8aaf-18da9b57301d
+# ╔═╡ 63e2620a-6897-4664-81e3-479a7a5af9ff
+
+
+# ╔═╡ eb9dfc6d-b9d8-4771-9b71-e4d0fba38cb7
 md"## Appendix"
 
-# ╔═╡ 454fcd33-52c0-48d8-ba15-ffb5b0249ac4
+# ╔═╡ 89941271-8a9d-4e1c-94b0-77b35ebd8816
 begin
 	myblue = "#304da5"
 	mygreen = "#2a9d8f"
@@ -387,103 +428,7 @@ begin
 	mycolors = [myblue, myred, mygreen, myorange, myyellow]
 end;
 
-# ╔═╡ bbc8bc84-98db-4b0d-b50a-182ed6208027
-md"## Some helpful graph functions"
-
-# ╔═╡ 48fbc53f-4a01-4996-9761-063b5a5c8aa5
-"""
-Turns a list of weighted edges in an adjacency matrix (implemented as a Dict).
-If the keyword `double` is set to `true`, every edge is added twice: `(w, u, v)`
-and `(w, v, u)`. This is the default behaviour.
-"""
-function edges2adjlist(edges::WeightedEdgeList{R,T}; double=true) where {R<:Real,T}
-    adjlist = AdjList{R,T}()
-    for (w, i, j) in edges
-        if !haskey(adjlist, i); adjlist[i] = [] end
-        if !haskey(adjlist, j); adjlist[j] = [] end
-        push!(adjlist[i], (w, j))
-        double && push!(adjlist[j], (w, i))
-    end
-    return adjlist
-end
-
-# ╔═╡ 2e058829-0102-494c-a6b2-2ce708d404f4
-"""
-    prim(vertices, edges, start)
-
-Prim's algorithm for finding the minimum spanning tree. Inputs the vertices
-(`vertices`), a list of weighted edges (`vertices`), and a starting vertex (`start`).
-By default, as random starting vertex will be chosen.
-"""
-function prim(vertices, edges, start=rand(vertices))
-    u = start
-    adjlist = edges2adjlist(edges)
-    missing  # complete this
-    return mst_edges, cost
-end
-
-# ╔═╡ c863a3d0-e09b-4cc8-8b32-1b66a7ca78ec
-"""
-Turns an adjacency list (implemented as a Dict) into an edge list.
-"""
-adjlist2edges(adjlist::AdjList{R,T}) where {R<:Real, T} =
-            [(w, v, n) for (v, neighbors) in adjlist for (w, n) in neighbors]
-
-# ╔═╡ ca9c8c66-99bb-406b-b41b-e237f69642fb
-adjlist2edges(graph)
-
-# ╔═╡ e294887b-e9d6-41fb-91e7-61e564c18745
-"""
-Returns the number of vertices in a graph.
-"""
-nvertices(adjlist::AdjList) = length(adjlist)
-
-# ╔═╡ 5f52d1af-6866-4c51-9eb2-a8eb7e0043d9
-"""
-Returns the vertices of a graph.
-"""
-vertices(adjlist::AdjList) = Set(keys(adjlist))
-
-# ╔═╡ 1b0b424e-1abe-4391-bc36-7d262ff9eaf9
-"""
-Returns the vertices of a graph.
-"""
-function vertices(edgelist::WeightedEdgeList{R,T}) where {R<:Real,T}
-    vertices = Set{T}()
-    for (w, u, v) in edgelist
-        push!(vertices, u)
-        push!(vertices, v)
-    end
-    return vertices
-end
-
-# ╔═╡ 9d9b793c-71db-4273-b452-89f5ff937581
-"""
-Returns the number of vertices in a graph.
-"""
-nvertices(edgelist::WeightedEdgeList) = length(vertices(edgelist))
-
-# ╔═╡ 5f70891f-c990-44f1-9092-fc134d2903b5
-function isconnected(adjlist::AdjList{R,T}) where {R<:Real, T}
-    visited = Set{T}()
-    to_explore = [first(keys(adjlist))]
-    while length(to_explore) > 0
-        u = pop!(to_explore)
-        push!(visited, u)
-        for (w, n) in adjlist[u]
-            n ∉ visited && push!(to_explore, n)
-        end
-    end
-    return length(visited) == nvertices(adjlist)
-end
-
-# ╔═╡ ccba1495-d81d-4414-8a0a-dcd027ec34fd
-isconnected(edges::WeightedEdgeList) = isconnected(edges2adjlist(edges))
-
-# ╔═╡ d5cca937-ffbc-4d78-853b-1379b92b91c2
-md"## Data"
-
-# ╔═╡ 4013f2d2-7324-46c8-a186-46d2855237ee
+# ╔═╡ ecde4baa-0aff-434c-b34a-59b0938a100f
 const tickettoride_edges = [(1, "Vancouver", "Seattle"),
           (1, "Seattle", "Portland"),
           (3, "Vancouver", "Calgary"),
@@ -564,10 +509,7 @@ const tickettoride_edges = [(1, "Vancouver", "Seattle"),
           (4, "Charleston", "Miami")
           ]
 
-# ╔═╡ 13b9dc04-a1ce-4aaf-8a14-f92a7c6b5da7
-tickettoride_edges
-
-# ╔═╡ 1935b2b0-84c7-4e7c-80f1-e331776a3836
+# ╔═╡ 30651af8-ad5d-4cd2-89be-8283d381da5b
 const cities_coordinates = Dict("Atlanta" => (-84.3901849, 33.7490987),
                                "Boston" => (-71.0595678, 42.3604823),
                                "Calgary" => (-114.0625892, 51.0534234),
@@ -605,7 +547,7 @@ const cities_coordinates = Dict("Atlanta" => (-84.3901849, 33.7490987),
                                "Washington" => (-77.0366456, 38.8949549),
                                "Winnipeg" => (-97.168579, 49.884017))
 
-# ╔═╡ ad534796-d5a1-4c45-b362-68754db23d85
+# ╔═╡ 1e332d32-7846-4bdb-935e-505dd290e1f0
 begin
 	p = plot(xaxis="longitude", yaxis="lattitude")
 
@@ -626,30 +568,113 @@ begin
 	p
 end
 
-# ╔═╡ c7b00672-4602-4452-a8af-a4918f4a30dc
+# ╔═╡ d69435c1-c19a-4a94-8778-cea2ffcdfaa6
 const cities = [k for k in keys(cities_coordinates)]
 
-# ╔═╡ 66f7ec1d-a5a8-41df-b64e-80634747b7a3
-cities
-
-# ╔═╡ 0cf0cb00-7007-42be-a5b7-f06f6c6f3992
+# ╔═╡ 8c64f65f-b610-40b5-b9a1-6abb39a6f0bb
 tickettoride_dist(c1, c2) = sqrt(sum((cities_coordinates[c1] .- cities_coordinates[c2]).^2))
 
-# ╔═╡ 3c932fb9-8667-475c-841f-2a4d4aa4c3ae
+# ╔═╡ 76b4809a-3fed-4bea-bfe8-66582cbb3fc9
 tickettoride_edges_dists = [(tickettoride_dist(u, v), u, v) for (w, u, v) in tickettoride_edges]
 
-# ╔═╡ b2371496-9da4-4c59-8efe-828844bc91a3
+# ╔═╡ 427428ab-1978-4317-86f3-ea211141e52f
+WeightedEdgeList{R,T} = Array{Tuple{R,T,T},1}
+
+# ╔═╡ 9d754d22-2a09-4458-8fa0-589ae4f75d76
+AdjList{R,T} = Dict{T,Array{Tuple{R,T},1}}
+
+# ╔═╡ 38cb6e91-b7bb-4000-b883-f24c17ad827a
+"""
+    dijkstra(graph::AdjList{R,T}, source::T, sink::T) where {R<:Real,T}
+
+Dijkstra's shortest path algorithm.
+
+Inputs:
+    - `graph` : adjacency list representing a weighted directed graph
+    - `source` : node to start with
+	- `sink` : node to end with
+
+Outputs:
+    - the shortest path
+    - the cost of this shortest path
+"""
+function dijkstra(graph::AdjList{R,T}, source::T, sink) where {R<:Real,T}
+    # initialize the tentative distances
+    distances = Dict(v => Inf for v in keys(graph))
+    #distances[source] = missing
+    return missing
+end
+
+# ╔═╡ 6b6ede88-b4b8-4dc7-8f27-bc2228512e22
+dijkstra(graph, 'A', 'I')
+
+# ╔═╡ 0c280cb9-9f30-4570-91a1-19538b56f957
+"""
+    a_star(graph::AdjList{R,T}, source::T, sink::T, heuristic) where {R<:Real,T}
+
+A* shortest path algorithm.
+
+Inputs:
+    - `graph` : adjacency list representing a weighted directed graph
+    - `source`
+    - `sink`
+    - `heuristic` : a function that inputs a node and returns an lower bound
+            for the distance to the source. Note that a distance can be turned into
+            a heuristic using `n -> d(n, sink)`
+
+Outputs:
+    - the shortest path
+    - the cost of this shortest path
+"""
+function a_star(graph::AdjList{R,T}, source::T, sink::T, heuristic) where {R<:Real,T}
+    # initialize the tentative distances
+    distances = Dict(v => Inf for v in keys(graph))
+    missing
+    while missing
+        missing
+	end
+	return missing
+end
+
+# ╔═╡ 7654100f-86ca-481f-bfb7-bc9b9ee20639
+"""
+Turns a list of weighted edges in an adjacency matrix (implemented as a Dict).
+If the keyword `double` is set to `true`, every edge is added twice: `(w, u, v)`
+and `(w, v, u)`. This is the default behaviour.
+"""
+function edges2adjlist(edges::WeightedEdgeList{R,T}; double=true) where {R<:Real,T}
+    adjlist = AdjList{R,T}()
+    for (w, i, j) in edges
+        if !haskey(adjlist, i); adjlist[i] = [] end
+        if !haskey(adjlist, j); adjlist[j] = [] end
+        push!(adjlist[i], (w, j))
+        double && push!(adjlist[j], (w, i))
+    end
+    return adjlist
+end
+
+# ╔═╡ 1a2a55a5-424c-4522-a4bd-9c657f9f8565
+words_graph = edges2adjlist(words_edges)
+
+# ╔═╡ 80c1d9d2-f8d7-4a16-90a3-a0af2ce96ced
 const tickettoride_graph = edges2adjlist(tickettoride_edges_dists)
+
+# ╔═╡ a130184f-06af-4767-ad6a-d8d8c1bbf6ca
+tickettoride_graph
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
+HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 
 [compat]
 DataStructures = "~0.18.10"
-Plots = "~1.22.1"
+HTTP = "~0.9.14"
+Plots = "~1.22.2"
+PlutoUI = "~0.7.11"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -703,9 +728,9 @@ version = "0.12.8"
 
 [[Compat]]
 deps = ["Base64", "Dates", "DelimitedFiles", "Distributed", "InteractiveUtils", "LibGit2", "Libdl", "LinearAlgebra", "Markdown", "Mmap", "Pkg", "Printf", "REPL", "Random", "SHA", "Serialization", "SharedArrays", "Sockets", "SparseArrays", "Statistics", "Test", "UUIDs", "Unicode"]
-git-tree-sha1 = "4866e381721b30fac8dda4c8cb1d9db45c8d2994"
+git-tree-sha1 = "31d0151f5716b655421d9d75b7fa74cc4e744df2"
 uuid = "34da2185-b29b-5c13-b0c7-acf172513d20"
-version = "3.37.0"
+version = "3.39.0"
 
 [[CompilerSupportLibraries_jll]]
 deps = ["Artifacts", "Libdl"]
@@ -861,6 +886,17 @@ deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll",
 git-tree-sha1 = "8a954fed8ac097d5be04921d595f741115c1b2ad"
 uuid = "2e76f6c2-a576-52d4-95c1-20adfe4de566"
 version = "2.8.1+0"
+
+[[HypertextLiteral]]
+git-tree-sha1 = "72053798e1be56026b81d4e2682dbe58922e5ec9"
+uuid = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
+version = "0.9.0"
+
+[[IOCapture]]
+deps = ["Logging", "Random"]
+git-tree-sha1 = "f7be53659ab06ddc986428d3a9dcc95f6fa6705a"
+uuid = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
+version = "0.2.2"
 
 [[IniFile]]
 deps = ["Test"]
@@ -1073,9 +1109,9 @@ version = "8.44.0+0"
 
 [[Parsers]]
 deps = ["Dates"]
-git-tree-sha1 = "438d35d2d95ae2c5e8780b330592b6de8494e779"
+git-tree-sha1 = "9d8c00ef7a8d110787ff6f170579846f776133a9"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "2.0.3"
+version = "2.0.4"
 
 [[Pixman_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1101,9 +1137,15 @@ version = "1.0.14"
 
 [[Plots]]
 deps = ["Base64", "Contour", "Dates", "Downloads", "FFMPEG", "FixedPointNumbers", "GR", "GeometryBasics", "JSON", "Latexify", "LinearAlgebra", "Measures", "NaNMath", "PlotThemes", "PlotUtils", "Printf", "REPL", "Random", "RecipesBase", "RecipesPipeline", "Reexport", "Requires", "Scratch", "Showoff", "SparseArrays", "Statistics", "StatsBase", "UUIDs"]
-git-tree-sha1 = "4c2637482176b1c2fb99af4d83cb2ff0328fc33c"
+git-tree-sha1 = "457b13497a3ea4deb33d273a6a5ea15c25c0ebd9"
 uuid = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
-version = "1.22.1"
+version = "1.22.2"
+
+[[PlutoUI]]
+deps = ["Base64", "Dates", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "UUIDs"]
+git-tree-sha1 = "0c3e067931708fa5641247affc1a1aceb53fff06"
+uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+version = "0.7.11"
 
 [[Preferences]]
 deps = ["TOML"]
@@ -1461,67 +1503,48 @@ version = "0.9.1+5"
 """
 
 # ╔═╡ Cell order:
-# ╟─cc4ba764-1c81-11ec-25ba-bbe4fc081aaa
-# ╠═be17c905-4bc7-4e1a-8132-3c0626fd4e08
-# ╟─2eb01866-ce3a-4866-bfcf-155489efa173
-# ╟─e6cc2cc2-af23-4676-8422-cc3ddd964034
-# ╠═0cb7f29e-17f8-4234-9c08-7b17a7cd5acf
-# ╠═34e3960e-52f3-48e0-b8a8-4b739aa1005f
-# ╠═447d22ff-89b1-4b1c-ad7c-6be373367108
-# ╠═c99e1156-1f0d-479c-bd54-9dd3aaa936b3
-# ╟─3fef1399-0d42-4785-91cd-8db2b67fbee6
-# ╠═63ebac28-66a7-4e7c-8576-1e96bb0df0fa
-# ╠═8c25749b-8fec-4404-bc1b-b2e15edd4d58
-# ╟─675e5833-081e-429d-9ae6-adc51c62e2bf
-# ╠═1f8aa16e-9a2a-41de-a6e6-3a5b37121e18
-# ╠═ca9c8c66-99bb-406b-b41b-e237f69642fb
-# ╟─d0be86e9-0cdb-4dbd-b6dd-536c921ea56d
-# ╠═27c15a60-e6b2-4cf4-86e9-ee7bbfce4abc
-# ╠═906c4cef-639c-46b0-950e-f0b113ca6bed
-# ╠═2f70b1f4-b494-4d91-ade9-3164ee7b3e4a
-# ╠═4984d6c4-94c2-470a-90f9-90873e2e65df
-# ╠═21dae9d6-1ef9-4213-b7ed-6a4f98336c16
-# ╠═a61124a5-33e8-4b8f-bdf0-53417adb99ca
-# ╟─7d451006-6199-478b-83d6-e3432d5eee6d
-# ╠═32fb96a6-9a1f-4e53-b618-a63440c3231f
-# ╟─feed3e33-b48a-45ca-9786-95c52a1601c8
-# ╠═8ff87d66-1cf7-4b0d-a0e8-dc2eb15c3a16
-# ╟─e270de77-8537-49ae-b1bf-c986d054afe7
-# ╠═5658dee9-65e0-4fb8-9584-a5090d207bed
-# ╠═c668a422-3aa1-4061-9f05-af4f09188470
-# ╟─cffe5be7-bf2e-4d97-8ac6-2d0ce30bab9a
-# ╠═13f2f4d8-6afb-454f-b8d9-fb15dbed0200
-# ╟─9645b70d-06ce-4b2c-a980-2ba9e3068799
-# ╟─2e058829-0102-494c-a6b2-2ce708d404f4
-# ╟─f7adca17-925c-4ee5-ad93-8d2b27c3157c
-# ╠═1f49a5fa-8232-4901-88bb-9ffa382e5fc1
-# ╟─a44b2f20-98a6-4162-b48c-2725b3663e69
-# ╠═66f7ec1d-a5a8-41df-b64e-80634747b7a3
-# ╟─d2c92e1d-a3cb-4070-8f2c-cf01e943ad45
-# ╠═13b9dc04-a1ce-4aaf-8a14-f92a7c6b5da7
-# ╟─cda14c79-7a39-4ef5-8c59-1dd2f0fac202
-# ╟─ad534796-d5a1-4c45-b362-68754db23d85
-# ╟─44609196-e3f2-446b-9ca9-d8741c43fb05
-# ╠═f25d22aa-287e-42d9-8631-1b17926835be
-# ╠═f50f0928-7598-4e36-9a65-876a42b8982e
-# ╟─d16daa50-aff5-447c-8aaf-18da9b57301d
-# ╟─454fcd33-52c0-48d8-ba15-ffb5b0249ac4
-# ╟─bbc8bc84-98db-4b0d-b50a-182ed6208027
-# ╠═48fbc53f-4a01-4996-9761-063b5a5c8aa5
-# ╠═c863a3d0-e09b-4cc8-8b32-1b66a7ca78ec
-# ╠═e294887b-e9d6-41fb-91e7-61e564c18745
-# ╠═5f52d1af-6866-4c51-9eb2-a8eb7e0043d9
-# ╠═1b0b424e-1abe-4391-bc36-7d262ff9eaf9
-# ╠═9d9b793c-71db-4273-b452-89f5ff937581
-# ╠═5f70891f-c990-44f1-9092-fc134d2903b5
-# ╠═ccba1495-d81d-4414-8a0a-dcd027ec34fd
-# ╟─d5cca937-ffbc-4d78-853b-1379b92b91c2
-# ╟─4013f2d2-7324-46c8-a186-46d2855237ee
-# ╟─1935b2b0-84c7-4e7c-80f1-e331776a3836
-# ╟─c7b00672-4602-4452-a8af-a4918f4a30dc
-# ╟─0cf0cb00-7007-42be-a5b7-f06f6c6f3992
-# ╟─3c932fb9-8667-475c-841f-2a4d4aa4c3ae
-# ╟─b2371496-9da4-4c59-8efe-828844bc91a3
-# ╟─bf1571b3-9840-4bb0-a623-ccc53b49c177
+# ╟─2ab0b80e-1e02-11ec-1596-8bd8e81d347c
+# ╠═b0020dc0-78a7-483f-877f-719f42b0c044
+# ╟─b4977f9f-2bcc-405f-b875-99cde2ccb77d
+# ╟─2492a904-77da-4a36-baf4-65d40aa89d74
+# ╟─194250f8-c94d-4732-b179-0ebead51110b
+# ╠═38cb6e91-b7bb-4000-b883-f24c17ad827a
+# ╠═40b7b2f4-ec2b-4b89-b2f0-adc368ee15bc
+# ╟─67729a4c-df55-4fdb-8962-25b133eaaaf5
+# ╠═a47b09eb-7441-4441-98de-d48111e172a7
+# ╠═6b6ede88-b4b8-4dc7-8f27-bc2228512e22
+# ╠═a130184f-06af-4767-ad6a-d8d8c1bbf6ca
+# ╠═c12360cc-5208-417c-9003-5ce1308e8081
+# ╟─1e332d32-7846-4bdb-935e-505dd290e1f0
+# ╠═47e0c111-83c1-4c3f-b293-a337b19feee9
+# ╟─a7cb520d-d221-45e9-83ac-e1927aafd0ab
+# ╟─a2906480-383f-4456-9a80-04d172f85c41
+# ╟─f8bc5419-054e-4b8f-807e-b594784661f6
+# ╠═0c280cb9-9f30-4570-91a1-19538b56f957
+# ╠═74b62c2b-58b5-4c37-9399-266855086f9b
+# ╟─54b185a7-7b4e-4756-9663-db0b6419de27
+# ╠═db00faa4-1d04-47aa-a062-4cf9b8cbe208
+# ╟─fddb2f51-e5dc-47eb-81d9-9485435c60ea
+# ╠═6a1dae01-b78b-4e8b-9a4d-d20bc6a025a5
+# ╠═4a867566-14eb-4d8a-ae17-a267054840fd
+# ╟─cf659c75-b8b9-488d-b937-36ea1e0cadbe
+# ╠═94a53663-6dba-4e9b-8c30-bc1f2be3a43e
+# ╠═1a2a55a5-424c-4522-a4bd-9c657f9f8565
+# ╟─9fd3c33d-275d-420b-a03b-8ceb81a56ad3
+# ╠═9d467594-8a33-4e1d-a272-744379bf2722
+# ╠═63e2620a-6897-4664-81e3-479a7a5af9ff
+# ╟─eb9dfc6d-b9d8-4771-9b71-e4d0fba38cb7
+# ╟─89941271-8a9d-4e1c-94b0-77b35ebd8816
+# ╟─ecde4baa-0aff-434c-b34a-59b0938a100f
+# ╟─30651af8-ad5d-4cd2-89be-8283d381da5b
+# ╟─d69435c1-c19a-4a94-8778-cea2ffcdfaa6
+# ╟─8c64f65f-b610-40b5-b9a1-6abb39a6f0bb
+# ╟─76b4809a-3fed-4bea-bfe8-66582cbb3fc9
+# ╟─80c1d9d2-f8d7-4a16-90a3-a0af2ce96ced
+# ╟─427428ab-1978-4317-86f3-ea211141e52f
+# ╟─9d754d22-2a09-4458-8fa0-589ae4f75d76
+# ╟─7654100f-86ca-481f-bfb7-bc9b9ee20639
+# ╟─aec0517c-01e7-4d3f-b9b4-3e4ec8acdfc3
+# ╟─9803aaf0-08c3-4501-8865-318a988210c9
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
