@@ -225,7 +225,7 @@ function solve_quadratic(p::Real, q::Real, r::Real=0.0)
 end
 
 # ╔═╡ 0a9c4cc2-375b-4e0e-85ea-bc5992a92d07
-let
+let  # all variables here are in a local scope
 	p = missing
 	q = missing
 	r = missing
@@ -709,6 +709,12 @@ function gradient_descent_momentum(P::AbstractArray, q::AbstractVector,
     end
     return x
 end
+
+# ╔═╡ 58f58b67-fd5f-48f4-beca-d92196c59776
+# solve the problem here
+
+# ╔═╡ 46fb2cc8-1da7-454d-b6ff-57ca0aad187b
+
 
 # ╔═╡ 62524ce5-75f1-4ddb-a69c-a219c1c7c50e
 md"""
@@ -1941,25 +1947,27 @@ version = "0.9.1+5"
 # ╟─f03d9959-321d-4bd6-b062-1bae6fb28d64
 # ╟─58f001c8-460f-42fd-9f96-c2cc9126873b
 # ╠═ae161416-fae9-4d75-81a4-dfacb82db055
+# ╠═58f58b67-fd5f-48f4-beca-d92196c59776
+# ╠═46fb2cc8-1da7-454d-b6ff-57ca0aad187b
 # ╟─62524ce5-75f1-4ddb-a69c-a219c1c7c50e
 # ╟─2198ca9d-7522-47e1-925a-14c7fdbc7bc5
 # ╠═7894fa71-96a6-4f9e-9bd5-e715975b2fb5
 # ╟─28577dc0-0521-4c07-bf9d-338d4b582bf8
 # ╠═bb203652-f242-4d21-97d6-82419b18daad
 # ╠═d9630c7b-5840-4a87-bde7-c16629665cb2
-# ╠═98e95644-913f-46d9-9deb-d78f7102db3b
+# ╟─98e95644-913f-46d9-9deb-d78f7102db3b
 # ╟─7cb64961-d94b-4fe7-913d-50bd094553f2
 # ╠═8e74c0e1-a2de-4a3b-9e9e-41c006ea4c7f
 # ╠═3e1f98e8-fea3-40bf-a9dd-9af36afc7877
 # ╠═742b079b-092c-4907-9029-2aa6916c8d2e
 # ╟─313f361f-a93d-403a-856f-5ffa9c2557c7
 # ╟─e5864656-9465-49aa-b997-2c237d16f15b
-# ╠═5beb181b-454c-4314-84e2-ee1d0f220c71
+# ╟─5beb181b-454c-4314-84e2-ee1d0f220c71
 # ╠═ed98b0d2-2493-4bb7-aceb-eabab7074c9a
 # ╠═5f0cc86d-0566-4269-b7a9-9a76c7ee5da0
 # ╠═5fba2a78-1d80-4796-9dac-04c299670231
 # ╠═6590053d-fe91-4401-88e2-03bf29b068ce
-# ╠═a15c0e18-c71c-4e22-9818-50f26b1b6907
+# ╟─a15c0e18-c71c-4e22-9818-50f26b1b6907
 # ╠═b165fb28-2671-4b0e-8a46-9a008bb6af46
 # ╠═c139044f-83f3-4582-b301-e41ded50da4c
 # ╠═5eafacee-4c7b-4cbd-adbb-631223341785
