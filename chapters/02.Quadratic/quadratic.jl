@@ -562,7 +562,7 @@ function gradient_descent(P::AbstractArray, q::AbstractVector,
 # solve the system with gradient descent
 
 # ╔═╡ 4b7fbd19-8b0f-4097-95a4-778c48833dcc
-@bind γ Slider(1:0.1:20, default=10)
+@bind γ Slider(1:0.5:20, default=10)
 
 # ╔═╡ 8c80e876-55de-414d-81d4-292231b281ad
 md"""
@@ -574,6 +574,26 @@ $$\min_{x_1,x_2}\, \frac{1}{2} (x_1^2 + \gamma x_2^2)\,$$
 
 with $\gamma$ set to $γ.
 """
+
+# ╔═╡ 8a1c4c49-bd44-4e4f-8dc0-1e68ee372382
+let
+	P = [1 0; 0 γ]
+	q = [0, 0]
+	r = 0
+	x₀ = [10.0, 1.0]
+	
+	f(x1, x2) = [x1, x2] |> x -> x' * P * x / 2 + q' * x + r
+	
+	f(x) = f(x[1], x[2])  # dispatch so it works with vectors
+
+
+	xstar, path = Solution.gradient_descent(P, q, copy(x₀), track=true)
+	
+	
+	pconv = plot(f.(path), xlabel="iteration + 1", ylabel="f(x^(k)) - f(x^*)",
+				yaxis=:log10)
+		
+end
 
 # ╔═╡ 9359bca7-f702-4b9c-a55d-a2a85bda62b7
 md"""
@@ -844,13 +864,16 @@ let
 	x₀ = [10.0, 1.0]
 	
 	f(x1, x2) = [x1, x2] |> x -> x' * P * x / 2 + q' * x + r
+	
+	f(x) = f(x[1], x[2])  # dispatch so it works with vectors
 
 
 	xstar, path = Solution.gradient_descent(P, q, copy(x₀), track=true)
 	
-	contourf(-11:0.1:11, -5:0.1:5, f, color=:speed)
+	ppath = contourf(-11:0.1:11, -5:0.1:5, f, color=:speed)
 	plot!(first.(path), last.(path) , color=myorange, label="GD", lw=2) 
 	xlabel!("x1"); ylabel!("x2")
+	
 end
 
 # ╔═╡ b3f5a694-dd90-47dd-a2e8-e238f3e8bdc7
@@ -948,7 +971,7 @@ let
 	plot(f.(path_gd), label="GD", color=myorange, lw=2, yaxis=:log)
 	plot!(f.(path_gdm), label="GDM", color=myblue, lw=2)
 	xlabel!("iteration + 1")
-	ylabel!("error")
+	ylabel!("f(x^(k)) - f(x^*)")
 end
 
 # ╔═╡ ed98b0d2-2493-4bb7-aceb-eabab7074c9a
@@ -1934,6 +1957,7 @@ version = "0.9.1+5"
 # ╟─8c80e876-55de-414d-81d4-292231b281ad
 # ╟─4b7fbd19-8b0f-4097-95a4-778c48833dcc
 # ╟─07f1caf6-db49-4d9f-8ff1-d6e8e6f19db7
+# ╟─8a1c4c49-bd44-4e4f-8dc0-1e68ee372382
 # ╟─9359bca7-f702-4b9c-a55d-a2a85bda62b7
 # ╟─b3f5a694-dd90-47dd-a2e8-e238f3e8bdc7
 # ╟─0170ef68-cf32-46a2-ac39-ff971517dfb4
