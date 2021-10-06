@@ -373,6 +373,27 @@ Complete the code for solving the $n$-D quadratic system. Use it to find the min
 $$f(\mathbf{x}) = \mathbf{x}^\top\begin{bmatrix}4 & 1 \\ 1 & 2\end{bmatrix}\mathbf{x} + \begin{bmatrix}3 \\ 1\end{bmatrix}^\top\mathbf{x} + 12\,.$$
 """
 
+# ╔═╡ 07e072d1-1d44-42b9-801e-9b2209e5cf61
+	"""
+		solve_quadratic(P::AbstractMatrix, q::AbstractVector, r::Real=0)
+
+	Finds the minimizer of an N-D quadratic system.
+	P is assumed to be a symmetric positive-definite matrix.
+
+	Inputs:
+		- P, q, r: the terms of the nD quadratic system
+
+	Output:
+		- xstar: the minimizer, an (n x 1) vector
+	"""
+	function solve_quadratic(P::AbstractMatrix, q::AbstractVector, r::Real=0.0)
+		# check whether P is positive definite
+		# note, you could also discard this check, as it is often
+		# PD by design and checking this takes time...
+		@assert missing
+		return missing
+	end
+
 # ╔═╡ 6ff5822a-1c4e-491b-b215-b3a1698e2048
 let
 	P = missing
@@ -885,11 +906,11 @@ let
 	# error xstar = 0, x₀ = 1
 	errors = [(1.0 - t * λ)^(2k) * λ * x₀ᵢ^2 for k in 0:1000, (λ, x₀ᵢ) in zip(λs, x₀)]
 	cumerrors = cumsum(errors, dims=2)
-	plot(cumerrors[:,1], fillrange=0, xscale=:log10, color=myblue, fillcolor=myblue, label="lam 1 = $(λs[1])")
-	plot!(cumerrors[:,2], fillrange=cumerrors[:,1], color=myred, fillcolor=myred, label="lam 2 = $(λs[2])")
-	plot!(cumerrors[:,3], fillrange=cumerrors[:,2], color=mygreen, fillcolor=mygreen, label="lam 3 = $(λs[3])")
-	plot!(cumerrors[:,4], fillrange=cumerrors[:,3], color=myorange, fillcolor=myorange, label="lam 4 = $(λs[4])")
-	plot!(cumerrors[:,5], fillrange=cumerrors[:,4], color=myyellow, fillcolor=myyellow, label="lam 5 = $(λs[5])")
+	plot(cumerrors[:,1], fillrange=0, xscale=:log10, color=myblue, fillcolor=myblue, label="λ₁ = $(λs[1])")
+	plot!(cumerrors[:,2], fillrange=cumerrors[:,1], color=myred, fillcolor=myred, label="λ₂ = $(λs[2])")
+	plot!(cumerrors[:,3], fillrange=cumerrors[:,2], color=mygreen, fillcolor=mygreen, label="λ₃ = $(λs[3])")
+	plot!(cumerrors[:,4], fillrange=cumerrors[:,3], color=myorange, fillcolor=myorange, label="λ₄ = $(λs[4])")
+	plot!(cumerrors[:,5], fillrange=cumerrors[:,4], color=myyellow, fillcolor=myyellow, label="λ₅ = $(λs[5])")
 	xlabel!("k+1")
 	ylabel!("f(x) - f(x*)")
 	title!("Error of gradient descent\n(cumulative eigencomponents)")
@@ -908,7 +929,7 @@ let
 
 	plot(errors, ylims=(1e-15,7), lw=2, xscale=:log10, yscale=:log10,
 				 color = [myblue myred myorange mygreen myyellow],
-				 label=[" lambda  $i = $(λs[i])" for j in 1:1, i in 1:5])
+				 label=["λ_$i = $(λs[i])" for j in 1:1, i in 1:5])
 	xlabel!("k+1")
 	ylabel!("f(x) - f(x*)")
 	title!("Error of gradient descent\n(individual contributions)")
@@ -922,7 +943,7 @@ let
 	errors = [(1 - bestt(κ))^(2k) + (1-bestt(κ) * κ)^(2k) * κ for k in 1:10000, κ in κs]
 
 	plot(errors, color = reshape(mycolors, 1, :),
-			labels = [" kappa = $κ" for i in 1:1, κ in κs],
+			labels = ["κ= $κ" for i in 1:1, κ in κs],
 			xscale=:log10, yscale=:log10, ylims=(1e-10, 100), lw=2)
 
 	κ2c(κ) = 1 - 1 / κ
@@ -1944,6 +1965,7 @@ version = "0.9.1+5"
 # ╠═14987a6a-a984-4b04-b951-2db4e79bcac5
 # ╟─00220013-46c0-4269-a85b-125255c52de1
 # ╟─16f6f2e8-90d2-499c-a5c8-e69297fb9c42
+# ╠═07e072d1-1d44-42b9-801e-9b2209e5cf61
 # ╠═6ff5822a-1c4e-491b-b215-b3a1698e2048
 # ╟─da307ee7-55ce-4978-a2d6-7cf3e42a9eca
 # ╟─dbe09c4b-7ec2-415d-b1ed-c689dca7e8d1
