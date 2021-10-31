@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.16.0
+# v0.16.4
 
 using Markdown
 using InteractiveUtils
@@ -41,7 +41,7 @@ module Solution
 		# complete this code
 		solution = [P A'; A zeros(p, p)] \ [-q; b]
 		xstar = solution[1:n]
-		nustar = missing[(n+1):end]
+		nustar = solution[(n+1):end]
 		return xstar, nustar
 	end
 
@@ -525,9 +525,6 @@ Note that:
 # ╔═╡ f8ec235e-617d-435a-aea4-e70e98fc5e68
 t = exp(logt)
 
-# ╔═╡ a2bfd24a-0034-4a88-81ad-8a25c2947662
-t
-
 # ╔═╡ f20056c4-b635-4df4-b9a2-97b5112bcf7b
 Î(u; t) = u < 0 ? - (1/t) * log(-u) : Inf
 
@@ -628,7 +625,7 @@ begin
 	plot([-3, 0, 0], [0, 0, 10], ls=:dash, color=myblue, label="\$I(u)\$", lw=2)
 	plot!(u->Î(u;t), -3, -1e-10, color=myred, lw=2, label="\$\\hat{I}(u)\$")
 	xlims!((-3, 1))
-	ylims!((-1, 11))
+	ylims!((-3, 11))
 end
 
 # ╔═╡ 008cc76a-c326-4cb7-a166-080ca2c8eb83
@@ -646,19 +643,25 @@ end
 
 # ╔═╡ 5dabeee0-4ba3-4411-b9cd-fa9a4220eabe
 begin
-	pq = contourf(-10:0.1:10, -5:0.1:5, (x1, x2) -> fquadr((x1, x2)), xlabel="\$ x_1 \$",
+	pq = contourf(-10:0.1:10, -5:0.1:5, (x1, x2) -> fquadr((x1, x2)), xlabel="\$ x_1 \$", color=:blues,
                 ylabel="\$ x_2 \$", title="quadratic")
 	plot!(x1->(x1-3)/2, -7, 10, lw=2, color=mygreen, label="constraint")
 	pq
 end
 
+# ╔═╡ ee40098d-9530-43db-b1ca-f9be21b30a3c
+fquadr([2, 4]), grad_fquadr([2, 4]), hess_fquadr([2, 4])
+
 # ╔═╡ d35541ab-7639-4afb-b738-e973c0424208
 begin
 	pnq = contourf(-2:0.1:2, -1:0.1:1, (x1, x2) -> fnonquadr((x1, x2)), xlabel="\$ x_1 \$",
-                ylabel="\$ x_2 \$", title="non-quadratic")
+                ylabel="\$ x_2 \$", title="non-quadratic", color=:blues)
 	plot!(x1->-x1/3, -2, 2, lw=2, color=mygreen, label="constraint")
 	pnq
 end
+
+# ╔═╡ dbef3f80-1875-48bc-b702-38de4e1d1631
+fnonquadr([2, 4]), grad_fnonquadr([2, 4]), hess_fnonquadr([2, 4])
 
 # ╔═╡ 3116eecd-9d66-412f-8c01-1b94bec094e5
 
@@ -886,9 +889,9 @@ version = "1.0.10+0"
 
 [[GLFW_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libglvnd_jll", "Pkg", "Xorg_libXcursor_jll", "Xorg_libXi_jll", "Xorg_libXinerama_jll", "Xorg_libXrandr_jll"]
-git-tree-sha1 = "dba1e8614e98949abfa60480b13653813d8f0157"
+git-tree-sha1 = "0c603255764a1fa0b61752d2bec14cfbd18f7fe8"
 uuid = "0656b61e-2033-5cc2-a64a-77c0f6c09b89"
-version = "3.3.5+0"
+version = "3.3.5+1"
 
 [[GR]]
 deps = ["Base64", "DelimitedFiles", "GR_jll", "HTTP", "JSON", "Libdl", "LinearAlgebra", "Pkg", "Printf", "Random", "Serialization", "Sockets", "Test", "UUIDs"]
@@ -1612,7 +1615,9 @@ version = "0.9.1+5"
 # ╟─c35a1d9a-dd58-4d31-83fc-3d0fe9562078
 # ╟─43226611-b76d-42e6-9b1e-8f6d88ce4b86
 # ╟─5dabeee0-4ba3-4411-b9cd-fa9a4220eabe
+# ╠═ee40098d-9530-43db-b1ca-f9be21b30a3c
 # ╟─d35541ab-7639-4afb-b738-e973c0424208
+# ╠═dbef3f80-1875-48bc-b702-38de4e1d1631
 # ╟─37a4e294-8807-47ab-ab08-c3d45442e2f9
 # ╟─f9e182e1-16ac-4ff6-b6b5-8b1e0e84c1b8
 # ╠═d9453447-c33d-4705-98b2-35e4ad945af0
@@ -1628,7 +1633,6 @@ version = "0.9.1+5"
 # ╟─c11d17ac-c741-4851-b430-d990f6b5ada2
 # ╟─c1ca0e35-346d-49b5-9ded-c7f820f5377e
 # ╟─f8ec235e-617d-435a-aea4-e70e98fc5e68
-# ╠═a2bfd24a-0034-4a88-81ad-8a25c2947662
 # ╠═f20056c4-b635-4df4-b9a2-97b5112bcf7b
 # ╟─ac5128a2-b96b-4e5e-b121-cebbc8010bae
 # ╟─f768e126-2dc2-410c-afba-ea4819384566
@@ -1636,8 +1640,8 @@ version = "0.9.1+5"
 # ╟─ab88b4b9-913c-4e4d-af78-bcc162820f2c
 # ╟─a4a629d2-fd57-424b-9538-519133bcb3e8
 # ╟─8d80517f-1c4b-4586-a21b-85a07620fc6f
-# ╠═ea1942ea-ea60-4898-a646-6dfe43be6454
-# ╠═008cc76a-c326-4cb7-a166-080ca2c8eb83
+# ╟─ea1942ea-ea60-4898-a646-6dfe43be6454
+# ╟─008cc76a-c326-4cb7-a166-080ca2c8eb83
 # ╟─3deb0b7d-7a9f-4ae1-ae50-6d710c3eb391
 # ╠═3116eecd-9d66-412f-8c01-1b94bec094e5
 # ╟─00000000-0000-0000-0000-000000000001
