@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.16.0
+# v0.16.4
 
 using Markdown
 using InteractiveUtils
@@ -14,7 +14,7 @@ macro bind(def, element)
 end
 
 # ╔═╡ 47f98a52-f2b2-11ea-0ac6-9b4b74b7b15d
-using Plots, PlutoUI
+using Plots, PlutoUI, LinearAlgebra
 
 # ╔═╡ 5ac4989c-f2b3-11ea-3e8a-a79a4117e48c
 using Symbolics
@@ -77,16 +77,20 @@ md"We will evaluate this function in `a`=$2."
 # ╔═╡ 7244eba2-f2b3-11ea-045f-ffd208852eda
 a = 2.0
 
-# ╔═╡ 2e00ef04-f2b3-11ea-1960-8136321c71db
-ismissing(f(a)) || plot(f, 1, 5, label="f(x)")
+# ╔═╡ 60058dbe-1514-4139-bb97-66b40fe47306
+md"For the record:"
+
+# ╔═╡ 21882f0e-8d54-41ae-84c6-7637ccc52c46
+f(a)
 
 # ╔═╡ 401df7a4-f2b3-11ea-12a1-e9b46bcfcf1b
 md"""
 ## Symbolic differentiation
 
-Computing derivatives, as you have seen in basic calculus courses.
+Computing derivatives is relatively straightforward, as you have seen in basic calculus courses. Some software called **computer algebra systems** can manipulate symbolic expressions to generate derivatives.
 
-By hand or automatically:
+
+For example, libraries that support symbolic differentiation:
 - Maple
 - Sympy (Python)
 - Mathematica
@@ -183,7 +187,13 @@ $$f'(x)\approx \frac{\text{Im}(f(x +ih))}{h}$$
 """
 
 # ╔═╡ 0238579a-fe70-11ea-0968-0f11ae9557db
-md"**Assignment**: Implement these functions."
+md"**Assignment**: Implement these functions. Hint `im` is the imaginary unit: i.e."
+
+# ╔═╡ 9ecd1cd6-8412-4fe1-9d79-676f9830ec2c
+imag_number = 2 + 3im  # im is a special type of number
+
+# ╔═╡ af02692c-c1be-4f7c-a09f-fbd88b0c4bd8
+real(imag_number), imag(imag_number) # extract real and imaginary parts
 
 # ╔═╡ eef066e0-f2b3-11ea-3cfa-5f35ebf13f76
 diff_fordiff(f, x; h=1e-10) = missing
@@ -270,7 +280,9 @@ This brings us with numerical issues we might encounter using numerical differen
 """
 
 # ╔═╡ f4edad2c-f2b4-11ea-05fb-3d43c18e9d5c
-md"### Back to numerical differentiation"
+md"### Back to numerical differentiation
+
+Below is the absolute error using the three proposed methods."
 
 # ╔═╡ 4e6b2b04-f2b5-11ea-0c52-5f32438e8c68
 md"""
@@ -286,7 +298,7 @@ Disadvantages:
 # ╔═╡ 55ff7230-f2b5-11ea-2898-db5e21c764fd
 md"""## Approximations of multiplications with gradients
 
-**Gradient-vector approximation**
+**Gradient-vector approximation** (the directional derivative)
 
 $$\nabla f(\mathbf{x})^\intercal \mathbf{d} \approx \frac{f(\mathbf{x}+h\cdot\mathbf{d}) - f(\mathbf{x}-h\cdot\mathbf{d})}{2h}$$
 
@@ -296,7 +308,10 @@ $$\nabla^2 f(\mathbf{x}) \mathbf{d} \approx \frac{\nabla f(\mathbf{x}+h\cdot\mat
 """
 
 # ╔═╡ 688a1f40-f2b5-11ea-3fa8-ebb735323ddd
-grad_vect(f, x, d; h=1e-10) = (f(x + h * d) - f(x - h * d)) / (2h)
+grad_vect(f, x, d; h=1e-10) = (f(x .+ h * d) - f(x .- h * d)) / (2h)
+
+# ╔═╡ e5c12243-70ad-4e52-9bab-aae432203e21
+md"Generate an example"
 
 # ╔═╡ 6d6da8ba-f2b5-11ea-1064-df27ecea7d13
 dvect = randn(10) / 10
@@ -305,7 +320,7 @@ dvect = randn(10) / 10
 xvect = 2rand(10)
 
 # ╔═╡ 9a87095e-f2b5-11ea-334e-57a637e20c43
-A = randn(10, 10) |> A -> A * A' / 100
+A = randn(10, 10) |> A -> (A * A' + I) / 100  # make sym and PD
 
 # ╔═╡ 67e9fa88-ff03-11ea-1177-c34331398d6c
 md"$$g(\mathbf{x}) = \exp(-\mathbf{x}^\intercal A\mathbf{x})$$"
@@ -393,7 +408,7 @@ struct Dual{T}
 end
 
 # ╔═╡ 3f2a4cc2-26fa-4c3e-bfb7-f3ef019b6d78
-Base.show(io::IO, a::Dual) = print(io, "$(a.v) ± $(a.vdot)")  # nice printing
+Base.show(io::IO, a::Dual) = print(io, "$(a.v) + $(a.vdot)ϵ")  # nice printing
 
 # ╔═╡ 9e22156e-0880-11eb-24a8-3d0a41262c36
 ϵ = Dual(0.0, 1.0)
@@ -407,11 +422,18 @@ md"Let's implement some basic rules showing linearity."
 # ╔═╡ 4a6270a3-a271-40da-84d0-28247f287c22
 2.0 + 3.0ϵ  # now this works!
 
+# ╔═╡ 272bdcca-aeb1-405f-8251-33f13cddbdc5
+(2.0+3.0ϵ) / (5.0+8.0ϵ)
+
 # ╔═╡ 3f5a58da-f2b8-11ea-3ab0-5db5e9199bb1
 md"And some more advanced ones, based on differentiation."
 
 # ╔═╡ 48e5da96-f2b8-11ea-0108-2104f2c8ac24
+# you can derive this directly from the definition!
 Base.:/(a::Dual, b::Dual) = Dual(a.v / b.v, (a.vdot * b.v - a.v * b.vdot) / b.v^2)
+
+# ╔═╡ eaacb5a5-c748-4223-98e4-be73d3f2086f
+
 
 # ╔═╡ 263e18dc-fe70-11ea-03a0-8fd5e031b06f
 md"**Assignment**: complete this code."
@@ -429,7 +451,7 @@ Base.:exp(a::Dual) = missing
 Base.:log(a::Dual) = missing
 
 # ╔═╡ 4ee45daa-f2b8-11ea-10ea-f929853879b1
-f(Dual(a, 1.0))
+f(Dual(a, 1.0))  # works when rules are provided
 
 # ╔═╡ 555c8d88-f2b8-11ea-34d8-a17ce87ccdc1
 md"This directly works for vectors!"
@@ -492,7 +514,7 @@ f'(a)  # that's it
 md"More verbose, but exactly the same:"
 
 # ╔═╡ c6728784-f2b8-11ea-12b5-d7eb039d77ce
-Zygote.gradient(f, a)  # returns a tuple, since you can differentiate wrt multiple arguments
+Zygote.gradient(f, a)  # returns a tuple, since you can differentiate w.r.t. multiple arguments
 
 # ╔═╡ e1057afe-fe6e-11ea-27fe-6def4d8e1f2d
 md"This works for function with multiple inputs."
@@ -543,6 +565,7 @@ Automatic differentiation can be used beyond machine learning and optimization:
 - Sinkhorn algorithm
 - [dynamic programming](https://arxiv.org/abs/1802.03676)
 - [differential equations](https://julialang.org/blog/2019/01/fluxdiffeq)
+- [molecules](https://www.nature.com/articles/s41592-021-01283-4)
 
 Everything is computed by some straightforward and differentiable functions!
 """
@@ -605,7 +628,7 @@ end
 md"For example, consider two sequences and the Hamming distance."
 
 # ╔═╡ ca64df96-082a-40dd-b82c-64016257fcab
-s, t = "banana", "ananas"
+s, t = "aattcaa", "atctaca"
 
 # ╔═╡ ba43bc8b-27d6-490d-971e-7e440b991cfb
 θ = [sᵢ==tᵢ for sᵢ in s, tᵢ in t]
@@ -614,10 +637,10 @@ s, t = "banana", "ananas"
 heatmap(θ, flipy=true, yticks=(1:length(s), s), xticks=(1:length(t), t), title="theta")
 
 # ╔═╡ 378500c1-9f19-4111-82cf-5a57c30d66ef
-cˢ, cᵗ = ones(length(s)), ones(length(t))
+cˢ, cᵗ = 0.1ones(length(s)), 0.1ones(length(t))
 
 # ╔═╡ 8586855b-2ad7-4fe4-af1a-2a6f1dd052b3
-@bind logγ Slider(-3:0.2:4, default=0)
+@bind logγ Slider(-8:0.2:4, default=-4)
 
 # ╔═╡ 8877c563-d10a-41e4-be8b-546d27623b67
 γ = exp(logγ)
@@ -632,10 +655,13 @@ v, E = ∇needleman_wunsch(NegEntropy(γ), θ, (cˢ, cᵗ))
 # ╔═╡ 014ec92c-f2b8-11ea-3986-8d74a8c2458d
 begin
 	Base.:+(a::Dual, b::Dual) = Dual(a.v + b.v, a.vdot + b.vdot)
+	Base.:-(a::Dual, b::Dual) = Dual(a.v - b.v, a.vdot - b.vdot)
+	Base.:-(a::Dual, b::Real) = Dual(a.v - b, a.vdot)
+	Base.:-(a::Dual) = Dual(-a.v, -a.vdot)
 	Base.:*(a::Dual, b::Dual) = Dual(a.v * b.v, a.v * b.vdot + b.v * a.vdot)
 	Base.:+(c::Real, b::Dual) = Dual(c + b.v, b.vdot)
 	Base.:*(v::Real, b::Dual) = Dual(v, 0.0) * b
-	Base.:*(a::Dual, b::Real) = v * a
+	Base.:*(a::Dual, b::Real) = v * a	
 end
 
 # ╔═╡ 18e151c4-0b0e-485b-81d2-f18a2dd4592d
@@ -681,7 +707,7 @@ md"Below is a plot of the arm and the teapot. Can you turn the angles to bring t
 md"First complete a function to determine the distance between the arm and the teapot."
 
 # ╔═╡ 30e9891c-f2c5-11ea-022d-5dbf9c064e43
-distance_to_teapot(θ) = (position_teapot .- pos_hand(θ)).^2 |> sum |> sqrt
+distance_to_teapot(θ) = √(sum(abs2, position_teapot .- pos_hand(θ)))
 
 # ╔═╡ 5812f84c-f2c1-11ea-0f6c-31b9fedc3704
 begin
@@ -712,19 +738,22 @@ distance_to_teapot'([θ₁, θ₂, θ₃])
 begin
 	# initial value of θ
 	θs = [0.0, 0.0, 0.0]
-	for i in 1:100
-		θs .-= 0.05distance_to_teapot'(θs)
+	for i in 1:500  # 500 steps, decaying
+		θs .-= 1/i * distance_to_teapot'(θs)
 	end
 end
 
 # ╔═╡ 818c1f9e-ff1b-11ea-097f-cba2f30af994
-θs
+θs  # optimal values
+
+# ╔═╡ 7aff4178-bcac-4cfa-ab22-de3506cf73a8
+distance_to_teapot(θs)
 
 # ╔═╡ 881dedd4-f385-11ea-342e-a3700e90ac66
 md"""
 ## Exercise
 
-Consider the *Wheeler's Ridge* function:
+Consider the *Wheeler's Ridge* function (also called "the banana function"):
 
 $$f(\mathbf{x}) = -\exp(-(x_1 x_2 - a)^2 -(x_2 -a)^2)\,,$$
 
@@ -735,10 +764,10 @@ Implement this function.
 
 
 # ╔═╡ c1e19e26-f385-11ea-17b6-6d2d2e5cb7c0
-fwr(x) = missing
+fwr(x; a=1.5) = missing
 
 # ╔═╡ fe18a0a0-f8fe-11ea-1595-4d95256dabca
-fwr([1,2]) isa Missing || contour(-2:0.1:2, -2:0.1:2, (x1, x2) -> fwr([x1, x2]))
+fwr([1,2]) isa Missing || contour(-0:0.1:3, -0:0.1:3, (x1, x2) -> fwr([x1, x2]), color=:speed)
 
 # ╔═╡ df5f20d8-f385-11ea-104d-9b9e7b094eb7
 md"""
@@ -756,16 +785,49 @@ md"""
 # ╔═╡ e4a088f0-f385-11ea-00da-b12e40e4357f
 x₀ = [1.5, 1.0]  # btw written as x\_0<TAB>
 
+# ╔═╡ ec87028b-d9d4-4dc7-9dd5-36eaa1dd49d4
+fwr(x₀)
+
+# ╔═╡ ddd214d8-608a-4123-973f-b331c6ab331a
+md"Symbolic"
+
 # ╔═╡ 8f3fecac-f8fd-11ea-136d-1513f60ee3ed
 
 
 # ╔═╡ f8863a18-f385-11ea-0965-0f074e58d9b2
 
 
-# ╔═╡ 4c751e90-f387-11ea-2358-273423b85c00
+# ╔═╡ 4c3817f6-396e-4485-a7dd-0f507cec124a
+md"Numberic"
+
+# ╔═╡ 78b72cb1-52f3-4dc3-a721-b8a89a24312e
 
 
-# ╔═╡ 4d2c34ae-f387-11ea-1649-19c3a4520f74
+# ╔═╡ 7180e310-a6f7-4feb-aff3-28e1c772b441
+
+
+# ╔═╡ 02b42a67-7ebe-4ca2-ac55-aa481b30e997
+md"Forward (dual numbers)"
+
+# ╔═╡ 043e3e2f-3876-41c0-bf70-5ef53b5db986
+
+
+# ╔═╡ 8ba368c9-3b04-469e-9556-1573cbc52185
+
+
+# ╔═╡ 4da4a1b6-b7c8-432d-86ed-c45a499a1880
+
+
+# ╔═╡ c573ba19-4be5-4afd-b9f5-8b75e9b18ad6
+md"Reverse"
+
+# ╔═╡ 639528b1-ecff-4a05-ae56-9a08b779edc1
+
+
+# ╔═╡ 838292fc-2c0e-4bb9-9df9-6cd197c4a4fd
+
+
+# ╔═╡ ca20cc75-3033-4bd1-bb5c-cae61c855de7
 
 
 # ╔═╡ 34d48ec0-f2b9-11ea-147e-d3554a9fcc04
@@ -788,14 +850,39 @@ module Solution
 	
 end
 
+# ╔═╡ 91aff94e-e77e-4810-82ad-fe5ab3eafdad
+md"Show solution dual numbers: $(@bind show_dual_sol CheckBox())"
+
 # ╔═╡ 8eb9ed90-981b-4094-baec-a521614fb3a1
-md"solution dual numbers:
+if show_dual_sol 
+	md"solution dual numbers:
 ```julia
 	Base.:sin(a::Dual) = Dual(sin(a.v), cos(a.v) * a.vdot)
 	Base.:cos(a::Dual) = Dual(cos(a.v), -sin(a.v) * a.vdot)
 	Base.:exp(a::Dual) = Dual(exp(a.v), exp(a.v) * a.vdot)
 	Base.:log(a::Dual) = Dual(log(a.v), 1.0 / a.v * a.vdot)
 ```"
+end
+
+# ╔═╡ d682439b-bc6b-456d-8b5d-2489d095e55f
+md"Show solution quiver plot: $(@bind show_quiver_sol CheckBox())"
+
+# ╔═╡ 2d4c0bf6-3936-449d-8341-56f9c5659a6e
+if show_quiver_sol 
+	md"solution quiver plot:
+```julia
+	x1vals, x2vals = -0:0.5:4, -0:0.5:3 
+	
+	contour(-0.1:0.1:4, -0.1:0.1:3, (x1, x2) -> fwr([x1, x2]),
+			color=:speed)
+	
+	quiver!([x1 for x1 in x1vals for x2 in x2vals],
+			[x2 for x1 in x1vals for x2 in x2vals],
+			quiver=(x1,x2)->0.25.*fwr'((x1,x2)))
+	xlabel!(\"x_1\")
+	ylabel!(\"x_2\")
+```"
+end
 
 # ╔═╡ fe4dfa5c-ea26-4f7c-aa68-7b3ec5f45bdc
 begin
@@ -808,6 +895,9 @@ begin
 
 	mycolors = [myblue, myred, mygreen, myorange, myyellow]
 end;
+
+# ╔═╡ 2e00ef04-f2b3-11ea-1960-8136321c71db
+ismissing(f(a)) || plot(f, 1, 5, label="f(x)", color=myblue)
 
 # ╔═╡ fd9ed266-f2b4-11ea-3c53-3bd2fe30a7f1
 begin
@@ -829,6 +919,7 @@ end
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
@@ -1119,9 +1210,9 @@ uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
 
 [[GLFW_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libglvnd_jll", "Pkg", "Xorg_libXcursor_jll", "Xorg_libXi_jll", "Xorg_libXinerama_jll", "Xorg_libXrandr_jll"]
-git-tree-sha1 = "dba1e8614e98949abfa60480b13653813d8f0157"
+git-tree-sha1 = "0c603255764a1fa0b61752d2bec14cfbd18f7fe8"
 uuid = "0656b61e-2033-5cc2-a64a-77c0f6c09b89"
-version = "3.3.5+0"
+version = "3.3.5+1"
 
 [[GR]]
 deps = ["Base64", "DelimitedFiles", "GR_jll", "HTTP", "JSON", "Libdl", "LinearAlgebra", "Pkg", "Printf", "Random", "Serialization", "Sockets", "Test", "UUIDs"]
@@ -1959,6 +2050,8 @@ version = "0.9.1+5"
 # ╟─2e00ef04-f2b3-11ea-1960-8136321c71db
 # ╟─f7cd052e-f2bb-11ea-239a-47966e96e909
 # ╠═7244eba2-f2b3-11ea-045f-ffd208852eda
+# ╟─60058dbe-1514-4139-bb97-66b40fe47306
+# ╠═21882f0e-8d54-41ae-84c6-7637ccc52c46
 # ╟─401df7a4-f2b3-11ea-12a1-e9b46bcfcf1b
 # ╠═5ac4989c-f2b3-11ea-3e8a-a79a4117e48c
 # ╠═5db7350a-f2b3-11ea-293d-ffc572e0dbe8
@@ -1979,6 +2072,8 @@ version = "0.9.1+5"
 # ╟─997ec642-a865-4c97-9aa1-d4d9df9e1dd0
 # ╟─913234a2-f2b3-11ea-3501-e3bfc54f91fe
 # ╟─0238579a-fe70-11ea-0968-0f11ae9557db
+# ╠═9ecd1cd6-8412-4fe1-9d79-676f9830ec2c
+# ╠═af02692c-c1be-4f7c-a09f-fbd88b0c4bd8
 # ╠═eef066e0-f2b3-11ea-3cfa-5f35ebf13f76
 # ╠═f2158710-f2b3-11ea-16c9-dded5e1747d4
 # ╠═f54ee2b2-f2b3-11ea-24e8-f556ab9e3b85
@@ -2006,9 +2101,10 @@ version = "0.9.1+5"
 # ╟─4e6b2b04-f2b5-11ea-0c52-5f32438e8c68
 # ╟─55ff7230-f2b5-11ea-2898-db5e21c764fd
 # ╠═688a1f40-f2b5-11ea-3fa8-ebb735323ddd
-# ╠═6d6da8ba-f2b5-11ea-1064-df27ecea7d13
-# ╠═6fd08e42-f2b5-11ea-36e6-d7ff10412e2b
-# ╠═9a87095e-f2b5-11ea-334e-57a637e20c43
+# ╟─e5c12243-70ad-4e52-9bab-aae432203e21
+# ╟─6d6da8ba-f2b5-11ea-1064-df27ecea7d13
+# ╟─6fd08e42-f2b5-11ea-36e6-d7ff10412e2b
+# ╟─9a87095e-f2b5-11ea-334e-57a637e20c43
 # ╟─67e9fa88-ff03-11ea-1177-c34331398d6c
 # ╠═75ae48fe-f2b5-11ea-0614-912091cbfb6a
 # ╟─8a738272-f2b5-11ea-2de6-f9ae6b30a466
@@ -2029,8 +2125,10 @@ version = "0.9.1+5"
 # ╟─0aba93a6-f2b8-11ea-1461-d96878b7a5c1
 # ╠═014ec92c-f2b8-11ea-3986-8d74a8c2458d
 # ╠═4a6270a3-a271-40da-84d0-28247f287c22
+# ╠═272bdcca-aeb1-405f-8251-33f13cddbdc5
 # ╟─3f5a58da-f2b8-11ea-3ab0-5db5e9199bb1
 # ╠═48e5da96-f2b8-11ea-0108-2104f2c8ac24
+# ╠═eaacb5a5-c748-4223-98e4-be73d3f2086f
 # ╟─263e18dc-fe70-11ea-03a0-8fd5e031b06f
 # ╠═2f18c362-f2b8-11ea-1beb-719ff5cd5f8d
 # ╠═393f92a6-fe70-11ea-024e-ff30dcfc7103
@@ -2067,13 +2165,13 @@ version = "0.9.1+5"
 # ╠═23b0cc81-b551-446b-991f-54bd19ac63cd
 # ╠═a9961630-08be-48f8-b1cc-4a9d67dfc519
 # ╠═e4d2350e-147b-4c3c-a9ff-6de66a54c48a
-# ╠═501a0db3-538a-43f3-a769-158c824bca31
+# ╟─501a0db3-538a-43f3-a769-158c824bca31
 # ╠═ca64df96-082a-40dd-b82c-64016257fcab
 # ╠═ba43bc8b-27d6-490d-971e-7e440b991cfb
 # ╟─2d7dbec3-82eb-41f8-a959-b458e136d18c
 # ╠═378500c1-9f19-4111-82cf-5a57c30d66ef
 # ╟─8586855b-2ad7-4fe4-af1a-2a6f1dd052b3
-# ╠═8877c563-d10a-41e4-be8b-546d27623b67
+# ╟─8877c563-d10a-41e4-be8b-546d27623b67
 # ╠═a73e4d59-34f4-412f-afa4-f3b66244b35e
 # ╠═6707fd27-78f6-4663-b95d-a016d2c44c3b
 # ╟─18e151c4-0b0e-485b-81d2-f18a2dd4592d
@@ -2095,18 +2193,33 @@ version = "0.9.1+5"
 # ╠═fb044216-f381-11ea-2faf-fd53dad74950
 # ╠═675b222c-f382-11ea-257a-afcb5a5afdd8
 # ╠═818c1f9e-ff1b-11ea-097f-cba2f30af994
+# ╠═7aff4178-bcac-4cfa-ab22-de3506cf73a8
 # ╟─881dedd4-f385-11ea-342e-a3700e90ac66
 # ╠═c1e19e26-f385-11ea-17b6-6d2d2e5cb7c0
-# ╟─fe18a0a0-f8fe-11ea-1595-4d95256dabca
+# ╠═fe18a0a0-f8fe-11ea-1595-4d95256dabca
+# ╠═ec87028b-d9d4-4dc7-9dd5-36eaa1dd49d4
 # ╟─df5f20d8-f385-11ea-104d-9b9e7b094eb7
 # ╠═e4a088f0-f385-11ea-00da-b12e40e4357f
+# ╟─ddd214d8-608a-4123-973f-b331c6ab331a
 # ╠═8f3fecac-f8fd-11ea-136d-1513f60ee3ed
 # ╠═f8863a18-f385-11ea-0965-0f074e58d9b2
-# ╠═4c751e90-f387-11ea-2358-273423b85c00
-# ╠═4d2c34ae-f387-11ea-1649-19c3a4520f74
+# ╟─4c3817f6-396e-4485-a7dd-0f507cec124a
+# ╠═78b72cb1-52f3-4dc3-a721-b8a89a24312e
+# ╠═7180e310-a6f7-4feb-aff3-28e1c772b441
+# ╟─02b42a67-7ebe-4ca2-ac55-aa481b30e997
+# ╠═043e3e2f-3876-41c0-bf70-5ef53b5db986
+# ╠═8ba368c9-3b04-469e-9556-1573cbc52185
+# ╠═4da4a1b6-b7c8-432d-86ed-c45a499a1880
+# ╟─c573ba19-4be5-4afd-b9f5-8b75e9b18ad6
+# ╠═639528b1-ecff-4a05-ae56-9a08b779edc1
+# ╠═838292fc-2c0e-4bb9-9df9-6cd197c4a4fd
+# ╠═ca20cc75-3033-4bd1-bb5c-cae61c855de7
 # ╟─34d48ec0-f2b9-11ea-147e-d3554a9fcc04
-# ╠═0a576c65-3685-4987-93f1-980ace78d6f4
+# ╟─0a576c65-3685-4987-93f1-980ace78d6f4
+# ╟─91aff94e-e77e-4810-82ad-fe5ab3eafdad
 # ╟─8eb9ed90-981b-4094-baec-a521614fb3a1
+# ╟─d682439b-bc6b-456d-8b5d-2489d095e55f
+# ╟─2d4c0bf6-3936-449d-8341-56f9c5659a6e
 # ╟─fe4dfa5c-ea26-4f7c-aa68-7b3ec5f45bdc
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
