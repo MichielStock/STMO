@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.16.0
+# v0.16.4
 
 using Markdown
 using InteractiveUtils
@@ -94,7 +94,7 @@ a = [3.0, 3, 3, 4, 2, 2, 2, 1]
 b = [4.0, 2, 6, 4, 4]
 
 # ╔═╡ 245acb05-d58b-4ca6-9cf4-e59ff50e86c9
-md"As engineers and mathematicians, we pride ourselves in doing things the optimal way. So how can we divide the desserts to make everybody as happy as possible? As I am preparing a course on optimization, I went around and asked which of those treats they liked. On a scale between -2 and 2, with -2 being something they hated and 2 being their absolute favorite, the desert preferences of the teaching staff is given below (students: take note!)."
+md"As engineers and mathematicians, we pride ourselves in doing things the optimal way. So how can we divide the desserts to make everybody as happy as possible? I went around and asked which of those treats they liked. On a scale between -2 and 2, with -2 being something they hated and 2 being their absolute favorite, the desert preferences of the teaching staff is given below (students: take note!)."
 
 # ╔═╡ 114c8c91-34f3-4256-ab0f-c1fbd64e4827
 preferences = [2 2 1 0 0;
@@ -243,7 +243,7 @@ md"**Assignments**
 2. Solve the dessert problem, once for $\lambda=0.1$ and once for $\lambda=10$."
 
 # ╔═╡ 8214f18f-5d45-455f-b2ce-01085377cdf1
-function sinkhorn(C::Matrix, a::Vector, b::Vector; λ=1.0, ϵ=1e-8)
+function sinkhorn(C, a, b; λ=1.0, ϵ=1e-8)
     n, m = size(C)
     @assert n == length(a) && m == length(b) throw(DimensionMismatch("a and b do not match"))
     @assert sum(a) ≈ sum(b) "a and b don't have equal sums"
@@ -275,11 +275,11 @@ Using this algorithm, we can compute the optimal distribution of desserts, shown
 
 Here, everybody only has desserts they like. Note that for example, Jan gets three pieces of carrot cake (the only thing he can eat) while Tim receives the remaining portion (he is the only person with some fondness of this dessert). If we decrease the regularization parameter $\lambda$, we encourage a more homogeneous distribution, though some people will have to try some sweets which are not their favorites...
 
-![The solution with a slightly lower $\lambda$. Clearly, a different optimal distribution is obtained.](raw=truehttps://github.com/MichielStock/STMO/blob/master/chapters/06.OptimalTransport/Figures/desserts_high_lamda.png?raw=trueg)
+![The solution with a slightly lower $\lambda$. Clearly, a different optimal distribution is obtained.](https://github.com/MichielStock/STMO/raw/master/chapters/06.OptimalTransport/Figures/desserts_low_lamda.png)
 
 The optimal transport problem, with or without entropic regularization has a beautiful geometric interpretation, shown below.
 
-![A geometric view of the optimal transport problem.](https://github.com/MichielStock/STMO/blob/master/chapters/06.OptimalTransport/Figures/desserts_low_lamda.png?raw=true)
+![A geometric view of the optimal transport problem.](https://raw.githubusercontent.com/MichielStock/STMO/master/chapters/06.OptimalTransport/Figures/optimal_transport_geometric.png)
 
 The cost matrix determines a direction in which distributions are better or worse. The set $U(\mathbf{r}, \mathbf{c})$ contains all feasible distributions. In the unregularized case, the optimum $P^\star$ is usually found in one of the corners of such a set. When adding the entropic regularizer, we restrict ourselves to distributions with a minimum of entropy, lying within the smooth red curve. Because we don't have to deal with the sharp corners of $U(\mathbf{r}, \mathbf{c})$ anymore, it is easier to find the optimum. As special cases, when $\lambda\rightarrow \infty$, then $P^\star_\lambda$ will become closers to $P^\star$ (until the algorithm runs into numerical difficulties). For $\lambda\rightarrow 0$ on the other hand, only the entropic term is taken into account and $P_\lambda^\star=\mathbf{a}\mathbf{b}^\intercal$. This is bivariate distribution where the rows and columns are independent.
 """
@@ -300,10 +300,10 @@ download("https://github.com/MichielStock/STMO/blob/master/chapters/06.OptimalTr
 download("https://github.com/MichielStock/STMO/blob/master/chapters/06.OptimalTransport/Figures/butterfly2.jpg?raw=true", "image2.jpg")
 
 # ╔═╡ c365eb3f-a7a7-485c-b696-02dd7fccbde3
-image1 = load("image1.jpg")
+image1 = load("image1.jpg")  # change to path local directory
 
 # ╔═╡ 648ead24-cd9b-4fe5-97b4-f7a458c9f374
-image2 = load("image2.jpg")
+image2 = load("image2.jpg")  # change to path local directory
 
 # ╔═╡ d160a399-7908-48af-9384-c245344e3bdd
 md"These images might be large, so let's subsample them!"
@@ -353,7 +353,7 @@ b_col = ones(n_colors2) / n_colors2
 # ╔═╡ 49fd9af6-f5a5-4f82-a39d-39f741430df6
 Pcolors = Solution.sinkhorn(Ccol,
 			a_col,
-			b_col, λ=10, ϵ=1e-5)
+			b_col, λ=13, ϵ=1e-13)
 
 # ╔═╡ 96792a45-2a1f-48de-a514-e5dfd97aabf7
 md"Then, we can compute the transport between the two collections of pixels. Since every pixel is equally important, we give an uniform weight for each pixel, e.g., $\mathbf{a}=\mathbf{1}_n/m$ and $\mathbf{b}=\mathbf{1}_m/m$"
@@ -749,9 +749,9 @@ version = "1.0.10+0"
 
 [[GLFW_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libglvnd_jll", "Pkg", "Xorg_libXcursor_jll", "Xorg_libXi_jll", "Xorg_libXinerama_jll", "Xorg_libXrandr_jll"]
-git-tree-sha1 = "dba1e8614e98949abfa60480b13653813d8f0157"
+git-tree-sha1 = "0c603255764a1fa0b61752d2bec14cfbd18f7fe8"
 uuid = "0656b61e-2033-5cc2-a64a-77c0f6c09b89"
-version = "3.3.5+0"
+version = "3.3.5+1"
 
 [[GR]]
 deps = ["Base64", "DelimitedFiles", "GR_jll", "HTTP", "JSON", "Libdl", "LinearAlgebra", "Pkg", "Printf", "Random", "Serialization", "Sockets", "Test", "UUIDs"]
@@ -1731,7 +1731,7 @@ version = "0.9.1+5"
 # ╠═ce639d43-7481-43f4-8724-1da9c18d716a
 # ╠═c32441ee-c62d-4ee7-8e1b-ff7de1072d43
 # ╟─0b50b550-8c2b-43d7-849b-73ee8f60ff52
-# ╟─245acb05-d58b-4ca6-9cf4-e59ff50e86c9
+# ╠═245acb05-d58b-4ca6-9cf4-e59ff50e86c9
 # ╠═114c8c91-34f3-4256-ab0f-c1fbd64e4827
 # ╠═01e3b967-e441-4041-8bd8-5cfc0e0ebaa4
 # ╟─7dbf484a-f3fb-4510-b500-57f4b13c0f59
@@ -1739,7 +1739,7 @@ version = "0.9.1+5"
 # ╟─984effce-9a76-4bbb-9105-06887dfa629e
 # ╟─9567f11f-486a-4960-8b69-42d2e5ee413f
 # ╟─1104b6a8-e781-4f58-ba2d-798ebbc11422
-# ╟─b85b69fb-bfdb-41bd-a6a1-1aebe3077e08
+# ╠═b85b69fb-bfdb-41bd-a6a1-1aebe3077e08
 # ╠═cc62b7b1-fe34-4a19-846d-ca6c7fb69ff9
 # ╠═1468ec48-bedb-4977-8b88-794d89e5ae8f
 # ╠═88569ef5-bc60-4a77-aa72-fc9bdf66b3a4
@@ -1761,7 +1761,7 @@ version = "0.9.1+5"
 # ╠═8c92dbde-e6a3-42aa-a6a6-b2e615fc9f29
 # ╠═3fb7114f-c765-4153-be6c-66af2d629338
 # ╠═80e00b5d-3206-4d26-81ed-1228122a60ac
-# ╠═02b3e106-64e9-4fb4-b4b5-9e1bbe7b8a6d
+# ╟─02b3e106-64e9-4fb4-b4b5-9e1bbe7b8a6d
 # ╠═1161be1d-9fcf-45e4-9127-c8560adcca5a
 # ╠═cc587c5b-bdf1-426a-8733-f4a2ce33637e
 # ╠═ad3eebaa-4fa2-438a-a088-16334dba3a89
@@ -1787,6 +1787,6 @@ version = "0.9.1+5"
 # ╟─ba9e51ae-f9d5-4ffe-af79-7bff04ae41b1
 # ╟─31627338-8e0b-4568-a85b-3d7414c87769
 # ╟─3070288a-8060-4da0-8007-41b69c606521
-# ╠═8de53f65-0d4a-4af0-a890-609ddcc92b36
+# ╟─8de53f65-0d4a-4af0-a890-609ddcc92b36
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
