@@ -1,11 +1,125 @@
 ### A Pluto.jl notebook ###
-# v0.16.0
+# v0.17.1
 
 using Markdown
 using InteractiveUtils
 
 # ╔═╡ b0020dc0-78a7-483f-877f-719f42b0c044
 using Plots, PlutoUI, DataStructures
+
+# ╔═╡ 9803aaf0-08c3-4501-8865-318a988210c9
+module Solution
+	export reconstruct_path, dijkstra, a_star
+
+	using DataStructures
+
+
+	WeightedEdgeList{R,T} = Array{Tuple{R,T,T},1}
+	AdjList{R,T} = Dict{T,Array{Tuple{R,T},1}}
+
+	"""
+		reconstruct_path(previous::Dict{T,T}, source::T, sink::T) where {T}
+
+	Reconstruct the path from the output of the Dijkstra algorithm.
+
+	Inputs:
+			- previous : a Dict with the previous node in the path
+			- source : the source node
+			- sink : the sink node
+	Ouput:
+			- the shortest path from source to sink
+	"""
+	function reconstruct_path(previous::Dict{T,T}, source::T, sink::T) where {T}
+		path = T[sink]
+		current = sink
+		while current != source
+			current = previous[current]
+			push!(path, current)
+		end
+		return reverse!(path)
+	end
+
+
+	"""
+		dijkstra(graph::AdjList{R,T}, source::T[, sink::T]) where {R<:Real,T}
+
+	Dijkstra without a specified sink. Give the `graph` and a `source` and this
+	function uses Dijkstra's algorithm to compute all distances between the nodes
+	and the source. Returns
+	
+		- `distances` : a dictionary with the distances
+		- `previous` : a dictionary representing the tree of the shortest paths.
+		- `sink` : optional sink
+	"""
+	function dijkstra(graph::AdjList{R,T}, source::T, sink=nothing) where {R<:Real,T}
+		# initialize the tentative distances
+		distances = Dict(v => Inf for v in keys(graph))
+		# distance to source is 0
+		distances[source] = zero(R)
+		# keep track of previous node for backtracking
+		previous = Dict{T,T}()
+		# heap for order, sorted by distance to source
+		vertices_to_check = [(zero(R), source)]
+		while length(vertices_to_check) > 0
+			dist, u = heappop!(vertices_to_check)
+			# if this is the sink, return the shortest path
+			u == sink && return dist, reconstruct_path(previous, source, sink)
+			# check neighbors
+			for (dist_u_v, v) in graph[u]
+				new_dist = dist + dist_u_v
+				# check if there is an improvement to go to
+				# v via u
+				if distances[v] > new_dist
+					distances[v] = new_dist
+					previous[v] = u
+					heappush!(vertices_to_check, (new_dist, v))
+				end
+			end
+		end
+		return distances, previous
+	end
+
+
+	"""
+		a_star(graph::AdjList{R,T}, source::T, sink::T, heuristic) where {R<:Real,T}
+
+	A* shortest path algorithm.
+
+	Inputs:
+		- `graph` : adjacency list representing a weighted directed graph
+		- `source`
+		- `sink`
+		- `heuristic` : a function that inputs a node and returns an lower bound
+				for the distance to the source. Note that a distance can be turned into
+				a heuristic using `n -> d(n, sink)`
+
+	Outputs:
+		- the shortest path
+		- the cost of this shortest path
+	"""
+	function a_star(graph::AdjList{R,T}, source::T, sink::T, heuristic) where {R<:Real,T}
+		# initialize the tentative distances
+		distances = Dict(v => Inf for v in keys(graph))
+		distances[source] = zero(R)
+		previous = Dict{T,T}()
+		vertices_to_check = [(heuristic(source), source)]
+		while length(vertices_to_check) > 0
+			dist, u = heappop!(vertices_to_check)
+			if u == sink
+				return reconstruct_path(previous, source, sink), distances[sink]
+			end
+			for (dist_u_v, v) in graph[u]
+				new_dist = dist + dist_u_v
+				if distances[v] > new_dist
+					distances[v] = new_dist
+					min_dist_to_sink = new_dist + heuristic(v)
+					previous[v] = u
+					heappush!(vertices_to_check, (min_dist_to_sink, v))
+				end
+			end
+		end
+	end
+end
 
 # ╔═╡ aec0517c-01e7-4d3f-b9b4-3e4ec8acdfc3
 begin
@@ -44,145 +158,6 @@ begin
 	end
 
 end #Words
-
-# ╔═╡ 9803aaf0-08c3-4501-8865-318a988210c9
-module Solution
-	export reconstruct_path, dijkstra, a_star
-
-	using DataStructures
-
-
-	WeightedEdgeList{R,T} = Array{Tuple{R,T,T},1}
-	AdjList{R,T} = Dict{T,Array{Tuple{R,T},1}}
-
-	"""
-		reconstruct_path(previous::Dict{T,T}, source::T, sink::T) where {T}
-
-	Reconstruct the path from the output of the Dijkstra algorithm.
-
-	Inputs:
-			- previous : a Dict with the previous node in the path
-			- source : the source node
-			- sink : the sink node
-	Ouput:
-			- the shortest path from source to sink
-	"""
-	function reconstruct_path(previous::Dict{T,T}, source::T, sink::T) where {T}
-		path = T[sink]
-		current = sink
-		while current != source
-			current = previous[current]
-			push!(path, current)
-		end
-		return reverse!(path)
-	end
-
-
-	"""
-		dijkstra(graph::AdjList{R,T}, source::T) where {R<:Real,T}
-
-	Dijkstra without a specified sink. Give the `graph` and a `source` and this
-	function uses Dijkstra's algorithm to compute all distances between the nodes
-	and the source. Returns
-		- `distances`: a dictionary with the distances
-		- `previous`: a dictionary representing the tree of the shortest paths.
-	"""
-	function dijkstra(graph::AdjList{R,T}, source::T) where {R<:Real,T}
-		# initialize the tentative distances
-		distances = Dict(v => Inf for v in keys(graph))
-		distances[source] = 0.0
-		previous = Dict{T,T}()
-		vertices_to_check = [(0.0, source)]
-		while length(vertices_to_check) > 0
-			dist, u = heappop!(vertices_to_check)
-			for (dist_u_v, v) in graph[u]
-				new_dist = dist + dist_u_v
-				if distances[v] > new_dist
-					distances[v] = new_dist
-					previous[v] = u
-					heappush!(vertices_to_check, (new_dist, v))
-				end
-			end
-		end
-		return distances, previous
-	end
-
-	"""
-		dijkstra(graph::AdjList{R,T}, source::T, sink::T) where {R<:Real,T}
-
-	Dijkstra's shortest path algorithm.
-
-	Inputs:
-		- `graph` : adjacency list representing a weighted directed graph
-		- `source`
-		- `sink`
-
-	Outputs:
-		- the shortest path
-		- the cost of this shortest path
-	"""
-	function dijkstra(graph::AdjList{R,T}, source::T, sink::T) where {R<:Real,T}
-		# initialize the tentative distances
-		distances = Dict(v => Inf for v in keys(graph))
-		distances[source] = 0.0
-		previous = Dict{T,T}()
-		vertices_to_check = [(0.0, source)]
-		while length(vertices_to_check) > 0
-			dist, u = heappop!(vertices_to_check)
-			if u == sink
-				return reconstruct_path(previous, source, sink), dist
-			end
-			for (dist_u_v, v) in graph[u]
-				new_dist = dist + dist_u_v
-				if distances[v] > new_dist
-					distances[v] = new_dist
-					previous[v] = u
-					heappush!(vertices_to_check, (new_dist, v))
-				end
-			end
-		end
-	end
-
-	"""
-		a_star(graph::AdjList{R,T}, source::T, sink::T, heuristic) where {R<:Real,T}
-
-	A* shortest path algorithm.
-
-	Inputs:
-		- `graph` : adjacency list representing a weighted directed graph
-		- `source`
-		- `sink`
-		- `heuristic` : a function that inputs a node and returns an lower bound
-				for the distance to the source. Note that a distance can be turned into
-				a heuristic using `n -> d(n, sink)`
-
-	Outputs:
-		- the shortest path
-		- the cost of this shortest path
-	"""
-	function a_star(graph::AdjList{R,T}, source::T, sink::T, heuristic) where {R<:Real,T}
-		# initialize the tentative distances
-		distances = Dict(v => Inf for v in keys(graph))
-		distances[source] = 0.0
-		previous = Dict{T,T}()
-		vertices_to_check = [(heuristic(source), source)]
-		while length(vertices_to_check) > 0
-			dist, u = heappop!(vertices_to_check)
-			if u == sink
-				return reconstruct_path(previous, source, sink), distances[sink]
-			end
-			for (dist_u_v, v) in graph[u]
-				new_dist = dist + dist_u_v
-				if distances[v] > new_dist
-					distances[v] = new_dist
-					min_dist_to_sink = new_dist + heuristic(v)
-					previous[v] = u
-					heappush!(vertices_to_check, (min_dist_to_sink, v))
-				end
-			end
-		end
-	end
-end
 
 # ╔═╡ 2ab0b80e-1e02-11ec-1596-8bd8e81d347c
 md"""
@@ -574,6 +549,15 @@ const cities = [k for k in keys(cities_coordinates)]
 # ╔═╡ 8c64f65f-b610-40b5-b9a1-6abb39a6f0bb
 tickettoride_dist(c1, c2) = sqrt(sum((cities_coordinates[c1] .- cities_coordinates[c2]).^2))
 
+# ╔═╡ c94046a4-145d-45d3-8911-36041c223bee
+tickettoride_dist("Nashville", "Chicago")  # illstration of distance function
+
+# ╔═╡ a7b3ee05-0fa3-495a-81b9-7880ac01184e
+dist2Nashville(city) = tickettoride_dist(city, "Nashville")  # turn distance in heurisitic
+
+# ╔═╡ b75fa88d-07db-412b-be67-9209157f97ce
+city -> tickettoride_dist(city, "Nashville")  # anonymous function
+
 # ╔═╡ 76b4809a-3fed-4bea-bfe8-66582cbb3fc9
 tickettoride_edges_dists = [(tickettoride_dist(u, v), u, v) for (w, u, v) in tickettoride_edges]
 
@@ -830,9 +814,9 @@ version = "1.0.10+0"
 
 [[GLFW_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libglvnd_jll", "Pkg", "Xorg_libXcursor_jll", "Xorg_libXi_jll", "Xorg_libXinerama_jll", "Xorg_libXrandr_jll"]
-git-tree-sha1 = "dba1e8614e98949abfa60480b13653813d8f0157"
+git-tree-sha1 = "0c603255764a1fa0b61752d2bec14cfbd18f7fe8"
 uuid = "0656b61e-2033-5cc2-a64a-77c0f6c09b89"
-version = "3.3.5+0"
+version = "3.3.5+1"
 
 [[GR]]
 deps = ["Base64", "DelimitedFiles", "GR_jll", "HTTP", "JSON", "Libdl", "LinearAlgebra", "Pkg", "Printf", "Random", "Serialization", "Sockets", "Test", "UUIDs"]
@@ -1521,6 +1505,9 @@ version = "0.9.1+5"
 # ╟─a2906480-383f-4456-9a80-04d172f85c41
 # ╟─f8bc5419-054e-4b8f-807e-b594784661f6
 # ╠═0c280cb9-9f30-4570-91a1-19538b56f957
+# ╠═c94046a4-145d-45d3-8911-36041c223bee
+# ╠═a7b3ee05-0fa3-495a-81b9-7880ac01184e
+# ╠═b75fa88d-07db-412b-be67-9209157f97ce
 # ╠═74b62c2b-58b5-4c37-9399-266855086f9b
 # ╟─54b185a7-7b4e-4756-9663-db0b6419de27
 # ╠═db00faa4-1d04-47aa-a062-4cf9b8cbe208
@@ -1545,6 +1532,6 @@ version = "0.9.1+5"
 # ╟─9d754d22-2a09-4458-8fa0-589ae4f75d76
 # ╟─7654100f-86ca-481f-bfb7-bc9b9ee20639
 # ╟─aec0517c-01e7-4d3f-b9b4-3e4ec8acdfc3
-# ╟─9803aaf0-08c3-4501-8865-318a988210c9
+# ╠═9803aaf0-08c3-4501-8865-318a988210c9
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

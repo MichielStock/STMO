@@ -4,286 +4,252 @@
 using Markdown
 using InteractiveUtils
 
-# ╔═╡ 0150a3e2-f98e-4412-9e96-1a2db5a9421e
-using Combinatorics, Plots
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
+        el
+    end
+end
 
-# ╔═╡ 936344da-213a-11ec-3e68-05f0f85cf2f3
+# ╔═╡ 528edd1b-551d-4a2c-af34-14ca1d90809f
+using Plots, PlutoUI
+
+# ╔═╡ d93deb54-50fb-11ec-307c-d7de39606f97
 md"""
-# NP-complete problems
+# Heuristics and metaheuristics: Particle Swarm Optimization
 
 *STMO*
 
 **Michiel Stock**
+
+![](https://github.com/MichielStock/STMO/blob/master/chapters/10.Metaheuristics/Figures/logo.png?raw=true)
+
+In this chapter, we will explore some more general algorithms to solve hard problems. We will start with local search and end up with some simple, though powerful metaheuristics. Since the algorithms reuse many components or can be abstracted for multiple problems, we will also illustrate Julia's dispatch system to design flexible software.
+
+This part illustrates the particle swarm optimization algorithm.
 """
 
-# ╔═╡ c3b61d51-679c-4aba-957b-105c00037aee
-md"In this document, we will go over some simple algorithms to solve the knapsack problem."
-
-# ╔═╡ 62c4926d-0350-4088-8729-0ee5afb306be
+# ╔═╡ d07c436c-beb5-46a5-9384-01d06c9f71d8
 md"""
-## The knapsack problem
+## Description
 
-### Problem definition
+Particle Swarm Optimization (PSO) is a stochastic metaheuristic to solve non-convex continuous optimization problems. It based on the flocking behavior of birds and insects. PSO holds a list of 'particles', containing a position and a velocity in the design space. In every step, the velocity of each particle is updated according to
+- towards the particle's personal best design point;
+- towards the best design point found over all the groups.
+The particles' velocities are subsequently used to update their positions.
 
-> Given a set of items, each with a weight and a value, find the subset of items so that the total weight is less than or equal to a given limit and the total value is as large as possible.
+Specifically, the position $\mathbf{x}^{(i)}$ and velocity $\mathbf{v}^{(i)}$ of the $i$-th particle are updated according to
 
-Or, in symbols:
+$\mathbf{x}^{(i)} := \mathbf{x}^{(i)} + \mathbf{v}^{(i)}\,,$
 
-Given two sets of cardinality $n$ with the values $\{v_1,\ldots, v_n\}$ and the weights $\{w_1,\ldots, w_n\}$ and a capacity $W>0$ we want to determine $T\subseteq\{1,\ldots,n\}$ such that
+$\mathbf{v}^{(i)} := w\mathbf{v}^{(i)} +c_1r_1 (\mathbf{x}^{(i)}_\text{best}-\mathbf{x}^{(i)}) +c_2r_2 (\mathbf{x}_\text{best}-\mathbf{x}^{(i)})\,,$
 
-$$\max_T \, \sum_{i\in T} v_i$$
+with $w$, $c_1$, $c_2$ three parameters dermining the behavior, $r_1$ and $r_2$ two random uniform numbers from the [0,1] interval and $\mathbf{x}^{(i)}_\text{best}$ the best design point of particle $i$ and $\mathbf{x}_\text{best}$ the current global best design point.
 
-$$\text{subject to } \sum_{i\in T} w_i \leq W\,.$$
-
-We can represent this problem in Julia using a list of tuples, representing the items with their reprective values and weights, and a number containing the capacity $W$. Let us however use this opportunity to construct a simple structure to represent knapsack problems.
+Because all particles perform both a partly independent search and share information, PSO exhibits an emerging intelligent swarming behavior.
 """
 
-# ╔═╡ 3c769076-fec9-4730-b993-2fefa09f0c8d
-struct Knapsack{T,V<:Real,W<:Real}
-  items::Array{Tuple{T,V,W},1}
-  capacity::W
+# ╔═╡ fa2b1ff1-15b6-460f-b8cd-9b2e5a030427
+md"## Implementation
+
+We will construct a new structure for particles containing their position, velocity, and best point."
+
+# ╔═╡ a20cf90a-59d8-4702-87e4-239730188559
+mutable struct Particle{T}
+    x::T
+    v::T
+    x_best::T
+	Particle(x::T) where{T} = new{T}(x, zero(x), x)
 end
 
-# ╔═╡ ada8c7c4-f6d8-41e7-a4e0-c137ce7ab151
-C = 10
+# ╔═╡ a67e44f3-3662-4520-b20c-0afbc65619a4
+md"Note that we use parametric typing to infer the type of our design points automatically.
 
-# ╔═╡ 64e7be40-cd0b-40c4-b476-51c6a66d40e1
+A simple function can generate an intial population:"
+
+# ╔═╡ 09d75da1-49a8-43f3-b29f-45f7a5a5cbbf
+"""Generate an intiation population with `n_particles` randomly positioned between the given limits."""
+init_population(n_particles, lims...) = [Particle([(u - l) * rand() + l for (l, u) in lims]) for i in 1:n_particles]
+
+# ╔═╡ 0188dbe1-da01-419f-9db3-8b468cfbe695
+md"Then we can move to the bulk of the code."
+
+# ╔═╡ ba4988dc-a9b4-429c-9892-d2744122376b
+"""
+    particle_swarm_optimization!(f, population, k_max;
+            w=1, c1=1, c2=1)
+
+Performs Particle Swarm Optimization to minimize a function `f`. Give an initial
+vector of particles (type `Particle`) and the `k_max`, the number of iterations.
+
+Optionally set hyperparameters `w`, `c1` and `c2` (default value of 1).
+"""
+function particle_swarm_optimization!(f, population, k_max;
+        w=1, c1=1, c2=1)
+    # find best point
+    y_best, x_best = minimum((((f(part.x_best), part.x_best)) for part in population))
+    for k in 1:k_max
+        # update population
+        for particle in population
+            # For you to complete
+        end
+        # this allows us to keep track of things if we want so.
+    end
+    return y_best, x_best
+end
+
+# ╔═╡ 61b281f7-018b-4b79-8837-134079283778
 md"""
-Consider the Indiana Jones problem:
-
-
-| i |  artifact     | $v_i$ |  $w_i$ |
-|---|---------------|-------|--------|
-| 1 |  statue 1     |   1   |  2     |
-| 2 |  statue 2     |   1   |  2     |
-| 3 |  statue 3     |   1   |  2     |
-| 4 |  tablet 1     |  10   |  5     |
-| 5 |  tablet 2     |  10   |  5     |
-| 6 |  golden mask  |  13   |  7     |
-| 7 |  golden plate |   7   |  3     |
+We will illustrate it on the Ackley function.
 """
 
-# ╔═╡ be803662-aa08-4ee3-a400-bbc18b7d060f
-md"""The capacity is $C kg.
-
-So we can define the instance as (feel free to modify)"""
-
-# ╔═╡ 2ce221f2-5712-440e-9b34-168a3a5af65e
-knapsack = Knapsack([("statue 1", 1, 2),
-                     ("statue 2", 1, 2),
-                     ("statue 2", 1, 2),
-                     ("tablet 1", 10, 5),
-                     ("tablet 2", 10, 5),
-                     ("golden mask", 13, 7),
-                     ("golden plate", 7, 3)],
-                     C)
-
-# ╔═╡ 2d9598de-dfd6-46c7-bf4f-c2f48134e558
-md"We might as well define some useful function that work on `Knapsack` structures."
-
-# ╔═╡ 265ac424-3e7b-4222-ab79-07907544a9fa
-"""Getter for the items."""
-items(knapsack::Knapsack) = knapsack.items
-
-# ╔═╡ 876bd16d-89ac-4164-8055-e9ec4a4d875f
-"""Getter for the capacity."""
-capacity(knapsack::Knapsack) = knapsack.capacity
-
-# ╔═╡ cca6890d-b0eb-4154-9b27-be79c0b8ab38
-"""Number of items"""
-Base.length(knapsack::Knapsack) = length(items(knapsack));
-
-# ╔═╡ 94cb9a4c-aa3f-4ef0-a4e5-170b0d2ad69b
-"""Weight of a set of items"""
-weight(items::Array) = sum((w for (i, v, w) in items));
-
-# ╔═╡ 1d07e4af-5419-464f-842d-3012920e8a1b
-"""Weight of an item"""
-weight(item::Tuple) = item[3];
-
-# ╔═╡ f0734b83-dbbc-4d1d-a96e-9209e53b7382
-"""Value of a set of items"""
-value(items::Array) = sum((v for (i, v, w) in items));
-
-# ╔═╡ 165d0c6a-ec73-46a9-a9f4-5085c65d184c
-"""Value of an item"""
-value(item::Tuple) = item[2];
-
-# ╔═╡ e1fa7a85-5aab-4e17-b02f-c9a0c62f3f47
-md"### Brute force"
-
-# ╔═╡ 38e36108-85cf-4808-8e10-bc6f869522fc
-function bruteforce(knapsack::Knapsack{T,V,W}) where {T,V<:Real,W<:Real}
-  # number of items
-  n = length(knapsack)
-  cap = capacity(knapsack)
-  knapsack_items = items(knapsack)
-  best_value = zero(W)
-  best_solution = eltype(knapsack_items)[]
-  for solution in combinations(knapsack_items)
-    if weight(solution) ≤ cap && value(solution) > best_value
-      best_solution = solution
-      best_value = value(solution)
-    end
-  end
-  return best_solution, best_value
+# ╔═╡ 23afe89c-0873-49bc-97b7-3280f83915b2
+function ackley(x; a=20, b=0.2, c=2π)
+    d = length(x)
+    return -a * exp(-b*sqrt(sum(x.^2)/d)) -
+        exp(sum(cos.(c .* x))/d)
 end
 
-# ╔═╡ 9b555941-5ef2-48d5-8efd-0f4cf7e38af6
-bruteforce(knapsack)
+# ╔═╡ 833e7bd2-23b7-4028-a860-7b5c010656d4
+ackley(x...; kwargs...) = ackley(x; kwargs...)
 
-# ╔═╡ 96d84e8c-3b11-4b01-a036-e3434804f512
-md"### Greedy"
+# ╔═╡ ed526e2e-b40d-47a3-9489-7f226802e405
+x1lims = (-10, 10)
 
-# ╔═╡ f65c49f0-09bf-4b5f-99b9-21b2fe6f5760
-function greedy(knapsack::Knapsack{T,V,W},
-                    heuristic::Function) where {T,V<:Real,W<:Real}
-  items_knapsack = items(knapsack)
-  solution = eltype(items_knapsack)[]
-  solution_weight = zero(W)
-  solution_value = zero(V)
-  cap = capacity(knapsack)
-  for item in sort(items_knapsack, by=heuristic, rev=true)
-    v, w = value(item), weight(item)
-    if solution_weight + w ≤ cap
-      push!(solution, item)
-      solution_weight += w
-      solution_value += v
-    end
-  end
-  return solution, solution_value
-end
+# ╔═╡ e42dec26-c912-4d40-8b12-9fc6d4097d8c
+x2lims = (-10, 10)
 
-# ╔═╡ 3e95cf39-5d8f-498a-bdb6-df99a51257f3
-md"Here, `heuristic` is a function we can provide to guide the greedy search. For example, if we search by value."
+# ╔═╡ 98e9b5ef-ea4a-4a5c-bdd1-7b3326cbdb51
+pobj = heatmap(-10:0.01:10, -10:0.01:10,
+                ackley, color=:speed, xlabel="x₁", ylabel="x₂")
 
-# ╔═╡ 97465212-39d3-4b19-8dd0-cf654b80e3e2
-greedy(knapsack, value)
+# ╔═╡ 45d8ac90-a853-4995-b8c0-e7f3e506b3de
+md"We initialize a population."
 
-# ╔═╡ 834e4c69-5e90-409a-a2ed-ac14609ae728
-md"Or, search lightest items first."
+# ╔═╡ 30dae3fc-f7d3-4f29-9a4e-6c0a0ac10c64
+population = init_population(50, x1lims, x2lims)
 
-# ╔═╡ 02e07bf0-741c-4df2-9a07-55093e2bb55d
-greedy(knapsack, item -> -weight(item))
+# ╔═╡ f6b5942f-33d6-4ddb-bc41-94e3624407eb
+md"Adding the points is easy!"
 
-# ╔═╡ e53659a3-e791-4318-a738-678d8c267b86
-md"Or, by value-density:"
-
-# ╔═╡ fa75a27d-725f-49df-8527-125c90de1692
-greedy(knapsack, item -> value(item) / weight(item))
-
-# ╔═╡ 79be9317-762d-4ce5-85ed-983f4882fa0b
-md"### Dynamics programming"
-
-# ╔═╡ d500504b-5cfb-46b9-8b82-1fbfb843b479
-function dynamic_programming(knapsack::Knapsack{T,V,W}) where {T,V<:Real,W<:Int}
-  items_knapsack = items(knapsack)
-  n = length(knapsack)
-  cap = capacity(knapsack)
-  DP = zeros(V, n + 1, cap + 1)  # starts from zero
-  # fill the DP matrix
-  for w in 1:cap
-    for (i, (itname, vᵢ, wᵢ)) in enumerate(items_knapsack)
-      if wᵢ ≤ w  # this item can fit the bag
-        DP[i+1,w+1] = max(DP[i,w+1],  # value without the item
-                        DP[i,w-wᵢ+1] + vᵢ)  # value with the item, given room for the item
-      else  # no room
-        DP[i+1,w+1] = DP[i, w+1]  # take value without the item
-      end
-    end
-  end
-  # now, backtrack
-  solution = eltype(items_knapsack)[]
-  i, w = n, cap
-  while i > 0
-    if DP[i+1,w+1] > DP[i,w+1]  # item i was added
-      item = items_knapsack[i]
-      push!(solution, item)
-      w -= weight(item)
-    end
-    i -= 1
-    i == 0 || w == 0 && break
-  end
-  return solution, last(DP), DP
-end
-
-# ╔═╡ a7f61d0a-7706-47d1-8798-264881d032fa
-md"Note the restriction on the type of the weigths!"
-
-# ╔═╡ 67ccbd02-d63c-42e3-ae7b-3022d3ec60c0
-dynamic_programming(knapsack)
-
-# ╔═╡ fe8bb7b2-6fd2-4b8f-9ef0-9d2fcc1b744a
+# ╔═╡ 12325769-f176-4f92-919c-f780a510fc87
 md"""
-## Exercise: brute-force TSP
-
-Consider the capitals of the provice of Belgium 🇧🇪
+**Assignments**:
+1. Complete the `particle_swarm_optimization!` code.
+2. Minimize the `ackley` function (or a different one). What are the effects of the hyperparameters?
+3. (optional) Make an animation of the swarming behavior of the particles. See the [documentation](https://docs.juliaplots.org/latest/animations/) on how to do this. HINT: you might find it useful to run `particle_swarm_optimization!` for a single iteration `k_max` times.
 """
 
-# ╔═╡ 66eb2e32-c0bd-42ab-bb67-05dbd01a1d6e
-md"**Assignment** Loop over all possible tours to find the shortest one. A tour is just gives the order of the cities indices. For example"
+# ╔═╡ 813b7012-30bd-42d3-afac-676ceca0be13
 
-# ╔═╡ 5afd91f6-9e0d-4774-a954-3f00b71dd2e7
+
+# ╔═╡ f9959afb-6c47-4157-bf21-f8c13ab803e2
+
+
+# ╔═╡ fc083229-38b1-423d-b1f7-cb29c62e643b
+
+
+# ╔═╡ 6cda900c-3b77-4590-939b-41c9be02abef
 md"## Appendix"
 
-# ╔═╡ 8c685b23-0ee2-4027-ad5c-01c1dce6fe3a
-stad_coor = Dict(
-	"Antwerpen" => (51.219901727372466, 4.413766520738599),
-	"Hasselt" => (50.929969726608796, 5.337669056378496),
-	"Gent" => (51.046603059146115, 3.7227238267036165),
-	"Leuven" => (50.87717306970613, 4.7013098809614045),
-	"Brugge"=>(51.20994021593339, 3.2237458378594632),
-	"Bergen" => (50.45178175960054, 3.95116527396219),
-	"Luik" => (50.63563258400128, 5.58639186132504),
-	"Aarlen" => (49.68489470742727, 5.812244206475732),
-	"Namen" => (50.45840475199352, 4.858245535731698),
-	"Waver" => (50.71402361189344, 4.596358571899753),
-	"Brussel" => (50.86323347803335, 4.349845202806156)
-);
+# ╔═╡ 9479ddff-a14b-45cb-8a52-e792295c58f1
+md"Show solution: $(@bind show_solution CheckBox())"
 
-# ╔═╡ 1a6ded1a-cfbe-4d7b-b70f-b06075747561
-cities = keys(stad_coor) |> collect;
-
-# ╔═╡ 8e5dcba4-21dc-4e7c-a3cb-7eec261a270c
-cities
-
-# ╔═╡ 15c2faec-655f-4d56-9e4c-5abd4c1d9026
-nsteden = ncities = length(cities);
-
-# ╔═╡ 45e7087e-9ad6-49b9-97ac-6a9038d5cb44
-a_tour = collect(1:ncities)  # order of the list
-
-# ╔═╡ 827b5a0e-c838-42d2-be03-87a4dd34b24a
-dist_sphere((lat1, long1), (lat2, long2); r=6_371) = 2r * asin(√(sin((lat2 -lat1)/2)^2 + cos(lat1)*cos(lat2)*sin((long2-long1)/2)^2));
-
-# ╔═╡ 18e490a3-5823-4862-ae86-07546f556eab
-D = [dist_sphere(stad_coor[h1] .* pi ./ 180, stad_coor[h2] .* pi ./ 180) for h1 in cities, h2 in cities];
-
-# ╔═╡ 54db8c49-dee0-4ef1-bd26-78d10b03ae76
-D  # distance matrix
-
-# ╔═╡ c59969a6-eb3e-47c5-9bd8-f1af03fce595
-function total_distance(route, incomplete=false)
-	c = 0.0
-	prev = incomplete ? 1 : route[end]
-	for next in route
-		c += D[prev, next]
-		prev = next
+# ╔═╡ 8f111148-1c89-4b29-9d59-1336e2df84de
+if show_solution
+md"""```julia
+	function particle_swarm_optimization!(f, population::Vector{Particle{T}} where T, k_max;
+	        w=1, c1=1, c2=1)
+	    # find best point
+	    y_best, x_best = minimum((((f(part.x), part.x)) for part in population))
+	    for k in 1:k_max
+	        # update population
+	        for particle in population
+	            r1, r2 = rand(2)
+	            particle.v .= w * particle.v + 
+							c1 * r1 * (particle.x_best .- particle.x) .+
+	                		c2 * r2 * (x_best .- particle.x)
+	            particle.x .+= particle.v
+	            fx = f(particle.x)
+	            # update current best
+	            fx < f(x_best) && (particle.x_best .= particle.x)
+	            # update global best
+	            if fx < y_best
+	                y_best = fx
+	                x_best .= particle.x
+	            end
+	        end
+	    end
+	    return y_best, x_best
 	end
-	incomplete && (c += D[route[end], 1])
-	return c
+```
+```julia
+function pso_animation(f, population, k_max;
+        w=1, c1=1, c2=1)
+    # find best point
+    y_best, x_best = minimum((((f(part.x), part.x)) for part in population))
+    objective = [y_best]
+    # determine xvals and yvals depending on the spread of the particles
+    x1min = minimum((part.x[1] for part in population))
+    x1max = maximum((part.x[1] for part in population))
+    x2min = minimum((part.x[2] for part in population))
+    x2max = maximum((part.x[2] for part in population))
+    x1steps = (x1max - x1min) / 200
+    x2steps = (x2max - x2min) / 200
+    anim = @animate for k in 1:k_max
+
+        swarmplot = heatmap(x1min:x1steps:x1max, x2min:x2steps:x2max,
+                        (x,y)->f((x,y)), color=:speed)
+        xlims!((x1min, x1max))
+        ylims!((x2min, x2max))
+        # update population
+        for particle in population
+            r1, r2 = rand(2)
+            particle.v .= w * particle.v .+ 
+				c1 * r1 * (particle.x_best .- particle.x) .+
+                c2 * r2 * (x_best .- particle.x)
+            particle.x .+= particle.v
+            fx = f(particle.x)
+            # update current best
+            fx < f(x_best) && (particle.x_best .= particle.x)
+            # update global best
+            if fx < y_best
+                y_best = fx
+                x_best .= particle.x
+            end
+            scatter!(swarmplot, [particle.x[1]], [particle.x[2]],
+                        color=:red, label="")
+        end
+        push!(objective, y_best)
+        pobj = plot(0:k, objective, label="objective")
+        xlabel!("iteration")
+        ylabel!("best objective")
+        plot(swarmplot, pobj)
+    end
+    return anim
+end
+```
+
+```julia
+# no momentum
+population = init_population(50, x1lims, x2lims)
+pso_no_momentum = pso_animation(ackley, population, 100, w=1, c1=0.9, c2=0.9)
+gif(pso_no_momentum, fps=4)
+```
+
+```julia
+# momentum
+population = init_population(50, x1lims, x2lims)
+pso_momentum = pso_animation(fun, population, 100, w=0.8, c1=0.9, c2=0.9)
+gif(pso_no_momentum, fps=4)
+```
+"""
 end
 
-# ╔═╡ b09bae94-4add-4d71-8bbc-5d5e4cdba2f6
-total_distance(a_tour)
-
-# ╔═╡ 7709998d-61cf-4a82-9090-f643ee9caa75
-solutions = [push!(p, nsteden) |> p->(total_distance(p), cities[p], p) for p in permutations(1:nsteden-1)] |> sort!
-
-# ╔═╡ c432978f-c76d-4d85-8899-580730d7ea44
-best_tour = solutions[1][end]
-
-# ╔═╡ fde5a843-5767-4fc7-a381-eb2ecc1fe801
+# ╔═╡ 769ef8c7-7a71-49ce-be50-9dfa79f85ca4
 begin
 	myblue = "#304da5"
 	mygreen = "#2a9d8f"
@@ -295,47 +261,38 @@ begin
 	mycolors = [myblue, myred, mygreen, myorange, myyellow]
 end;
 
-# ╔═╡ 137dc6ec-72c5-4858-a18a-9fb433899805
-function plot_tour(route)
-	routec = [route..., route[1]]
-	p = plot()
-	for (i,j) in zip(routec[1:end-1], routec[2:end])
-		h1, h2 = cities[i], cities[j]
-		lat1, long1 = stad_coor[h1]
-		lat2, long2 = stad_coor[h2]
-		plot!(p, [long1, long2], [lat1, lat2], color=myred, label="", lw=3, alpha=0.8)
+# ╔═╡ 88d6bb43-e34c-4404-87a1-33d16946a990
+let
+	pobj = heatmap(-10:0.01:10, -10:0.01:10,
+                ackley, color=:speed, xlabel="x₁", ylabel="x₂")
+	for particle in population
+	    x = particle.x
+	    scatter!(pobj, [x[1]], [x[2]], color=myorange, label="",
+	            markersize=2)
 	end
-	for h in cities
-		lat, long = stad_coor[h]
-		scatter!(p, [long], [lat], label="", color=myblue, ms=8)
-		annotate!((long+0.06, lat+0.06, h))
-	end
-	return p
+	pobj
 end
-
-# ╔═╡ ed475158-07c4-4116-b0eb-d23911bf6531
-plot_tour([1 for i in 1:nsteden])
-
-# ╔═╡ cedb1c31-859c-4c6a-a0fd-4c643959c4f7
-plot_tour(a_tour)
-
-# ╔═╡ edee8c38-7ccb-4f51-aa8e-f46187904b80
-plot_tour(best_tour)
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
-Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 
 [compat]
-Combinatorics = "~1.0.2"
-Plots = "~1.23.6"
+Plots = "~1.24.0"
+PlutoUI = "~0.7.20"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
+
+[[AbstractPlutoDingetjes]]
+deps = ["Pkg"]
+git-tree-sha1 = "0bc60e3006ad95b4bb7497698dd7c6d649b9bc06"
+uuid = "6e696c72-6542-2067-7265-42206c756150"
+version = "1.1.1"
 
 [[Adapt]]
 deps = ["LinearAlgebra"]
@@ -393,11 +350,6 @@ deps = ["ColorTypes", "FixedPointNumbers", "Reexport"]
 git-tree-sha1 = "417b0ed7b8b838aa6ca0a87aadf1bb9eb111ce40"
 uuid = "5ae59095-9a9b-59fe-a467-6f913c188581"
 version = "0.12.8"
-
-[[Combinatorics]]
-git-tree-sha1 = "08c8b6831dc00bfea825826be0bc8336fc369860"
-uuid = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
-version = "1.0.2"
 
 [[Compat]]
 deps = ["Base64", "Dates", "DelimitedFiles", "Distributed", "InteractiveUtils", "LibGit2", "Libdl", "LinearAlgebra", "Markdown", "Mmap", "Pkg", "Printf", "REPL", "Random", "SHA", "Serialization", "SharedArrays", "Sockets", "SparseArrays", "Statistics", "Test", "UUIDs", "Unicode"]
@@ -565,6 +517,23 @@ deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll",
 git-tree-sha1 = "8a954fed8ac097d5be04921d595f741115c1b2ad"
 uuid = "2e76f6c2-a576-52d4-95c1-20adfe4de566"
 version = "2.8.1+0"
+
+[[Hyperscript]]
+deps = ["Test"]
+git-tree-sha1 = "8d511d5b81240fc8e6802386302675bdf47737b9"
+uuid = "47d2ed2b-36de-50cf-bf87-49c2cf4b8b91"
+version = "0.0.4"
+
+[[HypertextLiteral]]
+git-tree-sha1 = "2b078b5a615c6c0396c77810d92ee8c6f470d238"
+uuid = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
+version = "0.9.3"
+
+[[IOCapture]]
+deps = ["Logging", "Random"]
+git-tree-sha1 = "f7be53659ab06ddc986428d3a9dcc95f6fa6705a"
+uuid = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
+version = "0.2.2"
 
 [[IniFile]]
 deps = ["Test"]
@@ -822,9 +791,15 @@ version = "1.0.15"
 
 [[Plots]]
 deps = ["Base64", "Contour", "Dates", "Downloads", "FFMPEG", "FixedPointNumbers", "GR", "GeometryBasics", "JSON", "Latexify", "LinearAlgebra", "Measures", "NaNMath", "PlotThemes", "PlotUtils", "Printf", "REPL", "Random", "RecipesBase", "RecipesPipeline", "Reexport", "Requires", "Scratch", "Showoff", "SparseArrays", "Statistics", "StatsBase", "UUIDs", "UnicodeFun"]
-git-tree-sha1 = "0d185e8c33401084cab546a756b387b15f76720c"
+git-tree-sha1 = "02a083caba3f73e42decb810b2e0740783022978"
 uuid = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
-version = "1.23.6"
+version = "1.24.0"
+
+[[PlutoUI]]
+deps = ["AbstractPlutoDingetjes", "Base64", "Dates", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "UUIDs"]
+git-tree-sha1 = "1e0cb51e0ccef0afc01aab41dc51a3e7f781e8cb"
+uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+version = "0.7.20"
 
 [[Preferences]]
 deps = ["TOML"]
@@ -851,9 +826,9 @@ deps = ["Serialization"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [[RecipesBase]]
-git-tree-sha1 = "44a75aa7a527910ee3d1751d1f0e4148698add9e"
+git-tree-sha1 = "6bf3f380ff52ce0832ddd3a2a7b9538ed1bcca7d"
 uuid = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
-version = "1.1.2"
+version = "1.2.1"
 
 [[RecipesPipeline]]
 deps = ["Dates", "NaNMath", "PlotUtils", "RecipesBase"]
@@ -918,9 +893,9 @@ deps = ["LinearAlgebra", "SparseArrays"]
 uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [[StatsAPI]]
-git-tree-sha1 = "1958272568dc176a1d881acb797beb909c785510"
+git-tree-sha1 = "0f2aa8e32d511f758a2ce49208181f7733a0936a"
 uuid = "82ae8749-77ed-4fe6-ae5f-f523153014b0"
-version = "1.0.0"
+version = "1.1.0"
 
 [[StatsBase]]
 deps = ["DataAPI", "DataStructures", "LinearAlgebra", "LogExpFunctions", "Missings", "Printf", "Random", "SortingAlgorithms", "SparseArrays", "Statistics", "StatsAPI"]
@@ -983,10 +958,10 @@ uuid = "a2964d1f-97da-50d4-b82a-358c7fce9d89"
 version = "1.19.0+0"
 
 [[Wayland_protocols_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Wayland_jll"]
-git-tree-sha1 = "2839f1c1296940218e35df0bbb220f2a79686670"
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "66d72dc6fcc86352f01676e8f0f698562e60510f"
 uuid = "2381bf8a-dfd0-557d-9999-79630e7b1b91"
-version = "1.18.0+4"
+version = "1.23.0+0"
 
 [[XML2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libiconv_jll", "Pkg", "Zlib_jll"]
@@ -1188,57 +1163,32 @@ version = "0.9.1+5"
 """
 
 # ╔═╡ Cell order:
-# ╟─936344da-213a-11ec-3e68-05f0f85cf2f3
-# ╟─c3b61d51-679c-4aba-957b-105c00037aee
-# ╠═0150a3e2-f98e-4412-9e96-1a2db5a9421e
-# ╟─62c4926d-0350-4088-8729-0ee5afb306be
-# ╠═3c769076-fec9-4730-b993-2fefa09f0c8d
-# ╠═ada8c7c4-f6d8-41e7-a4e0-c137ce7ab151
-# ╟─64e7be40-cd0b-40c4-b476-51c6a66d40e1
-# ╟─be803662-aa08-4ee3-a400-bbc18b7d060f
-# ╠═2ce221f2-5712-440e-9b34-168a3a5af65e
-# ╟─2d9598de-dfd6-46c7-bf4f-c2f48134e558
-# ╠═265ac424-3e7b-4222-ab79-07907544a9fa
-# ╠═876bd16d-89ac-4164-8055-e9ec4a4d875f
-# ╠═cca6890d-b0eb-4154-9b27-be79c0b8ab38
-# ╠═94cb9a4c-aa3f-4ef0-a4e5-170b0d2ad69b
-# ╠═1d07e4af-5419-464f-842d-3012920e8a1b
-# ╠═f0734b83-dbbc-4d1d-a96e-9209e53b7382
-# ╠═165d0c6a-ec73-46a9-a9f4-5085c65d184c
-# ╟─e1fa7a85-5aab-4e17-b02f-c9a0c62f3f47
-# ╠═38e36108-85cf-4808-8e10-bc6f869522fc
-# ╠═9b555941-5ef2-48d5-8efd-0f4cf7e38af6
-# ╟─96d84e8c-3b11-4b01-a036-e3434804f512
-# ╠═f65c49f0-09bf-4b5f-99b9-21b2fe6f5760
-# ╟─3e95cf39-5d8f-498a-bdb6-df99a51257f3
-# ╠═97465212-39d3-4b19-8dd0-cf654b80e3e2
-# ╟─834e4c69-5e90-409a-a2ed-ac14609ae728
-# ╠═02e07bf0-741c-4df2-9a07-55093e2bb55d
-# ╟─e53659a3-e791-4318-a738-678d8c267b86
-# ╠═fa75a27d-725f-49df-8527-125c90de1692
-# ╟─79be9317-762d-4ce5-85ed-983f4882fa0b
-# ╠═d500504b-5cfb-46b9-8b82-1fbfb843b479
-# ╟─a7f61d0a-7706-47d1-8798-264881d032fa
-# ╠═67ccbd02-d63c-42e3-ae7b-3022d3ec60c0
-# ╟─fe8bb7b2-6fd2-4b8f-9ef0-9d2fcc1b744a
-# ╠═ed475158-07c4-4116-b0eb-d23911bf6531
-# ╠═8e5dcba4-21dc-4e7c-a3cb-7eec261a270c
-# ╠═54db8c49-dee0-4ef1-bd26-78d10b03ae76
-# ╟─66eb2e32-c0bd-42ab-bb67-05dbd01a1d6e
-# ╠═45e7087e-9ad6-49b9-97ac-6a9038d5cb44
-# ╠═cedb1c31-859c-4c6a-a0fd-4c643959c4f7
-# ╠═b09bae94-4add-4d71-8bbc-5d5e4cdba2f6
-# ╠═7709998d-61cf-4a82-9090-f643ee9caa75
-# ╠═c432978f-c76d-4d85-8899-580730d7ea44
-# ╠═edee8c38-7ccb-4f51-aa8e-f46187904b80
-# ╟─5afd91f6-9e0d-4774-a954-3f00b71dd2e7
-# ╟─8c685b23-0ee2-4027-ad5c-01c1dce6fe3a
-# ╟─1a6ded1a-cfbe-4d7b-b70f-b06075747561
-# ╟─15c2faec-655f-4d56-9e4c-5abd4c1d9026
-# ╟─827b5a0e-c838-42d2-be03-87a4dd34b24a
-# ╟─c59969a6-eb3e-47c5-9bd8-f1af03fce595
-# ╟─18e490a3-5823-4862-ae86-07546f556eab
-# ╟─137dc6ec-72c5-4858-a18a-9fb433899805
-# ╟─fde5a843-5767-4fc7-a381-eb2ecc1fe801
+# ╟─d93deb54-50fb-11ec-307c-d7de39606f97
+# ╠═528edd1b-551d-4a2c-af34-14ca1d90809f
+# ╟─d07c436c-beb5-46a5-9384-01d06c9f71d8
+# ╟─fa2b1ff1-15b6-460f-b8cd-9b2e5a030427
+# ╠═a20cf90a-59d8-4702-87e4-239730188559
+# ╟─a67e44f3-3662-4520-b20c-0afbc65619a4
+# ╠═09d75da1-49a8-43f3-b29f-45f7a5a5cbbf
+# ╟─0188dbe1-da01-419f-9db3-8b468cfbe695
+# ╠═ba4988dc-a9b4-429c-9892-d2744122376b
+# ╟─61b281f7-018b-4b79-8837-134079283778
+# ╠═23afe89c-0873-49bc-97b7-3280f83915b2
+# ╠═833e7bd2-23b7-4028-a860-7b5c010656d4
+# ╠═ed526e2e-b40d-47a3-9489-7f226802e405
+# ╠═e42dec26-c912-4d40-8b12-9fc6d4097d8c
+# ╟─98e9b5ef-ea4a-4a5c-bdd1-7b3326cbdb51
+# ╟─45d8ac90-a853-4995-b8c0-e7f3e506b3de
+# ╠═30dae3fc-f7d3-4f29-9a4e-6c0a0ac10c64
+# ╟─f6b5942f-33d6-4ddb-bc41-94e3624407eb
+# ╟─88d6bb43-e34c-4404-87a1-33d16946a990
+# ╟─12325769-f176-4f92-919c-f780a510fc87
+# ╠═813b7012-30bd-42d3-afac-676ceca0be13
+# ╠═f9959afb-6c47-4157-bf21-f8c13ab803e2
+# ╠═fc083229-38b1-423d-b1f7-cb29c62e643b
+# ╟─6cda900c-3b77-4590-939b-41c9be02abef
+# ╟─9479ddff-a14b-45cb-8a52-e792295c58f1
+# ╟─8f111148-1c89-4b29-9d59-1336e2df84de
+# ╟─769ef8c7-7a71-49ce-be50-9dfa79f85ca4
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

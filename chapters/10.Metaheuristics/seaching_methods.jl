@@ -4,286 +4,795 @@
 using Markdown
 using InteractiveUtils
 
-# ╔═╡ 0150a3e2-f98e-4412-9e96-1a2db5a9421e
-using Combinatorics, Plots
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
+        el
+    end
+end
 
-# ╔═╡ 936344da-213a-11ec-3e68-05f0f85cf2f3
+# ╔═╡ 25700c98-eebd-11ea-17eb-4398f75594e0
+using Plots, Combinatorics, PlutoUI
+
+# ╔═╡ 2f8b1a76-8247-48b2-b324-4550b7bda94b
 md"""
-# NP-complete problems
+# Heuristics and metaheuristics
 
 *STMO*
 
 **Michiel Stock**
+
+![](https://github.com/MichielStock/STMO/blob/master/chapters/10.Metaheuristics/Figures/logo.png?raw=true)
+
+In this chapter, we will explore some more general algorithms to solve hard problems. We will start with local search and end up with some simple, though powerful metaheuristics. Since the algorithms reuse many components or can be abstracted for multiple problems, we will also illustrate Julia's dispatch system to design flexible software.
 """
 
-# ╔═╡ c3b61d51-679c-4aba-957b-105c00037aee
-md"In this document, we will go over some simple algorithms to solve the knapsack problem."
-
-# ╔═╡ 62c4926d-0350-4088-8729-0ee5afb306be
+# ╔═╡ c637a44c-eebd-11ea-3d4f-9539b52a7b88
 md"""
-## The knapsack problem
+## The knapsack problem revisited
 
-### Problem definition
-
-> Given a set of items, each with a weight and a value, find the subset of items so that the total weight is less than or equal to a given limit and the total value is as large as possible.
-
-Or, in symbols:
-
-Given two sets of cardinality $n$ with the values $\{v_1,\ldots, v_n\}$ and the weights $\{w_1,\ldots, w_n\}$ and a capacity $W>0$ we want to determine $T\subseteq\{1,\ldots,n\}$ such that
-
-$$\max_T \, \sum_{i\in T} v_i$$
-
-$$\text{subject to } \sum_{i\in T} w_i \leq W\,.$$
-
-We can represent this problem in Julia using a list of tuples, representing the items with their reprective values and weights, and a number containing the capacity $W$. Let us however use this opportunity to construct a simple structure to represent knapsack problems.
+To illustrate our methods, we will use a slightly larger instance of the knapsack problem. It has 19 items, making it just about feasible to go over all the combinations exhaustively but interesting enough to perform a more intelligent search.
 """
 
-# ╔═╡ 3c769076-fec9-4730-b993-2fefa09f0c8d
-struct Knapsack{T,V<:Real,W<:Real}
-  items::Array{Tuple{T,V,W},1}
-  capacity::W
-end
+# ╔═╡ a912a3b8-a175-4606-bd49-7db772d46eeb
+md"For the objective, we just yield the value of the total weight does not exceed the capacity, elsewise, we output a large negative number."
 
-# ╔═╡ ada8c7c4-f6d8-41e7-a4e0-c137ce7ab151
-C = 10
-
-# ╔═╡ 64e7be40-cd0b-40c4-b476-51c6a66d40e1
+# ╔═╡ 15d1edbd-35f9-4e77-93ec-4302c9a34e5b
 md"""
-Consider the Indiana Jones problem:
+## Local search
 
-
-| i |  artifact     | $v_i$ |  $w_i$ |
-|---|---------------|-------|--------|
-| 1 |  statue 1     |   1   |  2     |
-| 2 |  statue 2     |   1   |  2     |
-| 3 |  statue 3     |   1   |  2     |
-| 4 |  tablet 1     |  10   |  5     |
-| 5 |  tablet 2     |  10   |  5     |
-| 6 |  golden mask  |  13   |  7     |
-| 7 |  golden plate |   7   |  3     |
+Just about any local search algorithm can be summarized by the following template code.
 """
 
-# ╔═╡ be803662-aa08-4ee3-a400-bbc18b7d060f
-md"""The capacity is $C kg.
-
-So we can define the instance as (feel free to modify)"""
-
-# ╔═╡ 2ce221f2-5712-440e-9b34-168a3a5af65e
-knapsack = Knapsack([("statue 1", 1, 2),
-                     ("statue 2", 1, 2),
-                     ("statue 2", 1, 2),
-                     ("tablet 1", 10, 5),
-                     ("tablet 2", 10, 5),
-                     ("golden mask", 13, 7),
-                     ("golden plate", 7, 3)],
-                     C)
-
-# ╔═╡ 2d9598de-dfd6-46c7-bf4f-c2f48134e558
-md"We might as well define some useful function that work on `Knapsack` structures."
-
-# ╔═╡ 265ac424-3e7b-4222-ab79-07907544a9fa
-"""Getter for the items."""
-items(knapsack::Knapsack) = knapsack.items
-
-# ╔═╡ 876bd16d-89ac-4164-8055-e9ec4a4d875f
-"""Getter for the capacity."""
-capacity(knapsack::Knapsack) = knapsack.capacity
-
-# ╔═╡ cca6890d-b0eb-4154-9b27-be79c0b8ab38
-"""Number of items"""
-Base.length(knapsack::Knapsack) = length(items(knapsack));
-
-# ╔═╡ 94cb9a4c-aa3f-4ef0-a4e5-170b0d2ad69b
-"""Weight of a set of items"""
-weight(items::Array) = sum((w for (i, v, w) in items));
-
-# ╔═╡ 1d07e4af-5419-464f-842d-3012920e8a1b
-"""Weight of an item"""
-weight(item::Tuple) = item[3];
-
-# ╔═╡ f0734b83-dbbc-4d1d-a96e-9209e53b7382
-"""Value of a set of items"""
-value(items::Array) = sum((v for (i, v, w) in items));
-
-# ╔═╡ 165d0c6a-ec73-46a9-a9f4-5085c65d184c
-"""Value of an item"""
-value(item::Tuple) = item[2];
-
-# ╔═╡ e1fa7a85-5aab-4e17-b02f-c9a0c62f3f47
-md"### Brute force"
-
-# ╔═╡ 38e36108-85cf-4808-8e10-bc6f869522fc
-function bruteforce(knapsack::Knapsack{T,V,W}) where {T,V<:Real,W<:Real}
-  # number of items
-  n = length(knapsack)
-  cap = capacity(knapsack)
-  knapsack_items = items(knapsack)
-  best_value = zero(W)
-  best_solution = eltype(knapsack_items)[]
-  for solution in combinations(knapsack_items)
-    if weight(solution) ≤ cap && value(solution) > best_value
-      best_solution = solution
-      best_value = value(solution)
-    end
-  end
-  return best_solution, best_value
-end
-
-# ╔═╡ 9b555941-5ef2-48d5-8efd-0f4cf7e38af6
-bruteforce(knapsack)
-
-# ╔═╡ 96d84e8c-3b11-4b01-a036-e3434804f512
-md"### Greedy"
-
-# ╔═╡ f65c49f0-09bf-4b5f-99b9-21b2fe6f5760
-function greedy(knapsack::Knapsack{T,V,W},
-                    heuristic::Function) where {T,V<:Real,W<:Real}
-  items_knapsack = items(knapsack)
-  solution = eltype(items_knapsack)[]
-  solution_weight = zero(W)
-  solution_value = zero(V)
-  cap = capacity(knapsack)
-  for item in sort(items_knapsack, by=heuristic, rev=true)
-    v, w = value(item), weight(item)
-    if solution_weight + w ≤ cap
-      push!(solution, item)
-      solution_weight += w
-      solution_value += v
-    end
-  end
-  return solution, solution_value
-end
-
-# ╔═╡ 3e95cf39-5d8f-498a-bdb6-df99a51257f3
-md"Here, `heuristic` is a function we can provide to guide the greedy search. For example, if we search by value."
-
-# ╔═╡ 97465212-39d3-4b19-8dd0-cf654b80e3e2
-greedy(knapsack, value)
-
-# ╔═╡ 834e4c69-5e90-409a-a2ed-ac14609ae728
-md"Or, search lightest items first."
-
-# ╔═╡ 02e07bf0-741c-4df2-9a07-55093e2bb55d
-greedy(knapsack, item -> -weight(item))
-
-# ╔═╡ e53659a3-e791-4318-a738-678d8c267b86
-md"Or, by value-density:"
-
-# ╔═╡ fa75a27d-725f-49df-8527-125c90de1692
-greedy(knapsack, item -> value(item) / weight(item))
-
-# ╔═╡ 79be9317-762d-4ce5-85ed-983f4882fa0b
-md"### Dynamics programming"
-
-# ╔═╡ d500504b-5cfb-46b9-8b82-1fbfb843b479
-function dynamic_programming(knapsack::Knapsack{T,V,W}) where {T,V<:Real,W<:Int}
-  items_knapsack = items(knapsack)
-  n = length(knapsack)
-  cap = capacity(knapsack)
-  DP = zeros(V, n + 1, cap + 1)  # starts from zero
-  # fill the DP matrix
-  for w in 1:cap
-    for (i, (itname, vᵢ, wᵢ)) in enumerate(items_knapsack)
-      if wᵢ ≤ w  # this item can fit the bag
-        DP[i+1,w+1] = max(DP[i,w+1],  # value without the item
-                        DP[i,w-wᵢ+1] + vᵢ)  # value with the item, given room for the item
-      else  # no room
-        DP[i+1,w+1] = DP[i, w+1]  # take value without the item
-      end
-    end
-  end
-  # now, backtrack
-  solution = eltype(items_knapsack)[]
-  i, w = n, cap
-  while i > 0
-    if DP[i+1,w+1] > DP[i,w+1]  # item i was added
-      item = items_knapsack[i]
-      push!(solution, item)
-      w -= weight(item)
-    end
-    i -= 1
-    i == 0 || w == 0 && break
-  end
-  return solution, last(DP), DP
-end
-
-# ╔═╡ a7f61d0a-7706-47d1-8798-264881d032fa
-md"Note the restriction on the type of the weigths!"
-
-# ╔═╡ 67ccbd02-d63c-42e3-ae7b-3022d3ec60c0
-dynamic_programming(knapsack)
-
-# ╔═╡ fe8bb7b2-6fd2-4b8f-9ef0-9d2fcc1b744a
+# ╔═╡ c9d7857b-6950-45c1-88f4-ac9c1552d194
 md"""
-## Exercise: brute-force TSP
-
-Consider the capitals of the provice of Belgium 🇧🇪
+Here, we have to specify:
+- `f` : the objective function (we now maximize);
+- `s₀` : the initial solution to start from;
+- `tracker` : an object to track the progress, does not do anything by default;
+- `N` : a function that defines the neighborhood;
+- `S` : a way of selecting the next solution, determines the behaviour of `choose_next`
 """
 
-# ╔═╡ 66eb2e32-c0bd-42ab-bb67-05dbd01a1d6e
-md"**Assignment** Loop over all possible tours to find the shortest one. A tour is just gives the order of the cities indices. For example"
+# ╔═╡ f78f9bc8-1b59-4242-aefd-01d1758237cf
+md"Below, we have defined two abstract types, `Neighborhood` and `Selector`. By means of type-based dispatch, the behaviour of the local search is modified. Using the function subtypes, we can access which types of neighborhoods and selectors we have provided."
 
-# ╔═╡ 5afd91f6-9e0d-4774-a954-3f00b71dd2e7
+# ╔═╡ 51db9a9b-ba03-470e-9acd-55f5dfadf702
+md"## Hill climbing
+
+Hill climbing is basically local search where one scans the neighborhood of a solution and picks the best one to proceed. The algorithm terminates when the solution can no longer be improved. 
+"
+
+# ╔═╡ 48ce73c5-cebf-4767-bfe8-019b116263e0
+md"""
+## Simulated annealing
+
+Every step of the search, a random solution is sampled from the neighborhood. This new solution is accepted with a probability determined by its change in objective value and a temperature that is gradually decreased while running the algorithm.
+"""
+
+
+# ╔═╡ cc1042c5-f870-4c3d-8df7-9d36d6f9116a
+@bind logTmin Slider(-4:1.0, show_value=true, default=-1)
+
+# ╔═╡ 0c730376-cea1-447b-9285-179903c1689c
+@bind logTmax Slider(1:5.0, show_value=true, default=2)
+
+# ╔═╡ 4ee9f5c4-0e57-4c0d-a800-dd6d2b0d08b5
+@bind r Slider(0.01:0.01:0.99, show_value=true, default=0.8)
+
+# ╔═╡ 1520c3ea-bb12-489e-bb77-2de1b2249d8f
+@bind kT Slider(1:20:1000, show_value=true, default=10)
+
+# ╔═╡ d4d52b69-c7df-4437-a2a2-81917848e28c
+md"""
+## Tabu search
+
+Tabu search explores a solution's neighborhood similarly to Hill climbing. The big difference is that when a modification is done, tabu search 'taboos' that change for a certain number of steps (determined by `tabu_length`). This forces the algorithm to explore regions where the objective deteriorates, potentially escaping local minima. 
+
+Much flexibility is possible to design a tabu search. Here, when an item is added or removed from the knapsack, it is tabooed for a given number of iterations.
+"""
+
+# ╔═╡ 678756b9-7989-4542-ae4a-98744e84cc03
+@bind tabu_length Slider(0:50, show_value=true, default=3)
+
+# ╔═╡ e4b6996e-eebf-11ea-3f8d-a13ddf340bbf
+md"## Neighborhoods
+
+The neighborhood defines how we can hop from one solution to the next. For our algorithms, we have to implement an iterator over all the neighbors and a function to sample a random neighbor.
+
+Since the knapsack problem works on strings, we consider the neighborhood with one or two bits flipped, the latter implying a much larger neighborhood.
+"
+
+# ╔═╡ 0da780f6-866b-48fd-976e-58962408dbb4
+abstract type Neighborhood end
+
+# ╔═╡ 9f990a70-be16-4f18-b4ac-c888e3461459
+subtypes(Neighborhood)
+
+# ╔═╡ 4cec040f-296d-4ffa-bab7-7540a5c5d412
+struct OneFlip <: Neighborhood end
+
+# ╔═╡ 252dedb6-c8a8-409e-b8e0-2f682f12c82c
+struct TwoFlip <: Neighborhood end
+
+# ╔═╡ 2929342c-6c6d-4f88-9d93-0a1057b6f031
+# simple function that flips a bit in s at postion i
+function flip!(s, i)
+	s[i] ⊻= true
+	return s
+end
+
+# ╔═╡ a635482d-7960-48f4-9af7-630af84b453d
+flip(s, i) = flip!(copy(s), i)
+
+# ╔═╡ cf01a5f0-c118-4ef8-934f-09b50d13de99
+neighbors(s, ::OneFlip) = (flip(s, i) for i in 1:length(s))
+
+# ╔═╡ 0180196a-88ab-4fc1-9878-0438fe8f61bb
+neighbors(s, ::TwoFlip) = (flip!(flip(s, i), j) for i in 1:length(s) for j in 1:length(s) if i!=j)
+
+# ╔═╡ 636ab8ac-b59d-493f-9c4d-3ddd5ec13a78
+Base.rand(s, ::OneFlip) = flip(s, rand(1:length(s)))
+
+# ╔═╡ afdddd5c-3558-4f63-80f9-5a05e33526ce
+Base.rand(s, ::TwoFlip) = flip!(flip(s, rand(1:length(s))), rand(1:length(s)))
+
+# ╔═╡ fcef48fe-eec3-11ea-22c2-0d17b1ee9af5
+md"""## Selectors
+
+Selectors characterize a local search method by changing the behavior of `choose_next`, which yield the next solution in the searching procedure.
+"""
+
+# ╔═╡ 0492484a-eec4-11ea-091f-5146073f6824
+abstract type Selector end
+
+# ╔═╡ 8ddfd6c3-3d93-4e60-8f84-52f7df080057
+subtypes(Selector)
+
+# ╔═╡ 326afda2-5de7-4720-82c1-38c0ae8637b2
+struct BestNeighbor <: Selector end
+
+# ╔═╡ d9734596-5f7e-48b7-888e-f8a20ae83062
+struct FirstNeighbor <: Selector end
+
+# ╔═╡ 7e25e4b7-cbc8-42ad-8dc4-e6f5720f3b6e
+struct RandomImprovement <: Selector end
+
+# ╔═╡ a696ac0f-f8b4-4215-bd0b-9c8123ee7260
+struct Metropolis <: Selector
+		T::Float64  # temperature parameter
+	end
+
+# ╔═╡ fad941eb-e986-4761-bf4a-eb8e9a81a85b
+# loop over all neighbors and pick the best
+function choose_next(f, s, N::Neighborhood, S::BestNeighbor)
+	# current objective
+	obj = f(s)
+	for sn in neighbors(s, N)
+		obj, s = max((obj, s), (f(sn), sn))
+	end
+	return s
+end
+
+# ╔═╡ a01d81c3-18ec-4360-be40-f4ffd4aeede9
+# pick first neighbor that improves the objective
+function choose_next(f, s, N::Neighborhood, S::FirstNeighbor)
+	# current objective
+	obj = f(s)
+	for sn in neighbors(s, N)
+		f(sn) > obj && return sn
+	end
+	return s
+end
+
+# ╔═╡ 43cabb77-3f88-4af0-94af-ccba0b0ba318
+# pick a random neighbor and select it if it improves
+function choose_next(f, s, N::Neighborhood, S::RandomImprovement)
+	# current objective
+	obj = f(s)
+	sn = rand(s, N)
+	if f(sn) > obj
+		return sn
+	else
+		return s
+	end
+end
+
+# ╔═╡ 3c35e7ea-0b43-405b-bfd4-3d661dedecba
+# pick a random neighbor and select if it satisfies the Metropolis criterion
+function choose_next(f, s, N::Neighborhood, S::Metropolis)
+	# current objective
+	obj = f(s)
+	sn = rand(s, N)
+	obj_sn = f(sn)
+	if obj_sn > obj || rand() < exp(-(obj - obj_sn) / S.T)
+		return sn
+	else
+		return s
+	end
+end
+
+# ╔═╡ 0e46db27-3714-4889-af23-7a70a67dfe91
+md"""
+## Tracker
+
+A tracker is a data structure to keep track of the search during the run of the algorithm.
+"""
+
+# ╔═╡ 8666d19e-eebd-11ea-11ad-93097ff088f1
+abstract type Tracker end
+
+# ╔═╡ 8bcf1d93-b396-45c7-a58c-fb01bc56de54
+struct NoTracking <: Tracker end
+
+# ╔═╡ 58664797-9c85-4bab-8c82-3bb743509caf
+notrack = NoTracking()
+
+# ╔═╡ 03d55585-7ed1-4916-b1a7-ec31fff1abb1
+struct TrackSolutions{T} <: Tracker
+		solutions::Vector{T}
+		TrackSolutions(s) = new{typeof(s)}([])
+	end
+
+# ╔═╡ 95c0196c-faec-45e7-996c-2dc4de617bcd
+struct TrackObj{T} <: Tracker
+		objectives::Vector{T}
+		TrackObj(T::Type=Float64) = new{T}([])
+	end
+
+# ╔═╡ cddcbed2-eff5-4288-b625-3dac12e9f1c1
+track!(::NoTracking, f, s) = nothing
+
+# ╔═╡ fdf3c648-e3a6-47ee-8171-a05a7f932d8c
+track!(tracker::TrackSolutions, f, s) = push!(tracker.solutions, s)
+
+# ╔═╡ 5d9f8c95-b4e3-478b-8b1c-21f31f2fcfe0
+track!(tracker::TrackObj, f, s) = push!(tracker.objectives, f(s))
+
+# ╔═╡ 3cd3fbba-eebd-11ea-164f-b39f495dea6e
+function local_search(f, s₀, N::Neighborhood,
+						S::Selector,
+						tracker::Tracker=notrack;
+						niter=10_000)
+	s = s₀
+	track!(tracker, f, s)
+	for i in 1:niter
+		s = choose_next(f, s, N, S)
+		track!(tracker, f, s)
+	end
+	return s
+end
+
+# ╔═╡ 83429b08-d608-4f44-9ca6-67175f0df26b
+function hill_climbing(f, s₀, N::Neighborhood,
+					tracker=notrack;
+					maxiter=10_000)
+	s = s₀
+	obj = f(s)
+	track!(tracker, f, s)
+	for i in 1:maxiter
+		improved = false
+		# search all the neighboring solutions of s
+		for sn in neighbors(s, N)
+			obj_sn = f(sn)
+			if obj_sn > obj
+				s = sn
+				obj = obj_sn
+				improved = true
+			end
+		end
+		track!(tracker, f, s)
+		# break if not improved
+		!improved && break
+	end
+	return s
+end	
+
+# ╔═╡ 2541a5aa-21cf-41c3-b17d-7922cff10390
+function simulated_annealing(f, s₀, N::Neighborhood, tracker=notrack;
+				kT=100,  		# repetitions per temperature
+				r=0.95,  		# cooling rate
+				Tmax=1_000,     # maximal temperature to start
+				Tmin=1)         # minimal temperature to end
+	@assert 0 < Tmin < Tmax "Temperatures should be positive"
+	@assert 0 < r < 1 "cooling rate is between 0 and 1"
+	s = s₀
+	obj = f(s)
+	track!(tracker, f, s)
+	# current temperature
+	T = Tmax
+	while T > Tmin
+		# repeat kT times
+		for _ in 1:kT
+			sn = rand(s, N)  # random neighbor
+			obj_sn = f(sn)
+			# if the neighbor improves the solution, keep it
+			# otherwise accept with a probability determined by the
+			# Metropolis heuristic
+			if obj_sn > obj || rand() < exp(-(obj-obj_sn)/T)
+				s = sn
+				obj = obj_sn
+			end
+		end
+		track!(tracker, f, s)
+		# decay temperature
+		T *= r
+	end
+	return s
+end
+	
+
+# ╔═╡ ca863fdb-cb23-4dcf-b9d7-3c0513fac13d
+function tabu_search(f, s₀, N::Neighborhood, tracker=notrack;
+			tabu_length=10, niter=100)
+	s = s₀
+	obj = f(s)
+	track!(tracker, f, s)
+	# this list keeps track of the items that are tabooed
+	# one can only change an item in the knapsack it its tabu
+	# value does not exceed the iteration number
+	tabu_list = zeros(Int, length(s))
+	snew = similar(s)
+	for iter in 1:niter
+		# we start with objective 0, because the objective can actively become worse
+		obj = 0
+		for sn in neighbors(s, N)
+			# if any part of the neighbor is tabu, skip
+			any(tabu_list[s.!=sn] .> iter) && continue
+			obj_sn = f(sn)
+			if obj_sn > obj
+				snew .= sn
+				obj = obj_sn
+			end
+		end
+		tabu_list[s.!=snew] .= tabu_length + iter
+		s .= snew
+		track!(tracker, f, s)
+	end
+	return s
+end	
+
+# ╔═╡ ff39e011-7cbd-427a-8414-07cc1af885e0
 md"## Appendix"
 
-# ╔═╡ 8c685b23-0ee2-4027-ad5c-01c1dce6fe3a
-stad_coor = Dict(
-	"Antwerpen" => (51.219901727372466, 4.413766520738599),
-	"Hasselt" => (50.929969726608796, 5.337669056378496),
-	"Gent" => (51.046603059146115, 3.7227238267036165),
-	"Leuven" => (50.87717306970613, 4.7013098809614045),
-	"Brugge"=>(51.20994021593339, 3.2237458378594632),
-	"Bergen" => (50.45178175960054, 3.95116527396219),
-	"Luik" => (50.63563258400128, 5.58639186132504),
-	"Aarlen" => (49.68489470742727, 5.812244206475732),
-	"Namen" => (50.45840475199352, 4.858245535731698),
-	"Waver" => (50.71402361189344, 4.596358571899753),
-	"Brussel" => (50.86323347803335, 4.349845202806156)
-);
+# ╔═╡ 9099c5e8-5110-4d32-9386-71bed0c7a495
+md"Below are two examples of the knapsack problem: small one with 19 items and a big one with 300 items."
 
-# ╔═╡ 1a6ded1a-cfbe-4d7b-b70f-b06075747561
-cities = keys(stad_coor) |> collect;
+# ╔═╡ 13b06f4c-2408-4c5f-9604-9ad11caf0ed9
+knapsack_string = """
+19 31181
+1945 4990
+321 1142
+2945 7390
+4136 10372
+1107 3114
+1022 2744
+1101 3102
+2890 7280
+962 2624
+1060 3020
+805 2310
+689 2078
+1513 3926
+3878 9656
+13504 32708
+1865 4830
+667 2034
+1833 4766
+16553 40006"""
 
-# ╔═╡ 8e5dcba4-21dc-4e7c-a3cb-7eec261a270c
-cities
+# ╔═╡ b13c08a6-7209-4a9b-b1e4-b39569328a1b
+md"below is a larger example you might use:"
 
-# ╔═╡ 15c2faec-655f-4d56-9e4c-5abd4c1d9026
-nsteden = ncities = length(cities);
+# ╔═╡ a319305b-0632-4e9f-a378-6eadc761837a
+knapsack_string2 = """
+300 4040184
+31860 76620
+11884 28868
+10492 25484
+901 2502
+43580 104660
+9004 21908
+6700 16500
+29940 71980
+7484 18268
+5932 14564
+7900 19300
+6564 16028
+6596 16092
+8172 19844
+5324 13148
+8436 20572
+7332 17964
+6972 17044
+7668 18636
+6524 15948
+6244 15388
+635 1970
+5396 13292
+13596 32892
+51188 122676
+13684 33068
+8596 20892
+156840 375380
+7900 19300
+6460 15820
+14132 34164
+4980 12260
+5216 12932
+6276 15452
+701 2102
+3084 7868
+6924 16948
+5500 13500
+3148 7996
+47844 114788
+226844 542788
+25748 61996
+7012 17124
+3440 8580
+15580 37660
+314 1128
+2852 7204
+15500 37500
+9348 22796
+17768 42836
+16396 39692
+16540 39980
+395124 944948
+10196 24692
+6652 16204
+4848 11996
+74372 178244
+4556 11212
+4900 12100
+3508 8716
+3820 9540
+5460 13420
+16564 40028
+3896 9692
+3832 9564
+9012 21924
+4428 10956
+57796 138492
+12052 29204
+7052 17204
+85864 205628
+5068 12436
+10484 25468
+4516 11132
+3620 9140
+18052 43604
+21 542
+15804 38108
+19020 45940
+170844 408788
+3732 9364
+2920 7340
+4120 10340
+6828 16756
+26252 63204
+11676 28252
+19916 47932
+65488 156876
+7172 17644
+3772 9444
+132868 318036
+8332 20364
+5308 13116
+3780 9460
+5208 12916
+56788 136076
+7172 17644
+7868 19236
+31412 75524
+9252 22604
+12276 29652
+3712 9324
+4516 11132
+105876 253452
+20084 48468
+11492 27884
+49092 117684
+83452 199804
+71372 171044
+66572 159644
+25268 60836
+64292 154084
+21228 51156
+16812 40524
+19260 46420
+7740 18980
+5632 13964
+3256 8212
+15580 37660
+4824 11948
+59700 143100
+14500 35100
+7208 17716
+6028 14756
+75716 181332
+22364 53828
+7636 18572
+6444 15788
+5192 12884
+7388 18076
+33156 79612
+3032 7564
+6628 16156
+7036 17172
+3200 8100
+7300 17900
+4452 11004
+26364 63428
+14036 33972
+16932 40964
+5788 14276
+70476 168852
+4552 11204
+33980 81660
+19300 46500
+39628 95156
+4484 11068
+55044 131988
+574 1848
+29644 71188
+9460 23020
+106284 254468
+304 1108
+3580 8860
+6308 15516
+10492 25484
+12820 31140
+14436 34972
+5044 12388
+1155 3210
+12468 30236
+4380 10860
+9876 24052
+8752 21404
+8676 21052
+42848 102796
+22844 54988
+6244 15388
+314 1128
+314 1128
+314 1128
+314 1128
+314 1128
+314 1128
+387480 926660
+314 1128
+314 1128
+314 1128
+314 1128
+314 1128
+15996 38692
+8372 20444
+65488 156876
+304 1108
+4756 11812
+5012 12324
+304 1108
+314 1128
+314 1128
+314 1128
+314 1128
+314 1128
+314 1128
+314 1128
+304 1108
+1208 3316
+47728 114556
+314 1128
+314 1128
+314 1128
+314 1128
+314 1128
+314 1128
+104036 249172
+5248 12996
+312 1124
+24468 58836
+7716 18932
+30180 72460
+4824 11948
+1120 3140
+11496 27892
+4916 12132
+14428 34956
+24948 59996
+41100 98700
+28692 69084
+826 2352
+3073 7846
+7684 18868
+5604 13708
+17188 41476
+34828 83756
+7540 18380
+8004 19508
+2648 6796
+5124 12748
+3096 7892
+166516 398532
+13756 33212
+9980 24260
+15980 38660
+9056 22012
+5052 12404
+8212 20124
+11164 27028
+13036 31572
+23596 56892
+2028 5156
+7584 18468
+5772 14244
+4124 10348
+5368 13236
+4364 10828
+5604 13708
+8500 20700
+7676 18652
+8636 20972
+4588 11276
+4152 10404
+4860 12020
+5484 13468
+8636 20972
+5140 12780
+236380 565460
+116500 278900
+36480 87660
+16968 41036
+5232 12964
+13280 32060
+138032 330364
+9044 21988
+22028 53156
+4632 11564
+13196 31892
+65404 156708
+28940 69580
+865 2430
+45988 110276
+670 2040
+4820 11940
+41356 99212
+39844 95588
+897 2494
+4028 9956
+7924 19348
+47756 114612
+47036 112772
+25908 62316
+4516 11132
+29460 70820
+7964 19428
+16964 41028
+22196 53492
+68140 163380
+80924 193948
+63700 152700
+20860 50220
+1682 4464
+16804 40508
+3195 8090
+60348 144596
+1901 4902
+67468 161636
+4772 11844
+11196 27092
+25836 62172
+49676 119252
+6188 15276
+15588 37676"""
 
-# ╔═╡ 45e7087e-9ad6-49b9-97ac-6a9038d5cb44
-a_tour = collect(1:ncities)  # order of the list
+# ╔═╡ 14531290-8906-42ca-838c-aa52ebb91ca0
+knapsack_data = split(knapsack_string, "\n") .|> s->(parse.(Int, split(s," ")))
 
-# ╔═╡ 827b5a0e-c838-42d2-be03-87a4dd34b24a
-dist_sphere((lat1, long1), (lat2, long2); r=6_371) = 2r * asin(√(sin((lat2 -lat1)/2)^2 + cos(lat1)*cos(lat2)*sin((long2-long1)/2)^2));
+# ╔═╡ 7cf27ad2-f7ee-41df-b917-8679f8eb5eda
+const n_items, capacity = first(knapsack_data)
 
-# ╔═╡ 18e490a3-5823-4862-ae86-07546f556eab
-D = [dist_sphere(stad_coor[h1] .* pi ./ 180, stad_coor[h2] .* pi ./ 180) for h1 in cities, h2 in cities];
+# ╔═╡ 1eeb0f50-8b9d-4260-a61a-f8e565eab32a
+capacity
 
-# ╔═╡ 54db8c49-dee0-4ef1-bd26-78d10b03ae76
-D  # distance matrix
+# ╔═╡ cf657065-fc1d-4c3d-b344-1ddfa2e620b5
+md"A solution vector is just a binary vector of length $n_items, indicating whether to take an item or not. Let's start with an empty knapsack."
 
-# ╔═╡ c59969a6-eb3e-47c5-9bd8-f1af03fce595
-function total_distance(route, incomplete=false)
-	c = 0.0
-	prev = incomplete ? 1 : route[end]
-	for next in route
-		c += D[prev, next]
-		prev = next
-	end
-	incomplete && (c += D[route[end], 1])
-	return c
+# ╔═╡ 0b574bcb-ab7e-42c8-8672-7dcafeb4d342
+s₀ = zeros(Bool, n_items)
+
+# ╔═╡ 710ddf4b-ef42-4143-98da-999e6acc5653
+neighbors(s₀, OneFlip())  |> collect
+
+# ╔═╡ 2eddc3c2-e6ac-49f6-a1f5-e4c6c55b37b2
+neighbors(s₀, TwoFlip())  |> collect
+
+# ╔═╡ 844b891c-d1bc-4d90-968f-e0a9459deb87
+rand(s₀, OneFlip())
+
+# ╔═╡ 15cc6750-54b1-46d4-8936-bb8f2b7375b2
+rand(s₀, TwoFlip())
+
+# ╔═╡ ee82356d-5100-4721-a7fe-bda834340a86
+md"This problem only has 2^$n_items = $(2^n_items) combinations, feasible to enumerate:"
+
+# ╔═╡ f60691ca-a055-404f-9557-3f1cc91345f6
+const v = first.(knapsack_data[2:end])  # values
+
+# ╔═╡ 222f0fa4-a043-44ee-b9a9-647f4bdd7a39
+v # values of the items
+
+# ╔═╡ 9ef3ad77-e19c-4509-9d8f-191c74c7ad40
+const w = last.(knapsack_data[2:end])  # weights
+
+# ╔═╡ 20a0cf1f-76cf-41d7-a8dd-a7eda3ec8a29
+w # weight of the items
+
+# ╔═╡ 24693db7-3cda-4fa3-a547-777b16f3993d
+f_knapsack(s) = sum(w[s]) ≤ capacity ? sum(v[s]) : -10000
+
+# ╔═╡ 46bb926b-ec86-4834-8d3b-4537e777aa73
+f_knapsack(s₀)  # empty knapsack has a value of 0
+
+# ╔═╡ c8eeac4b-6ab0-4976-b529-911ea6a65108
+f_knapsack(ones(Bool, n_items))  # taking all the items results in a large negative cost
+
+# ╔═╡ 62339637-415d-4d9e-9113-ebdfc85c3041
+begin
+	# stores the objective through the iterations
+	local_tracker = TrackObj(Int) 
+
+	s_local = local_search(f_knapsack, copy(s₀), 
+			TwoFlip(),  # change me!
+			RandomImprovement(),  # change me!
+			local_tracker, niter=100)  # change the selector and neighborhood
 end
 
-# ╔═╡ b09bae94-4add-4d71-8bbc-5d5e4cdba2f6
-total_distance(a_tour)
+# ╔═╡ 811337ab-970a-4cdc-90e7-ab04c5c96559
+f_knapsack(s_local)
 
-# ╔═╡ 7709998d-61cf-4a82-9090-f643ee9caa75
-solutions = [push!(p, nsteden) |> p->(total_distance(p), cities[p], p) for p in permutations(1:nsteden-1)] |> sort!
+# ╔═╡ 3850f8bd-ac6f-4a62-8860-65941af59eae
+begin
+	# stores the objective through the iterations
+	hc_tracker = TrackObj(Int) 
 
-# ╔═╡ c432978f-c76d-4d85-8899-580730d7ea44
-best_tour = solutions[1][end]
+	s_hc = hill_climbing(f_knapsack, copy(s₀), OneFlip(),
+			hc_tracker)
+end
 
-# ╔═╡ fde5a843-5767-4fc7-a381-eb2ecc1fe801
+# ╔═╡ 70553739-f280-4972-8c4c-ecde6bd13e06
+f_knapsack(s_hc)
+
+# ╔═╡ 014738f4-3808-4875-b8f7-858ac2f1da6f
+begin
+	# stores the objective through the iterations
+	sa_tracker = TrackObj(Int) 
+
+	s_sa = simulated_annealing(f_knapsack, copy(s₀), OneFlip(),
+			sa_tracker, Tmin=10^logTmin, Tmax=10^logTmax; r, kT)
+end
+
+# ╔═╡ ca99362b-b4ca-4c3f-9ea0-c223bd0b3cb5
+f_knapsack(s_sa)
+
+# ╔═╡ 79e6989f-32b6-4311-b375-010597999baf
+begin
+	# stores the objective through the iterations
+	tabu_tracker = TrackObj(Int) 
+
+	s_tabu = tabu_search(f_knapsack, copy(s₀), OneFlip(),
+			tabu_tracker; tabu_length)	
+end
+
+# ╔═╡ 9788b851-c62f-4aa1-8ab4-cb42befd8612
+f_knapsack(s_tabu)
+
+# ╔═╡ 5870cf14-eebe-11ea-07cd-d51bcd1fa702
 begin
 	myblue = "#304da5"
 	mygreen = "#2a9d8f"
@@ -295,47 +804,65 @@ begin
 	mycolors = [myblue, myred, mygreen, myorange, myyellow]
 end;
 
-# ╔═╡ 137dc6ec-72c5-4858-a18a-9fb433899805
-function plot_tour(route)
-	routec = [route..., route[1]]
-	p = plot()
-	for (i,j) in zip(routec[1:end-1], routec[2:end])
-		h1, h2 = cities[i], cities[j]
-		lat1, long1 = stad_coor[h1]
-		lat2, long2 = stad_coor[h2]
-		plot!(p, [long1, long2], [lat1, lat2], color=myred, label="", lw=3, alpha=0.8)
+# ╔═╡ 8bb6e5e4-eebd-11ea-2019-49875c096a68
+scatter(w, v, xlabel="weight", ylabel="value", label="item", color=mygreen, legend=:bottomright, title="Items of the knapsack",yscale=:log, xscale=:log)
+
+# ╔═╡ 73ca51f4-855c-41c5-a790-16edaa33415b
+if n_items ≤ 20
+	weights = Int[]
+	values = Int[]
+
+	for comb in combinations(1:n_items)
+		push!(weights, sum(w[comb]))
+		push!(values, sum(v[comb]))
 	end
-	for h in cities
-		lat, long = stad_coor[h]
-		scatter!(p, [long], [lat], label="", color=myblue, ms=8)
-		annotate!((long+0.06, lat+0.06, h))
-	end
-	return p
+	best_obj = maximum(values[weights.≤capacity])
+	scatter(weights[weights.≤capacity], values[weights.≤capacity], alpha=0.6, label="valid solutions", color=mygreen, xlabel="weight", ylabel="objective",
+		legend=:bottomright, yscale=:log, xscale=:log)
+	scatter!(weights[weights.>capacity], values[weights.>capacity], alpha=0.6, label="invalid solutions", color=myorange)
+	vline!([capacity], label="capacity", color=myred, lw=2)
 end
 
-# ╔═╡ ed475158-07c4-4116-b0eb-d23911bf6531
-plot_tour([1 for i in 1:nsteden])
+# ╔═╡ 607730d3-b7f4-44d9-a2f0-c3fff21ababc
+best_obj  # best objective to be obtained
 
-# ╔═╡ cedb1c31-859c-4c6a-a0fd-4c643959c4f7
-plot_tour(a_tour)
+# ╔═╡ e294aea0-16c4-4523-b1fd-e55416c3e45c
+Plots.plot(tracker::TrackObj; kwargs...) = plot(tracker.objectives, xlabel="iteratation", label="objective", lw=2, color=myred, legend=:bottomright; kwargs...)
 
-# ╔═╡ edee8c38-7ccb-4f51-aa8e-f46187904b80
-plot_tour(best_tour)
+# ╔═╡ 90baacdf-5fba-4e81-9b05-8c3dd6c70a6c
+plot(local_tracker, title="Local search")
+
+# ╔═╡ 8a3ea40f-865e-4415-a409-2e971344f31a
+plot(hc_tracker, title="Hill climbing")
+
+# ╔═╡ d595306b-1dc7-4d32-91bf-d0ffd65d380e
+plot(sa_tracker, title="Simulated annealing")
+
+# ╔═╡ 78f34919-c0ed-4111-884f-dc76ea5edac0
+plot(tabu_tracker, title="Tabu search")
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 
 [compat]
 Combinatorics = "~1.0.2"
-Plots = "~1.23.6"
+Plots = "~1.24.0"
+PlutoUI = "~0.7.20"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
+
+[[AbstractPlutoDingetjes]]
+deps = ["Pkg"]
+git-tree-sha1 = "0bc60e3006ad95b4bb7497698dd7c6d649b9bc06"
+uuid = "6e696c72-6542-2067-7265-42206c756150"
+version = "1.1.1"
 
 [[Adapt]]
 deps = ["LinearAlgebra"]
@@ -565,6 +1092,23 @@ deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll",
 git-tree-sha1 = "8a954fed8ac097d5be04921d595f741115c1b2ad"
 uuid = "2e76f6c2-a576-52d4-95c1-20adfe4de566"
 version = "2.8.1+0"
+
+[[Hyperscript]]
+deps = ["Test"]
+git-tree-sha1 = "8d511d5b81240fc8e6802386302675bdf47737b9"
+uuid = "47d2ed2b-36de-50cf-bf87-49c2cf4b8b91"
+version = "0.0.4"
+
+[[HypertextLiteral]]
+git-tree-sha1 = "2b078b5a615c6c0396c77810d92ee8c6f470d238"
+uuid = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
+version = "0.9.3"
+
+[[IOCapture]]
+deps = ["Logging", "Random"]
+git-tree-sha1 = "f7be53659ab06ddc986428d3a9dcc95f6fa6705a"
+uuid = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
+version = "0.2.2"
 
 [[IniFile]]
 deps = ["Test"]
@@ -822,9 +1366,15 @@ version = "1.0.15"
 
 [[Plots]]
 deps = ["Base64", "Contour", "Dates", "Downloads", "FFMPEG", "FixedPointNumbers", "GR", "GeometryBasics", "JSON", "Latexify", "LinearAlgebra", "Measures", "NaNMath", "PlotThemes", "PlotUtils", "Printf", "REPL", "Random", "RecipesBase", "RecipesPipeline", "Reexport", "Requires", "Scratch", "Showoff", "SparseArrays", "Statistics", "StatsBase", "UUIDs", "UnicodeFun"]
-git-tree-sha1 = "0d185e8c33401084cab546a756b387b15f76720c"
+git-tree-sha1 = "02a083caba3f73e42decb810b2e0740783022978"
 uuid = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
-version = "1.23.6"
+version = "1.24.0"
+
+[[PlutoUI]]
+deps = ["AbstractPlutoDingetjes", "Base64", "Dates", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "UUIDs"]
+git-tree-sha1 = "1e0cb51e0ccef0afc01aab41dc51a3e7f781e8cb"
+uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+version = "0.7.20"
 
 [[Preferences]]
 deps = ["TOML"]
@@ -851,9 +1401,9 @@ deps = ["Serialization"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [[RecipesBase]]
-git-tree-sha1 = "44a75aa7a527910ee3d1751d1f0e4148698add9e"
+git-tree-sha1 = "6bf3f380ff52ce0832ddd3a2a7b9538ed1bcca7d"
 uuid = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
-version = "1.1.2"
+version = "1.2.1"
 
 [[RecipesPipeline]]
 deps = ["Dates", "NaNMath", "PlotUtils", "RecipesBase"]
@@ -918,9 +1468,9 @@ deps = ["LinearAlgebra", "SparseArrays"]
 uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [[StatsAPI]]
-git-tree-sha1 = "1958272568dc176a1d881acb797beb909c785510"
+git-tree-sha1 = "0f2aa8e32d511f758a2ce49208181f7733a0936a"
 uuid = "82ae8749-77ed-4fe6-ae5f-f523153014b0"
-version = "1.0.0"
+version = "1.1.0"
 
 [[StatsBase]]
 deps = ["DataAPI", "DataStructures", "LinearAlgebra", "LogExpFunctions", "Missings", "Printf", "Random", "SortingAlgorithms", "SparseArrays", "Statistics", "StatsAPI"]
@@ -983,10 +1533,10 @@ uuid = "a2964d1f-97da-50d4-b82a-358c7fce9d89"
 version = "1.19.0+0"
 
 [[Wayland_protocols_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Wayland_jll"]
-git-tree-sha1 = "2839f1c1296940218e35df0bbb220f2a79686670"
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "66d72dc6fcc86352f01676e8f0f698562e60510f"
 uuid = "2381bf8a-dfd0-557d-9999-79630e7b1b91"
-version = "1.18.0+4"
+version = "1.23.0+0"
 
 [[XML2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libiconv_jll", "Pkg", "Zlib_jll"]
@@ -1188,57 +1738,94 @@ version = "0.9.1+5"
 """
 
 # ╔═╡ Cell order:
-# ╟─936344da-213a-11ec-3e68-05f0f85cf2f3
-# ╟─c3b61d51-679c-4aba-957b-105c00037aee
-# ╠═0150a3e2-f98e-4412-9e96-1a2db5a9421e
-# ╟─62c4926d-0350-4088-8729-0ee5afb306be
-# ╠═3c769076-fec9-4730-b993-2fefa09f0c8d
-# ╠═ada8c7c4-f6d8-41e7-a4e0-c137ce7ab151
-# ╟─64e7be40-cd0b-40c4-b476-51c6a66d40e1
-# ╟─be803662-aa08-4ee3-a400-bbc18b7d060f
-# ╠═2ce221f2-5712-440e-9b34-168a3a5af65e
-# ╟─2d9598de-dfd6-46c7-bf4f-c2f48134e558
-# ╠═265ac424-3e7b-4222-ab79-07907544a9fa
-# ╠═876bd16d-89ac-4164-8055-e9ec4a4d875f
-# ╠═cca6890d-b0eb-4154-9b27-be79c0b8ab38
-# ╠═94cb9a4c-aa3f-4ef0-a4e5-170b0d2ad69b
-# ╠═1d07e4af-5419-464f-842d-3012920e8a1b
-# ╠═f0734b83-dbbc-4d1d-a96e-9209e53b7382
-# ╠═165d0c6a-ec73-46a9-a9f4-5085c65d184c
-# ╟─e1fa7a85-5aab-4e17-b02f-c9a0c62f3f47
-# ╠═38e36108-85cf-4808-8e10-bc6f869522fc
-# ╠═9b555941-5ef2-48d5-8efd-0f4cf7e38af6
-# ╟─96d84e8c-3b11-4b01-a036-e3434804f512
-# ╠═f65c49f0-09bf-4b5f-99b9-21b2fe6f5760
-# ╟─3e95cf39-5d8f-498a-bdb6-df99a51257f3
-# ╠═97465212-39d3-4b19-8dd0-cf654b80e3e2
-# ╟─834e4c69-5e90-409a-a2ed-ac14609ae728
-# ╠═02e07bf0-741c-4df2-9a07-55093e2bb55d
-# ╟─e53659a3-e791-4318-a738-678d8c267b86
-# ╠═fa75a27d-725f-49df-8527-125c90de1692
-# ╟─79be9317-762d-4ce5-85ed-983f4882fa0b
-# ╠═d500504b-5cfb-46b9-8b82-1fbfb843b479
-# ╟─a7f61d0a-7706-47d1-8798-264881d032fa
-# ╠═67ccbd02-d63c-42e3-ae7b-3022d3ec60c0
-# ╟─fe8bb7b2-6fd2-4b8f-9ef0-9d2fcc1b744a
-# ╠═ed475158-07c4-4116-b0eb-d23911bf6531
-# ╠═8e5dcba4-21dc-4e7c-a3cb-7eec261a270c
-# ╠═54db8c49-dee0-4ef1-bd26-78d10b03ae76
-# ╟─66eb2e32-c0bd-42ab-bb67-05dbd01a1d6e
-# ╠═45e7087e-9ad6-49b9-97ac-6a9038d5cb44
-# ╠═cedb1c31-859c-4c6a-a0fd-4c643959c4f7
-# ╠═b09bae94-4add-4d71-8bbc-5d5e4cdba2f6
-# ╠═7709998d-61cf-4a82-9090-f643ee9caa75
-# ╠═c432978f-c76d-4d85-8899-580730d7ea44
-# ╠═edee8c38-7ccb-4f51-aa8e-f46187904b80
-# ╟─5afd91f6-9e0d-4774-a954-3f00b71dd2e7
-# ╟─8c685b23-0ee2-4027-ad5c-01c1dce6fe3a
-# ╟─1a6ded1a-cfbe-4d7b-b70f-b06075747561
-# ╟─15c2faec-655f-4d56-9e4c-5abd4c1d9026
-# ╟─827b5a0e-c838-42d2-be03-87a4dd34b24a
-# ╟─c59969a6-eb3e-47c5-9bd8-f1af03fce595
-# ╟─18e490a3-5823-4862-ae86-07546f556eab
-# ╟─137dc6ec-72c5-4858-a18a-9fb433899805
-# ╟─fde5a843-5767-4fc7-a381-eb2ecc1fe801
+# ╟─2f8b1a76-8247-48b2-b324-4550b7bda94b
+# ╠═25700c98-eebd-11ea-17eb-4398f75594e0
+# ╟─c637a44c-eebd-11ea-3d4f-9539b52a7b88
+# ╟─8bb6e5e4-eebd-11ea-2019-49875c096a68
+# ╠═1eeb0f50-8b9d-4260-a61a-f8e565eab32a
+# ╠═222f0fa4-a043-44ee-b9a9-647f4bdd7a39
+# ╠═20a0cf1f-76cf-41d7-a8dd-a7eda3ec8a29
+# ╟─cf657065-fc1d-4c3d-b344-1ddfa2e620b5
+# ╠═0b574bcb-ab7e-42c8-8672-7dcafeb4d342
+# ╟─a912a3b8-a175-4606-bd49-7db772d46eeb
+# ╠═24693db7-3cda-4fa3-a547-777b16f3993d
+# ╠═46bb926b-ec86-4834-8d3b-4537e777aa73
+# ╠═c8eeac4b-6ab0-4976-b529-911ea6a65108
+# ╟─ee82356d-5100-4721-a7fe-bda834340a86
+# ╟─73ca51f4-855c-41c5-a790-16edaa33415b
+# ╠═607730d3-b7f4-44d9-a2f0-c3fff21ababc
+# ╟─15d1edbd-35f9-4e77-93ec-4302c9a34e5b
+# ╠═3cd3fbba-eebd-11ea-164f-b39f495dea6e
+# ╟─c9d7857b-6950-45c1-88f4-ac9c1552d194
+# ╟─f78f9bc8-1b59-4242-aefd-01d1758237cf
+# ╠═9f990a70-be16-4f18-b4ac-c888e3461459
+# ╠═8ddfd6c3-3d93-4e60-8f84-52f7df080057
+# ╠═62339637-415d-4d9e-9113-ebdfc85c3041
+# ╠═811337ab-970a-4cdc-90e7-ab04c5c96559
+# ╠═90baacdf-5fba-4e81-9b05-8c3dd6c70a6c
+# ╟─51db9a9b-ba03-470e-9acd-55f5dfadf702
+# ╠═83429b08-d608-4f44-9ca6-67175f0df26b
+# ╠═3850f8bd-ac6f-4a62-8860-65941af59eae
+# ╠═70553739-f280-4972-8c4c-ecde6bd13e06
+# ╟─8a3ea40f-865e-4415-a409-2e971344f31a
+# ╟─48ce73c5-cebf-4767-bfe8-019b116263e0
+# ╠═2541a5aa-21cf-41c3-b17d-7922cff10390
+# ╠═cc1042c5-f870-4c3d-8df7-9d36d6f9116a
+# ╠═0c730376-cea1-447b-9285-179903c1689c
+# ╠═4ee9f5c4-0e57-4c0d-a800-dd6d2b0d08b5
+# ╠═1520c3ea-bb12-489e-bb77-2de1b2249d8f
+# ╟─014738f4-3808-4875-b8f7-858ac2f1da6f
+# ╠═ca99362b-b4ca-4c3f-9ea0-c223bd0b3cb5
+# ╟─d595306b-1dc7-4d32-91bf-d0ffd65d380e
+# ╟─d4d52b69-c7df-4437-a2a2-81917848e28c
+# ╠═ca863fdb-cb23-4dcf-b9d7-3c0513fac13d
+# ╠═678756b9-7989-4542-ae4a-98744e84cc03
+# ╠═79e6989f-32b6-4311-b375-010597999baf
+# ╠═9788b851-c62f-4aa1-8ab4-cb42befd8612
+# ╟─78f34919-c0ed-4111-884f-dc76ea5edac0
+# ╟─e4b6996e-eebf-11ea-3f8d-a13ddf340bbf
+# ╠═0da780f6-866b-48fd-976e-58962408dbb4
+# ╠═4cec040f-296d-4ffa-bab7-7540a5c5d412
+# ╠═252dedb6-c8a8-409e-b8e0-2f682f12c82c
+# ╠═2929342c-6c6d-4f88-9d93-0a1057b6f031
+# ╠═a635482d-7960-48f4-9af7-630af84b453d
+# ╠═cf01a5f0-c118-4ef8-934f-09b50d13de99
+# ╠═0180196a-88ab-4fc1-9878-0438fe8f61bb
+# ╠═710ddf4b-ef42-4143-98da-999e6acc5653
+# ╠═2eddc3c2-e6ac-49f6-a1f5-e4c6c55b37b2
+# ╠═636ab8ac-b59d-493f-9c4d-3ddd5ec13a78
+# ╠═afdddd5c-3558-4f63-80f9-5a05e33526ce
+# ╠═844b891c-d1bc-4d90-968f-e0a9459deb87
+# ╠═15cc6750-54b1-46d4-8936-bb8f2b7375b2
+# ╟─fcef48fe-eec3-11ea-22c2-0d17b1ee9af5
+# ╠═0492484a-eec4-11ea-091f-5146073f6824
+# ╠═326afda2-5de7-4720-82c1-38c0ae8637b2
+# ╠═d9734596-5f7e-48b7-888e-f8a20ae83062
+# ╠═7e25e4b7-cbc8-42ad-8dc4-e6f5720f3b6e
+# ╠═a696ac0f-f8b4-4215-bd0b-9c8123ee7260
+# ╠═fad941eb-e986-4761-bf4a-eb8e9a81a85b
+# ╠═a01d81c3-18ec-4360-be40-f4ffd4aeede9
+# ╠═43cabb77-3f88-4af0-94af-ccba0b0ba318
+# ╠═3c35e7ea-0b43-405b-bfd4-3d661dedecba
+# ╟─0e46db27-3714-4889-af23-7a70a67dfe91
+# ╠═8666d19e-eebd-11ea-11ad-93097ff088f1
+# ╠═8bcf1d93-b396-45c7-a58c-fb01bc56de54
+# ╠═58664797-9c85-4bab-8c82-3bb743509caf
+# ╠═03d55585-7ed1-4916-b1a7-ec31fff1abb1
+# ╠═95c0196c-faec-45e7-996c-2dc4de617bcd
+# ╠═cddcbed2-eff5-4288-b625-3dac12e9f1c1
+# ╠═fdf3c648-e3a6-47ee-8171-a05a7f932d8c
+# ╠═5d9f8c95-b4e3-478b-8b1c-21f31f2fcfe0
+# ╠═e294aea0-16c4-4523-b1fd-e55416c3e45c
+# ╟─ff39e011-7cbd-427a-8414-07cc1af885e0
+# ╟─9099c5e8-5110-4d32-9386-71bed0c7a495
+# ╠═13b06f4c-2408-4c5f-9604-9ad11caf0ed9
+# ╟─b13c08a6-7209-4a9b-b1e4-b39569328a1b
+# ╟─a319305b-0632-4e9f-a378-6eadc761837a
+# ╠═14531290-8906-42ca-838c-aa52ebb91ca0
+# ╠═7cf27ad2-f7ee-41df-b917-8679f8eb5eda
+# ╠═f60691ca-a055-404f-9557-3f1cc91345f6
+# ╠═9ef3ad77-e19c-4509-9d8f-191c74c7ad40
+# ╟─5870cf14-eebe-11ea-07cd-d51bcd1fa702
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

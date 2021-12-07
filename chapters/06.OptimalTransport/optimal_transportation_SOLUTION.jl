@@ -163,18 +163,30 @@ end
 
 # ╔═╡ cc62b7b1-fe34-4a19-846d-ca6c7fb69ff9
 function monge_brute_force(C)
-  n, m = size(C)
-  @assert n == m "C should be square"
-  # loop over all permutations and to find the
-  # matching with the lowest cost
-  return best_perm, best_cost
+   n, m = size(C)
+   @assert n == m "C should be square"
+   best_perm = nothing
+   best_cost = Inf
+   for p in permutations(1:n)
+		cost = 0.0
+		for (i, pi) in enumerate(p)
+			cost += C[i,pi]
+		end
+		if cost < best_cost
+			best_cost = cost
+			best_perm = p
+		end
+	end
+  
+   return best_perm, best_cost
 end
 
-# ╔═╡ 1468ec48-bedb-4977-8b88-794d89e5ae8f
-C_cells = missing
+# ╔═╡ 4bf0f9d1-806c-40e2-8ef4-325be3a5b2ca
+md"one liner (bragging)"
 
-# ╔═╡ 88569ef5-bc60-4a77-aa72-fc9bdf66b3a4
-# add the lines to the cells
+# ╔═╡ 6285291e-0520-40f1-b39e-a98991995e47
+monge_brute_force_oneline(C) = minimum(((sum(I->C[I...], enumerate(p)), p)
+								for p in permutations(1:size(C,1)))) |> reverse
 
 # ╔═╡ da2cc178-64c7-4b30-909a-24fb402a489b
 md"""
@@ -248,20 +260,22 @@ function sinkhorn(C, a, b; λ=1.0, ϵ=1e-8)
     @assert n == length(a) && m == length(b) throw(DimensionMismatch("a and b do not match"))
     @assert sum(a) ≈ sum(b) "a and b don't have equal sums"
     u, v = copy(a), copy(b)
-    M = missing  # complete this
+    M = exp.(-λ .* (C .- maximum(C)))  # substract max for stability
     # normalize this matrix
     while maximum(abs.(a .- Diagonal(u) * (M * v))) > ϵ
-        # scale u
-        # scale v
+        u .= a ./ (M * v)
+        v .= b ./ (M' * u)
       end
     return Diagonal(u) * M * Diagonal(v)
   end
 
 # ╔═╡ 425ce568-f3a2-4e73-a6f9-e0373f71436e
 # solve the dessert problem for λ=0.1
+Plow = sinkhorn(Cdessert, a, b, λ=0.1)
 
 # ╔═╡ f320803a-0439-4881-9570-3b4f6621d044
 # solve the dessert problem for λ=10
+Phigh = sinkhorn(Cdessert, a, b, λ=10)
 
 # ╔═╡ 0295836f-0672-4903-a3f1-9004a187481b
 
@@ -456,6 +470,29 @@ begin
 	"""
 	dist(X::AbstractMatrix) = dist(X::AbstractMatrix, X::AbstractMatrix)
 end
+
+# ╔═╡ 1468ec48-bedb-4977-8b88-794d89e5ae8f
+C_cells = dist(X1, X2).^2  # squared distance
+
+# ╔═╡ 88569ef5-bc60-4a77-aa72-fc9bdf66b3a4
+best_perm, best_score = monge_brute_force(C_cells)
+
+# ╔═╡ f254b8a9-45a8-4f32-8929-670dd5140ce8
+let
+	p_cells = scatter(X1[:,1], X1[:,2], color=myorange,
+		label="location cells at t1", legend=:topleft)
+	xlabel!("\$x\$")
+	ylabel!("\$y\$")
+	scatter!(X2[:,1], X2[:,2], color=mygreen, label="location cells at t2")
+	for (i, σᵢ) in enumerate(best_perm)
+		plot!(p_cells, [X1[i,1], X2[σᵢ,1]], [X1[i,2], X2[σᵢ,2]], color=myred, label="")
+	end
+	
+	p_cells
+end
+
+# ╔═╡ 92f53b57-8de4-4711-a049-f266f0d621da
+monge_brute_force_oneline(C_cells)
 
 # ╔═╡ 3070288a-8060-4da0-8007-41b69c606521
 colorscatter(colors; kwargs...) = scatter(red.(colors), green.(colors), blue.(colors),
@@ -1743,6 +1780,10 @@ version = "0.9.1+5"
 # ╠═cc62b7b1-fe34-4a19-846d-ca6c7fb69ff9
 # ╠═1468ec48-bedb-4977-8b88-794d89e5ae8f
 # ╠═88569ef5-bc60-4a77-aa72-fc9bdf66b3a4
+# ╠═f254b8a9-45a8-4f32-8929-670dd5140ce8
+# ╟─4bf0f9d1-806c-40e2-8ef4-325be3a5b2ca
+# ╠═6285291e-0520-40f1-b39e-a98991995e47
+# ╠═92f53b57-8de4-4711-a049-f266f0d621da
 # ╟─da2cc178-64c7-4b30-909a-24fb402a489b
 # ╟─bdd25212-576e-4b81-8178-1212ac759cbc
 # ╟─c9cdf082-e986-4a21-8348-cc9faeeeb25a
