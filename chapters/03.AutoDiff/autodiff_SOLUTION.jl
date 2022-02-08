@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.16.4
+# v0.16.0
 
 using Markdown
 using InteractiveUtils
@@ -196,13 +196,13 @@ imag_number = 2 + 3im  # im is a special type of number
 real(imag_number), imag(imag_number) # extract real and imaginary parts
 
 # ╔═╡ eef066e0-f2b3-11ea-3cfa-5f35ebf13f76
-diff_fordiff(f, x; h=1e-10) = missing
+diff_fordiff(f, x; h=1e-10) = (f(x+h) - f(x)) / h
 
 # ╔═╡ f2158710-f2b3-11ea-16c9-dded5e1747d4
-diff_centrdiff(f, x; h=1e-10) = missing
+diff_centrdiff(f, x; h=1e-10) = (f(x+h) - f(x-h)) / 2h
 
 # ╔═╡ f54ee2b2-f2b3-11ea-24e8-f556ab9e3b85
-diff_complstep(f, x; h=1e-10) = missing
+diff_complstep(f, x; h=1e-10) = imag(f(x+im*h) / h)
 
 # ╔═╡ 08a565e0-f2b4-11ea-2ab6-f5f3a1b3c22d
 diff_fordiff(f, a)
@@ -258,13 +258,13 @@ sign(num) * significand(num) * 2^exponent(num)
 md"The *machine precision* of a number can be retained using `eps`. This is the relative error."
 
 # ╔═╡ de1fd700-f2b4-11ea-36dd-4bfba5ecc134
-eps(1.2)
+eps(Float32(1.2))
 
 # ╔═╡ df14ce72-f2b4-11ea-307b-8fac2889681b
-eps(1.2e10)
+eps(Float32(1.2e10))
 
 # ╔═╡ e584f976-f2b4-11ea-0245-67f6bcc4be0e
-eps(1.2e-10)
+eps(Float32(1.2e-10))
 
 # ╔═╡ eb68674c-f2b4-11ea-0cc2-f792d17a5005
 md"""
@@ -439,16 +439,16 @@ Base.:/(a::Dual, b::Dual) = Dual(a.v / b.v, (a.vdot * b.v - a.v * b.vdot) / b.v^
 md"**Assignment**: complete this code."
 
 # ╔═╡ 2f18c362-f2b8-11ea-1beb-719ff5cd5f8d
-Base.:sin(a::Dual) = missing
+Base.:sin(a::Dual) = Dual(sin(a.v), cos(a.v) * a.vdot)
 
 # ╔═╡ 393f92a6-fe70-11ea-024e-ff30dcfc7103
-Base.:cos(a::Dual) = missing
+Base.:cos(a::Dual) = Dual(cos(a.v), -sin(a.v) * a.vdot)
 
 # ╔═╡ 329cb67e-f2b8-11ea-07b1-e13fd8ddbe42
-Base.:exp(a::Dual) = missing
+Base.:exp(a::Dual) = Dual(exp(a.v), exp(a.v) * a.vdot)
 
 # ╔═╡ 36a2ca10-f2b8-11ea-0fae-53b552c76115
-Base.:log(a::Dual) = missing
+Base.:log(a::Dual) = Dual(log(a.v), inv(a.v) * a.vdot)
 
 # ╔═╡ 4ee45daa-f2b8-11ea-10ea-f929853879b1
 f(Dual(a, 1.0))  # works when rules are provided
@@ -657,11 +657,10 @@ begin
 	Base.:+(a::Dual, b::Dual) = Dual(a.v + b.v, a.vdot + b.vdot)
 	Base.:-(a::Dual, b::Dual) = Dual(a.v - b.v, a.vdot - b.vdot)
 	Base.:-(a::Dual, b::Real) = Dual(a.v - b, a.vdot)
-	Base.:-(a::Dual) = Dual(-a.v, -a.vdot)
 	Base.:*(a::Dual, b::Dual) = Dual(a.v * b.v, a.v * b.vdot + b.v * a.vdot)
 	Base.:+(c::Real, b::Dual) = Dual(c + b.v, b.vdot)
 	Base.:*(v::Real, b::Dual) = Dual(v, 0.0) * b
-	Base.:*(a::Dual, b::Real) = v * a	
+	Base.:*(a::Dual, b::Real) = v * a
 end
 
 # ╔═╡ 18e151c4-0b0e-485b-81d2-f18a2dd4592d
@@ -764,7 +763,7 @@ Implement this function.
 
 
 # ╔═╡ c1e19e26-f385-11ea-17b6-6d2d2e5cb7c0
-fwr(x; a=1.5) = missing
+fwr(x; a=1.5) = -exp(-(x[1]*x[2]-a)^2-(x[2]-a)^2)
 
 # ╔═╡ fe18a0a0-f8fe-11ea-1595-4d95256dabca
 fwr([1,2]) isa Missing || contour(-0:0.1:3, -0:0.1:3, (x1, x2) -> fwr([x1, x2]), color=:speed)
@@ -792,42 +791,83 @@ fwr(x₀)
 md"Symbolic"
 
 # ╔═╡ 8f3fecac-f8fd-11ea-136d-1513f60ee3ed
-
+@variables x1 x2
 
 # ╔═╡ f8863a18-f385-11ea-0965-0f074e58d9b2
+fwr([x1, x2])
 
+# ╔═╡ 4c751e90-f387-11ea-2358-273423b85c00
+Symbolics.gradient(fwr([x1, x2]), [x1, x2])
+
+# ╔═╡ 4d2c34ae-f387-11ea-1649-19c3a4520f74
+Symbolics.hessian(fwr([x1, x2]), [x1, x2])
 
 # ╔═╡ 4c3817f6-396e-4485-a7dd-0f507cec124a
 md"Numberic"
 
 # ╔═╡ 78b72cb1-52f3-4dc3-a721-b8a89a24312e
-
+grad_vect(fwr, x₀, [1, 0])
 
 # ╔═╡ 7180e310-a6f7-4feb-aff3-28e1c772b441
-
+grad_vect(fwr, x₀, [0, 1])
 
 # ╔═╡ 02b42a67-7ebe-4ca2-ac55-aa481b30e997
 md"Forward (dual numbers)"
 
 # ╔═╡ 043e3e2f-3876-41c0-bf70-5ef53b5db986
-
+fwr(Dual.(x₀, [1.0, 0.0]))
 
 # ╔═╡ 8ba368c9-3b04-469e-9556-1573cbc52185
-
+fwr(Dual.(x₀, [0.0, 1.0]))
 
 # ╔═╡ 4da4a1b6-b7c8-432d-86ed-c45a499a1880
+Base.:^(a::Dual, n) = Dual(a.v^n, n*a.v^(n-1)*a.vdot)  # raising a dual number to a power
 
+# ╔═╡ e6c39de4-f887-4395-9df4-cbfd9ebbe475
+Base.:-(a::Dual) = Dual(-a.v, -a.vdot)  # negative dual number
 
 # ╔═╡ c573ba19-4be5-4afd-b9f5-8b75e9b18ad6
 md"Reverse"
 
 # ╔═╡ 639528b1-ecff-4a05-ae56-9a08b779edc1
-
+fwr'(x₀)
 
 # ╔═╡ 838292fc-2c0e-4bb9-9df9-6cd197c4a4fd
-
+Zygote.gradient(fwr, x₀)
 
 # ╔═╡ ca20cc75-3033-4bd1-bb5c-cae61c855de7
+Zygote.hessian(fwr, x₀)
+
+# ╔═╡ f115c711-25ef-41cf-8d4a-72c33e8ad25d
+# quiver
+let
+	x1vals, x2vals = -0:0.5:4, -0:0.5:3 
+	
+	contour(-0.1:0.1:4, -0.1:0.1:3, (x1, x2) -> fwr([x1, x2]),
+			color=:speed)
+	
+	quiver!([x1 for x1 in x1vals for x2 in x2vals],
+			[x2 for x1 in x1vals for x2 in x2vals],
+			quiver=(x1,x2)->0.25.*fwr'((x1,x2)))
+	xlabel!("x_1")
+	ylabel!("x_2")
+end
+
+# ╔═╡ f4831205-8f1d-4f81-a868-56f34f9a7f03
+let
+	X = range(-2, stop=2, length=100)
+  Y = range(-2, stop=2, length=100)
+  f(x, y) = x^3 - 3x + y^2
+  contour(X, Y, f)
+
+  x = range(-2, stop=2, length=11)
+  y = range(-2, stop=2, length=11)
+  df(x, y) = [3x^2 - 3; 2y] / 25
+ quiver!(x, y, quiver=df, c=:blue)
+
+  xlims!(-2, 2)
+  ylims!(-2, 2)
+end
 
 
 # ╔═╡ 34d48ec0-f2b9-11ea-147e-d3554a9fcc04
@@ -851,7 +891,10 @@ module Solution
 end
 
 # ╔═╡ 91aff94e-e77e-4810-82ad-fe5ab3eafdad
-md"Show solution dual numbers: $(@bind show_dual_sol CheckBox())"
+md"Show solution dual numbers:"
+
+# ╔═╡ 01c266fb-6d30-4d48-b549-66a14b03dadf
+@bind show_dual_sol CheckBox()
 
 # ╔═╡ 8eb9ed90-981b-4094-baec-a521614fb3a1
 if show_dual_sol 
@@ -861,26 +904,6 @@ if show_dual_sol
 	Base.:cos(a::Dual) = Dual(cos(a.v), -sin(a.v) * a.vdot)
 	Base.:exp(a::Dual) = Dual(exp(a.v), exp(a.v) * a.vdot)
 	Base.:log(a::Dual) = Dual(log(a.v), 1.0 / a.v * a.vdot)
-```"
-end
-
-# ╔═╡ d682439b-bc6b-456d-8b5d-2489d095e55f
-md"Show solution quiver plot: $(@bind show_quiver_sol CheckBox())"
-
-# ╔═╡ 2d4c0bf6-3936-449d-8341-56f9c5659a6e
-if show_quiver_sol 
-	md"solution quiver plot:
-```julia
-	x1vals, x2vals = -0:0.5:4, -0:0.5:3 
-	
-	contour(-0.1:0.1:4, -0.1:0.1:3, (x1, x2) -> fwr([x1, x2]),
-			color=:speed)
-	
-	quiver!([x1 for x1 in x1vals for x2 in x2vals],
-			[x2 for x1 in x1vals for x2 in x2vals],
-			quiver=(x1,x2)->0.25.*fwr'((x1,x2)))
-	xlabel!(\"x_1\")
-	ylabel!(\"x_2\")
 ```"
 end
 
@@ -1210,9 +1233,9 @@ uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
 
 [[GLFW_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libglvnd_jll", "Pkg", "Xorg_libXcursor_jll", "Xorg_libXi_jll", "Xorg_libXinerama_jll", "Xorg_libXrandr_jll"]
-git-tree-sha1 = "0c603255764a1fa0b61752d2bec14cfbd18f7fe8"
+git-tree-sha1 = "dba1e8614e98949abfa60480b13653813d8f0157"
 uuid = "0656b61e-2033-5cc2-a64a-77c0f6c09b89"
-version = "3.3.5+1"
+version = "3.3.5+0"
 
 [[GR]]
 deps = ["Base64", "DelimitedFiles", "GR_jll", "HTTP", "JSON", "Libdl", "LinearAlgebra", "Pkg", "Printf", "Random", "Serialization", "Sockets", "Test", "UUIDs"]
@@ -2203,6 +2226,8 @@ version = "0.9.1+5"
 # ╟─ddd214d8-608a-4123-973f-b331c6ab331a
 # ╠═8f3fecac-f8fd-11ea-136d-1513f60ee3ed
 # ╠═f8863a18-f385-11ea-0965-0f074e58d9b2
+# ╠═4c751e90-f387-11ea-2358-273423b85c00
+# ╠═4d2c34ae-f387-11ea-1649-19c3a4520f74
 # ╟─4c3817f6-396e-4485-a7dd-0f507cec124a
 # ╠═78b72cb1-52f3-4dc3-a721-b8a89a24312e
 # ╠═7180e310-a6f7-4feb-aff3-28e1c772b441
@@ -2210,16 +2235,18 @@ version = "0.9.1+5"
 # ╠═043e3e2f-3876-41c0-bf70-5ef53b5db986
 # ╠═8ba368c9-3b04-469e-9556-1573cbc52185
 # ╠═4da4a1b6-b7c8-432d-86ed-c45a499a1880
+# ╠═e6c39de4-f887-4395-9df4-cbfd9ebbe475
 # ╟─c573ba19-4be5-4afd-b9f5-8b75e9b18ad6
 # ╠═639528b1-ecff-4a05-ae56-9a08b779edc1
 # ╠═838292fc-2c0e-4bb9-9df9-6cd197c4a4fd
 # ╠═ca20cc75-3033-4bd1-bb5c-cae61c855de7
+# ╠═f115c711-25ef-41cf-8d4a-72c33e8ad25d
+# ╠═f4831205-8f1d-4f81-a868-56f34f9a7f03
 # ╟─34d48ec0-f2b9-11ea-147e-d3554a9fcc04
 # ╟─0a576c65-3685-4987-93f1-980ace78d6f4
 # ╟─91aff94e-e77e-4810-82ad-fe5ab3eafdad
+# ╟─01c266fb-6d30-4d48-b549-66a14b03dadf
 # ╟─8eb9ed90-981b-4094-baec-a521614fb3a1
-# ╟─d682439b-bc6b-456d-8b5d-2489d095e55f
-# ╟─2d4c0bf6-3936-449d-8341-56f9c5659a6e
 # ╟─fe4dfa5c-ea26-4f7c-aa68-7b3ec5f45bdc
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

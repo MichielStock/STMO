@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.16.4
+# v0.17.1
 
 using Markdown
 using InteractiveUtils
@@ -7,222 +7,249 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = $(esc(element))
-        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
     end
 end
 
-# ╔═╡ 49e8e6f6-0483-11eb-0a74-d94aa536c9ab
-using LinearAlgebra, Plots, Zygote, PlutoUI
+# ╔═╡ 528edd1b-551d-4a2c-af34-14ca1d90809f
+using Plots, PlutoUI
 
-# ╔═╡ fccca5fc-0597-11eb-1033-a5cc3b71d854
+# ╔═╡ d93deb54-50fb-11ec-307c-d7de39606f97
 md"""
-# Constrained convex optimization
+# Heuristics and metaheuristics: Particle Swarm Optimization
+
+*STMO*
 
 **Michiel Stock**
-STMO
 
-## Equality constraints
+![](https://github.com/MichielStock/STMO/blob/master/chapters/10.Metaheuristics/Figures/logo.png?raw=true)
 
-Consider the following optimization problem:
+In this chapter, we will explore some more general algorithms to solve hard problems. We will start with local search and end up with some simple, though powerful metaheuristics. Since the algorithms reuse many components or can be abstracted for multiple problems, we will also illustrate Julia's dispatch system to design flexible software.
 
-$$\min_{\mathbf{x}} f(\mathbf{x})$$
-$$\text{subject to } g(\mathbf{x})=0\,.$$
-
-For every point $\mathbf{x}$ on the surface $g(\mathbf{x})=0$, the gradient $\nabla g(\mathbf{x})$ is normal to this surface. This can be shown by considering a point $\mathbf{x}+\boldsymbol{\epsilon}$, also on the surface. If we make a Taylor expansion around $\mathbf{x}$, we have
-
-$$g(\mathbf{x}+\boldsymbol{\epsilon})\approx g(\mathbf{x}) + \boldsymbol{\epsilon}^\top\nabla g(\mathbf{x})\,.$$
-
-Given that both $\mathbf{x}$ and $\mathbf{x}+\boldsymbol{\epsilon}$ lie on the surface it follows that $g(\mathbf{x}+\boldsymbol{\epsilon})= g(\mathbf{x})$. In the limit that $||\boldsymbol{\epsilon}||\rightarrow 0$ we have that $\boldsymbol{\epsilon}^\top\nabla g(\mathbf{x})=0$. Because $\boldsymbol{\epsilon}$ is parallel to the surface $g(\mathbf{x})$, it follows that $\nabla g(\mathbf{x})$ is normal to the surface.
-
-We seek a point $\mathbf{x}^\star$ on the surface such that $f(\mathbf{x})$ is minimized. For such a point, it should hold that the gradient w.r.t. $f$ should be parallel to $\nabla g$. Otherwise, it would be possible to give a small 'nudge' to $\mathbf{x}^\star$ in the direction of $\nabla f$ to decrease the function value, which would indicate that $\mathbf{x}^\star$ is not a minimizer. This figures below illustrate this point.
-
-$$\nabla f(\mathbf{x}^\star) + \nu \nabla g (\mathbf{x}^\star)=0\,,$$
-with $\nu\neq 0$ called the *Lagrange multiplier*. The constrained minimization problem can also be represented by a *Lagrangian*:
-$$L(\mathbf{x}, \nu) 	\equiv f(\mathbf{x}) + \nu g(\mathbf{x})\,.$$
-The constrained stationary condition is obtained by setting $\nabla_\mathbf{x} L(\mathbf{x}, \nu) =0$, the condition $\partial  L(\mathbf{x}, \nu)/\partial \nu=0$ leads to the constraint equation $g(\mathbf{x})=0$.
-
-
+This part illustrates the particle swarm optimization algorithm.
 """
 
-# ╔═╡ 5e4eabba-0483-11eb-09a4-31ae6c582d3e
-f((x1, x2)) = 2x1^2 +1.4x1*x2 + x2^2 - 0.3x1 + x1 
-
-# ╔═╡ 470048ec-0598-11eb-0d48-67357ed1f12c
-md"In addition to a $g(\mathbf{x})$, we also implement a parametric version where $g(\mathbf{x})=0$ for plotting purposes."
-
-# ╔═╡ 5503c842-0591-11eb-0104-359b9ebd5e98
-md"Show the countour of $f(\mathbf{x})$:"
-
-# ╔═╡ 47067fc8-058c-11eb-224c-6fe2e470107f
-@bind show_f_contour CheckBox()
-
-# ╔═╡ c369c65e-0598-11eb-0a90-dd4db070c99b
-show_f_contour
-
-# ╔═╡ 60328136-0591-11eb-1929-b7515a8c03d9
-md"Show the countour of $g(\mathbf{x})$:"
-
-# ╔═╡ d10b14c2-058c-11eb-3a43-7bca5d042969
-@bind show_g_contour CheckBox()
-
-# ╔═╡ ba835a96-0598-11eb-1d54-9365e3ea337f
-show_g_contour
-
-# ╔═╡ 681a031a-0591-11eb-2fec-8d94eca758f8
-md"Show the function $g(\mathbf{x})=0$:"
-
-# ╔═╡ 13467b42-058d-11eb-3023-b9d3f145335b
-@bind show_g0_constraint CheckBox()
-
-# ╔═╡ ca227ac2-0598-11eb-3a39-f1a90769ac52
-show_g0_constraint
-
-# ╔═╡ d8276f26-0598-11eb-1626-95f87cf6de22
-md"Show the gradients:"
-
-# ╔═╡ 60c41848-0592-11eb-39ef-7103ae834990
-@bind show_gradients CheckBox()
-
-# ╔═╡ d16723ca-0598-11eb-02f4-f1c5d45095a5
-show_gradients
-
-# ╔═╡ 95dc760a-058e-11eb-2149-898b2776079f
-md"t : $(@bind t Slider(2:0.01:2π, default=4.3, show_value=true))"
-
-# ╔═╡ 41d8c8d0-0591-11eb-2cd7-3b53f91ef589
-t
-
-# ╔═╡ cf354af7-9aa6-45c0-998b-e47d08fe52f7
-md"compute $\nabla f(\mathbf{x})^T \nabla g(\mathbf{x})$:"
-
-# ╔═╡ 00a009a2-0599-11eb-341f-3364198e1753
-md"We plot the objective value on the equality constraint."
-
-# ╔═╡ 13b4ad4a-0599-11eb-0043-6bfc0eb23389
-md"At the minimizer, the gradients are parallel."
-
-# ╔═╡ 358f21ca-0599-11eb-3bfb-0bb12a1465bb
+# ╔═╡ d07c436c-beb5-46a5-9384-01d06c9f71d8
 md"""
-## Inequality constraints
+## Description
 
-The same argument can be made for inequality constraints, i.e. solving
+Particle Swarm Optimization (PSO) is a stochastic metaheuristic to solve non-convex continuous optimization problems. It based on the flocking behavior of birds and insects. PSO holds a list of 'particles', containing a position and a velocity in the design space. In every step, the velocity of each particle is updated according to
+- towards the particle's personal best design point;
+- towards the best design point found over all the groups.
+The particles' velocities are subsequently used to update their positions.
 
-$$\min_{\mathbf{x}} f(\mathbf{x})$$
-$$\text{subject to } g(\mathbf{x})\leq0\,.$$
+Specifically, the position $\mathbf{x}^{(i)}$ and velocity $\mathbf{v}^{(i)}$ of the $i$-th particle are updated according to
 
-Here, two situations can arise:
+$\mathbf{x}^{(i)} := \mathbf{x}^{(i)} + \mathbf{v}^{(i)}\,,$
 
-- **Inactive constraint**: the minimizer of $f$ lies in the region where $g(\mathbf{x}) < 0$. This corresponds to a Lagrange multiplier $\nu=0$. Note that the solution would be the same if the constraint was not present.
-- **Active constraint**: the minimizer of $f$ lies in the region where $g(\mathbf{x}) > 0$. The solution of the constrained problem will lie on the bound where $g(\mathbf{x})=0$, similar to the equality-constrained problem and corresponds to a Lagrange multiplier $\nu>0$.
+$\mathbf{v}^{(i)} := w\mathbf{v}^{(i)} +c_1r_1 (\mathbf{x}^{(i)}_\text{best}-\mathbf{x}^{(i)}) +c_2r_2 (\mathbf{x}_\text{best}-\mathbf{x}^{(i)})\,,$
 
-For both cases, the product $\nu g(\mathbf{x})=0$, the solution should thus satisfy the following conditions:
-$$g(\mathbf{x}) \leq 0$$
-$$\nu \geq 0$$
-$$\nu g(\mathbf{x})=0\,.$$
-These are called the *Karush-Kuhn-Tucker* conditions.
+with $w$, $c_1$, $c_2$ three parameters dermining the behavior, $r_1$ and $r_2$ two random uniform numbers from the [0,1] interval and $\mathbf{x}^{(i)}_\text{best}$ the best design point of particle $i$ and $\mathbf{x}_\text{best}$ the current global best design point.
 
-It is relatively straightforward to extend this framework towards multiple constraints (equality and inequality) by using several Lagrange multipliers.
+Because all particles perform both a partly independent search and share information, PSO exhibits an emerging intelligent swarming behavior.
 """
 
+# ╔═╡ fa2b1ff1-15b6-460f-b8cd-9b2e5a030427
+md"## Implementation
 
-# ╔═╡ 2d7ae208-0599-11eb-1a91-277b764ad45e
-md"Change the location of the constraint ($R$ is a radius of a circle)."
+We will construct a new structure for particles containing their position, velocity, and best point."
 
-# ╔═╡ c98b4f9a-0592-11eb-2034-5f05e792cbd2
-md"R : $(@bind R Slider(10:0.5:25, default=16))"
-
-# ╔═╡ bd7b55ae-0599-11eb-1056-ed3682fe8160
-g((x1, x2)) = (x1-10)^2 + (x2-17)^2 - R^2
-
-# ╔═╡ c10838a2-0599-11eb-32e3-1579a926f9b7
-g0(t) = [R*cos(t) + 10, R*sin(t) + 17]
-
-# ╔═╡ d2c4ffe2-0485-11eb-0e20-dd52446fa3a6
-x = g0(t)
-
-# ╔═╡ 6e89822c-070b-11eb-06f3-8b8e20aaa57d
-f(x)
-
-# ╔═╡ f47ce686-0485-11eb-2a33-4bd0b150b18b
-g(x)
-
-# ╔═╡ acc751fb-6568-48bb-a8ad-36dddff2bd92
-x
-
-# ╔═╡ ea8c4ae2-2683-4085-8b07-bc96843cf9ca
-f'(x) ⋅ g'(x)
-
-# ╔═╡ e944567a-0596-11eb-2cf1-75f196bab4d1
-f'(x) / norm(f'(x))
-
-# ╔═╡ 02673cec-0597-11eb-2db4-e9f7d9047ac0
-g'(x) / norm(g'(x))
-
-# ╔═╡ b0cf9a40-058f-11eb-13dc-b7c35328ef2a
-begin
-	plot(t -> f(g0(t)), 0:0.01:2π, label="f(x) where g(x)=0")
-	xlabel!("t")
-	ylabel!("objective")
-	scatter!([t], [f(g0(t))], color=:purple, label="x")
+# ╔═╡ a20cf90a-59d8-4702-87e4-239730188559
+mutable struct Particle{T}
+    x::T
+    v::T
+    x_best::T
+	Particle(x::T) where{T} = new{T}(x, zero(x), x)
 end
 
-# ╔═╡ be35a06c-0596-11eb-2988-61a79c7e6a87
-R
+# ╔═╡ a67e44f3-3662-4520-b20c-0afbc65619a4
+md"Note that we use parametric typing to infer the type of our design points automatically.
 
-# ╔═╡ a08e7230-0591-11eb-3956-fb6c2d756494
-fconstr(x) = g(x) ≤ 0.0 ? f(x) : NaN
+A simple function can generate an intial population:"
 
-# ╔═╡ 81629936-0593-11eb-3fca-afa68e2ace3d
-@bind t_approx Slider(0.1:0.05:10.0, default=1.0)
+# ╔═╡ 09d75da1-49a8-43f3-b29f-45f7a5a5cbbf
+"""Generate an intiation population with `n_particles` randomly positioned between the given limits."""
+init_population(n_particles, lims...) = [Particle([(u - l) * rand() + l for (l, u) in lims]) for i in 1:n_particles]
 
-# ╔═╡ a1402cbc-0593-11eb-33b4-09a0c654eefd
-t_approx
+# ╔═╡ 0188dbe1-da01-419f-9db3-8b468cfbe695
+md"Then we can move to the bulk of the code."
 
-# ╔═╡ cc4209ee-0593-11eb-3762-e76539e2a455
-Î₋(u) = u < 0.0 ? -(1/t_approx)* log(-u) : Inf
+# ╔═╡ ba4988dc-a9b4-429c-9892-d2744122376b
+"""
+    particle_swarm_optimization!(f, population, k_max;
+            w=1, c1=1, c2=1)
 
-# ╔═╡ a398740e-0593-11eb-2f81-c92861e080b8
-begin
-	plot(-3:0.001:2, Î₋, label="logarithmic barier (t=$t_approx)")
-	plot!([-3, 0, 0], [0, 0, 5], ls=:dash, label="indicator function")
-	ylims!(-2, 5)
-	xlabel!("u")
+Performs Particle Swarm Optimization to minimize a function `f`. Give an initial
+vector of particles (type `Particle`) and the `k_max`, the number of iterations.
+
+Optionally set hyperparameters `w`, `c1` and `c2` (default value of 1).
+"""
+function particle_swarm_optimization!(f, population, k_max;
+        w=1, c1=1, c2=1)
+    # find best point
+    y_best, x_best = minimum((((f(part.x_best), part.x_best)) for part in population))
+    for k in 1:k_max
+        # update population
+        for particle in population
+            # For you to complete
+        end
+        # this allows us to keep track of things if we want so.
+    end
+    return y_best, x_best
 end
 
-# ╔═╡ dce25666-0594-11eb-24f9-85eba4949d1e
-fsoft(x) = g(x) ≤ 0.0 ? t_approx * f(x) + Î₋(g(x)) : NaN
+# ╔═╡ 61b281f7-018b-4b79-8837-134079283778
+md"""
+We will illustrate it on the Ackley function.
+"""
 
-# ╔═╡ 701efa2a-0596-11eb-2592-39eced2fb875
-@bind show_soft_grads CheckBox()
+# ╔═╡ 23afe89c-0873-49bc-97b7-3280f83915b2
+function ackley(x; a=20, b=0.2, c=2π)
+    d = length(x)
+    return -a * exp(-b*sqrt(sum(x.^2)/d)) -
+        exp(sum(cos.(c .* x))/d)
+end
 
-# ╔═╡ 7c5d381a-0596-11eb-1dfe-0b7074093cd6
-show_soft_grads
+# ╔═╡ 833e7bd2-23b7-4028-a860-7b5c010656d4
+ackley(x...; kwargs...) = ackley(x; kwargs...)
 
-# ╔═╡ 7c934678-0599-11eb-1e6b-1f2c9003509a
-md"## Utilities"
+# ╔═╡ ed526e2e-b40d-47a3-9489-7f226802e405
+x1lims = (-10, 10)
 
-# ╔═╡ 865bbb8e-0483-11eb-0622-b9a8a6ba5d4c
-x1min, x1max = -8.0, 15.0
+# ╔═╡ e42dec26-c912-4d40-8b12-9fc6d4097d8c
+x2lims = (-10, 10)
 
-# ╔═╡ 9736f388-0483-11eb-069a-0d5ed87efb73
-x2min, x2max = -8.0, 12.0
+# ╔═╡ 98e9b5ef-ea4a-4a5c-bdd1-7b3326cbdb51
+pobj = heatmap(-10:0.01:10, -10:0.01:10,
+                ackley, color=:speed, xlabel="x₁", ylabel="x₂")
 
-# ╔═╡ f39f0106-0483-11eb-3617-5fb04388489e
-grads(f, x) = 0.1f'(x) |> df -> Tuple([e] for e in df)
+# ╔═╡ 45d8ac90-a853-4995-b8c0-e7f3e506b3de
+md"We initialize a population."
 
-# ╔═╡ 52bacf14-0595-11eb-33c9-dd5c40125360
-∇fsoft(x) = g(x) ≤ 0.0 ? fsoft'(x) : [0.0, 0.0]
+# ╔═╡ 30dae3fc-f7d3-4f29-9a4e-6c0a0ac10c64
+population = init_population(50, x1lims, x2lims)
 
-# ╔═╡ 7e77e628-0707-11eb-1b2f-27b5c5819260
-# compute angle between two vectors in degrees
-angle(u, v) = acos(dot(u, v) / (norm(u) * norm(v))) |> rad2deg
+# ╔═╡ f6b5942f-33d6-4ddb-bc41-94e3624407eb
+md"Adding the points is easy!"
 
-# ╔═╡ c04a0ffe-0707-11eb-2a74-b3b258b4aec6
-angle(f'(x), g'(x))  # close to 0, 180, or 360 degrees if stationary point
+# ╔═╡ 12325769-f176-4f92-919c-f780a510fc87
+md"""
+**Assignments**:
+1. Complete the `particle_swarm_optimization!` code.
+2. Minimize the `ackley` function (or a different one). What are the effects of the hyperparameters?
+3. (optional) Make an animation of the swarming behavior of the particles. See the [documentation](https://docs.juliaplots.org/latest/animations/) on how to do this. HINT: you might find it useful to run `particle_swarm_optimization!` for a single iteration `k_max` times.
+"""
 
-# ╔═╡ 0a5783e2-0596-11eb-1e38-a5da40325159
+# ╔═╡ 813b7012-30bd-42d3-afac-676ceca0be13
+
+
+# ╔═╡ f9959afb-6c47-4157-bf21-f8c13ab803e2
+
+
+# ╔═╡ fc083229-38b1-423d-b1f7-cb29c62e643b
+
+
+# ╔═╡ 6cda900c-3b77-4590-939b-41c9be02abef
+md"## Appendix"
+
+# ╔═╡ 9479ddff-a14b-45cb-8a52-e792295c58f1
+md"Show solution: $(@bind show_solution CheckBox())"
+
+# ╔═╡ 8f111148-1c89-4b29-9d59-1336e2df84de
+if show_solution
+md"""```julia
+	function particle_swarm_optimization!(f, population::Vector{Particle{T}} where T, k_max;
+	        w=1, c1=1, c2=1)
+	    # find best point
+	    y_best, x_best = minimum((((f(part.x), part.x)) for part in population))
+	    for k in 1:k_max
+	        # update population
+	        for particle in population
+	            r1, r2 = rand(2)
+	            particle.v .= w * particle.v + 
+							c1 * r1 * (particle.x_best .- particle.x) .+
+	                		c2 * r2 * (x_best .- particle.x)
+	            particle.x .+= particle.v
+	            fx = f(particle.x)
+	            # update current best
+	            fx < f(x_best) && (particle.x_best .= particle.x)
+	            # update global best
+	            if fx < y_best
+	                y_best = fx
+	                x_best .= particle.x
+	            end
+	        end
+	    end
+	    return y_best, x_best
+	end
+```
+```julia
+function pso_animation(f, population, k_max;
+        w=1, c1=1, c2=1)
+    # find best point
+    y_best, x_best = minimum((((f(part.x), part.x)) for part in population))
+    objective = [y_best]
+    # determine xvals and yvals depending on the spread of the particles
+    x1min = minimum((part.x[1] for part in population))
+    x1max = maximum((part.x[1] for part in population))
+    x2min = minimum((part.x[2] for part in population))
+    x2max = maximum((part.x[2] for part in population))
+    x1steps = (x1max - x1min) / 200
+    x2steps = (x2max - x2min) / 200
+    anim = @animate for k in 1:k_max
+
+        swarmplot = heatmap(x1min:x1steps:x1max, x2min:x2steps:x2max,
+                        (x,y)->f((x,y)), color=:speed)
+        xlims!((x1min, x1max))
+        ylims!((x2min, x2max))
+        # update population
+        for particle in population
+            r1, r2 = rand(2)
+            particle.v .= w * particle.v .+ 
+				c1 * r1 * (particle.x_best .- particle.x) .+
+                c2 * r2 * (x_best .- particle.x)
+            particle.x .+= particle.v
+            fx = f(particle.x)
+            # update current best
+            fx < f(x_best) && (particle.x_best .= particle.x)
+            # update global best
+            if fx < y_best
+                y_best = fx
+                x_best .= particle.x
+            end
+            scatter!(swarmplot, [particle.x[1]], [particle.x[2]],
+                        color=:red, label="")
+        end
+        push!(objective, y_best)
+        pobj = plot(0:k, objective, label="objective")
+        xlabel!("iteration")
+        ylabel!("best objective")
+        plot(swarmplot, pobj)
+    end
+    return anim
+end
+```
+
+```julia
+# no momentum
+population = init_population(50, x1lims, x2lims)
+pso_no_momentum = pso_animation(ackley, population, 100, w=1, c1=0.9, c2=0.9)
+gif(pso_no_momentum, fps=4)
+```
+
+```julia
+# momentum
+population = init_population(50, x1lims, x2lims)
+pso_momentum = pso_animation(fun, population, 100, w=0.8, c1=0.9, c2=0.9)
+gif(pso_no_momentum, fps=4)
+```
+"""
+end
+
+# ╔═╡ 769ef8c7-7a71-49ce-be50-9dfa79f85ca4
 begin
 	myblue = "#304da5"
 	mygreen = "#2a9d8f"
@@ -234,81 +261,38 @@ begin
 	mycolors = [myblue, myred, mygreen, myorange, myyellow]
 end;
 
-# ╔═╡ 828cbe72-0483-11eb-33b2-7f4f37db889f
-begin
-	plot(colorbar=false)
-	show_f_contour && contourf!(x1min:0.1:x1max, x2min:0.1:x2max, (x1, x2) -> f((x1, x2)), label="f(x)", colorbar=true, color=:Blues, aspect=:equal)
-	show_g_contour && contour!(x1min:0.1:x1max, x2min:0.1:x2max, (x1, x2) -> g((x1, x2)), color=:Reds)
-	show_g0_constraint && plot!([g0(t)[1] for t in 0:0.01:2π], [g0(t)[2] for t in 0:0.01:2π], lw=2, color=:red, label="g(x)=0")
-	show_g0_constraint && scatter!([x[1]], [x[2]], label="x", color=myyellow)
-	show_gradients && quiver!([x[1]], [x[2]], quiver=grads(f, x), color=myblue)
-	show_gradients && quiver!([x[1]], [x[2]], quiver=grads(g, x), color=myorange)
-	scatter!([0], [0], label="x* (no constraint)", color=mygreen)
-	xlims!(x1min, x1max)
-	ylims!(x2min, x2max)
-	xlabel!("x1")
-	ylabel!("x2")
-end
-
-# ╔═╡ e06bff3b-5941-4757-bfb1-b31183c025a7
-begin
-	plot(t -> angle(f'(g0(t)), g'(g0(t))), 0:0.02:2π, label="∇f(x)^T∇g(x) where g(x)=0", legend=:topleft, color=myblue)
-	xlabel!("t")
-	ylabel!("angle in degrees")
-	scatter!([t], [angle(f'(x), g'(x))], color=myyellow, label="x")
-end
-
-# ╔═╡ c2640938-0591-11eb-058c-5949d1e316d3
-begin
-	contourf(x1min:0.01:x1max, x2min:0.01:x2max, (x1, x2) -> fconstr((x1, x2)), 			color=:Blues)
-	show_g_contour && contour!(x1min:0.1:x1max, x2min:0.1:x2max, (x1, x2) -> g((x1, x2)), color=:Reds)
-	contour!(x1min:0.1:x1max, x2min:0.1:x2max, (x1, x2) -> f((x1, x2)), 			color=:Blues)
-	scatter!([x[1]], [x[2]], label="x", color=myyellow)
-	scatter!([0], [0], label="x* (no constraint)", color=mygreen)
-	show_g0_constraint && plot!([g0(t)[1] for t in 0:0.01:2π], [g0(t)[2] for t in 0:0.01:2π], lw=2, color=:red, label="g(x)=0")
-	show_gradients && quiver!([x[1]], [x[2]], quiver=grads(f, x), color=myblue)
-	show_gradients && quiver!([x[1]], [x[2]], quiver=grads(g, x), color=myorange)
-	xlims!(x1min, x1max)
-	ylims!(x2min, x2max)
-end
-
-# ╔═╡ 0b93638a-0595-11eb-3096-af3cc7202aa5
-begin
-	contourf(x1min:0.01:x1max, x2min:0.01:x2max, (x1, x2) -> fconstr((x1, x2)), 			color=:Blues)
-	
-	contour!(x1min:0.1:x1max, x2min:0.1:x2max, (x1, x2) -> f((x1, x2)), 			color=:Blues)
-	show_g_contour && contour!(x1min:0.1:x1max, x2min:0.1:x2max, (x1, x2) -> fsoft((x1, x2)), color=:Reds)
-	scatter!([x[1]], [x[2]], label="x", color=myyellow)
-	scatter!([0], [0], label="x* (no constraint)", color=mygreen)
-	show_g0_constraint && plot!([g0(t)[1] for t in 0:0.01:2π], [g0(t)[2] for t in 0:0.01:2π], lw=2, color=myred, label="g(x)=0")
-	show_soft_grads && quiver!([x for x in x1min:2:x1max for y in x2min:2:x2max], [y for x in x1min:2:x1max for y in x2min:2:x2max], quiver=(x1, x2)->-0.01.*∇fsoft((x1, x2)), color=:pink)
-	xlims!(x1min, x1max)
-	ylims!(x2min, x2max)
+# ╔═╡ 88d6bb43-e34c-4404-87a1-33d16946a990
+let
+	pobj = heatmap(-10:0.01:10, -10:0.01:10,
+                ackley, color=:speed, xlabel="x₁", ylabel="x₂")
+	for particle in population
+	    x = particle.x
+	    scatter!(pobj, [x[1]], [x[2]], color=myorange, label="",
+	            markersize=2)
+	end
+	pobj
 end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
-LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [compat]
-Plots = "~1.23.1"
-PlutoUI = "~0.7.16"
-Zygote = "~0.6.29"
+Plots = "~1.24.0"
+PlutoUI = "~0.7.20"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-[[AbstractFFTs]]
-deps = ["LinearAlgebra"]
-git-tree-sha1 = "485ee0867925449198280d4af84bdb46a2a404d0"
-uuid = "621f4979-c628-5d54-868e-fcf4e3e8185c"
-version = "1.0.1"
+[[AbstractPlutoDingetjes]]
+deps = ["Pkg"]
+git-tree-sha1 = "0bc60e3006ad95b4bb7497698dd7c6d649b9bc06"
+uuid = "6e696c72-6542-2067-7265-42206c756150"
+version = "1.1.1"
 
 [[Adapt]]
 deps = ["LinearAlgebra"]
@@ -337,17 +321,17 @@ git-tree-sha1 = "f2202b55d816427cd385a9a4f3ffb226bee80f99"
 uuid = "83423d85-b0ee-5818-9007-b63ccbeb887a"
 version = "1.16.1+0"
 
-[[ChainRules]]
-deps = ["ChainRulesCore", "Compat", "LinearAlgebra", "Random", "RealDot", "Statistics"]
-git-tree-sha1 = "035ef8a5382a614b2d8e3091b6fdbb1c2b050e11"
-uuid = "082447d4-558c-5d27-93f4-14fc19e9eca2"
-version = "1.12.1"
-
 [[ChainRulesCore]]
 deps = ["Compat", "LinearAlgebra", "SparseArrays"]
-git-tree-sha1 = "0541d306de71e267c1a724f84d44bbc981f287b4"
+git-tree-sha1 = "f885e7e7c124f8c92650d61b9477b9ac2ee607dd"
 uuid = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
-version = "1.10.2"
+version = "1.11.1"
+
+[[ChangesOfVariables]]
+deps = ["LinearAlgebra", "Test"]
+git-tree-sha1 = "9a1d594397670492219635b35a3d830b04730d62"
+uuid = "9e997f8a-9a97-42d5-a9f1-ce6bfc15e2c0"
+version = "0.1.1"
 
 [[ColorSchemes]]
 deps = ["ColorTypes", "Colors", "FixedPointNumbers", "Random"]
@@ -367,17 +351,11 @@ git-tree-sha1 = "417b0ed7b8b838aa6ca0a87aadf1bb9eb111ce40"
 uuid = "5ae59095-9a9b-59fe-a467-6f913c188581"
 version = "0.12.8"
 
-[[CommonSubexpressions]]
-deps = ["MacroTools", "Test"]
-git-tree-sha1 = "7b8a93dba8af7e3b42fecabf646260105ac373f7"
-uuid = "bbf7d656-a473-5ed7-a52c-81e309532950"
-version = "0.3.0"
-
 [[Compat]]
 deps = ["Base64", "Dates", "DelimitedFiles", "Distributed", "InteractiveUtils", "LibGit2", "Libdl", "LinearAlgebra", "Markdown", "Mmap", "Pkg", "Printf", "REPL", "Random", "SHA", "Serialization", "SharedArrays", "Sockets", "SparseArrays", "Statistics", "Test", "UUIDs", "Unicode"]
-git-tree-sha1 = "31d0151f5716b655421d9d75b7fa74cc4e744df2"
+git-tree-sha1 = "dce3e3fea680869eaa0b774b2e8343e9ff442313"
 uuid = "34da2185-b29b-5c13-b0c7-acf172513d20"
-version = "3.39.0"
+version = "3.40.0"
 
 [[CompilerSupportLibraries_jll]]
 deps = ["Artifacts", "Libdl"]
@@ -412,18 +390,6 @@ uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
 [[DelimitedFiles]]
 deps = ["Mmap"]
 uuid = "8bb1440f-4735-579b-a4ab-409b98df4dab"
-
-[[DiffResults]]
-deps = ["StaticArrays"]
-git-tree-sha1 = "c18e98cba888c6c25d1c3b048e4b3380ca956805"
-uuid = "163ba53b-c6d8-5494-b064-1a9d43ac40c5"
-version = "1.0.3"
-
-[[DiffRules]]
-deps = ["NaNMath", "Random", "SpecialFunctions"]
-git-tree-sha1 = "7220bc21c33e990c14f4a9a319b1d242ebc5b269"
-uuid = "b552c78f-8df3-52c6-915a-8e097449b14b"
-version = "1.3.1"
 
 [[Distributed]]
 deps = ["Random", "Serialization", "Sockets"]
@@ -463,12 +429,6 @@ git-tree-sha1 = "d8a578692e3077ac998b50c0217dfd67f21d1e5f"
 uuid = "b22a6f82-2f65-5046-a5b2-351ab43fb4e5"
 version = "4.4.0+0"
 
-[[FillArrays]]
-deps = ["LinearAlgebra", "Random", "SparseArrays", "Statistics"]
-git-tree-sha1 = "8756f9935b7ccc9064c6eef0bff0ad643df733a3"
-uuid = "1a297f60-69ca-5386-bcde-b61e274b549b"
-version = "0.12.7"
-
 [[FixedPointNumbers]]
 deps = ["Statistics"]
 git-tree-sha1 = "335bfdceacc84c5cdf16aadc768aa5ddfc5383cc"
@@ -486,12 +446,6 @@ deps = ["Printf"]
 git-tree-sha1 = "8339d61043228fdd3eb658d86c926cb282ae72a8"
 uuid = "59287772-0a20-5a39-b81b-1366585eb4c0"
 version = "0.4.2"
-
-[[ForwardDiff]]
-deps = ["CommonSubexpressions", "DiffResults", "DiffRules", "LinearAlgebra", "NaNMath", "Preferences", "Printf", "Random", "SpecialFunctions", "StaticArrays"]
-git-tree-sha1 = "63777916efbcb0ab6173d09a658fb7f2783de485"
-uuid = "f6369f11-7733-5829-9624-2563aa707210"
-version = "0.10.21"
 
 [[FreeType2_jll]]
 deps = ["Artifacts", "Bzip2_jll", "JLLWrappers", "Libdl", "Pkg", "Zlib_jll"]
@@ -513,15 +467,15 @@ version = "3.3.5+1"
 
 [[GR]]
 deps = ["Base64", "DelimitedFiles", "GR_jll", "HTTP", "JSON", "Libdl", "LinearAlgebra", "Pkg", "Printf", "Random", "Serialization", "Sockets", "Test", "UUIDs"]
-git-tree-sha1 = "d189c6d2004f63fd3c91748c458b09f26de0efaa"
+git-tree-sha1 = "30f2b340c2fff8410d89bfcdc9c0a6dd661ac5f7"
 uuid = "28b8d3ca-fb5f-59d9-8090-bfdbd6d07a71"
-version = "0.61.0"
+version = "0.62.1"
 
 [[GR_jll]]
 deps = ["Artifacts", "Bzip2_jll", "Cairo_jll", "FFMPEG_jll", "Fontconfig_jll", "GLFW_jll", "JLLWrappers", "JpegTurbo_jll", "Libdl", "Libtiff_jll", "Pixman_jll", "Pkg", "Qt5Base_jll", "Zlib_jll", "libpng_jll"]
-git-tree-sha1 = "cafe0823979a5c9bff86224b3b8de29ea5a44b2e"
+git-tree-sha1 = "fd75fa3a2080109a2c0ec9864a6e14c60cca3866"
 uuid = "d2c73de3-f751-5644-a686-071e5b155ba9"
-version = "0.61.0+0"
+version = "0.62.0+0"
 
 [[GeometryBasics]]
 deps = ["EarCut_jll", "IterTools", "LinearAlgebra", "StaticArrays", "StructArrays", "Tables"]
@@ -554,9 +508,9 @@ version = "1.0.2"
 
 [[HTTP]]
 deps = ["Base64", "Dates", "IniFile", "Logging", "MbedTLS", "NetworkOptions", "Sockets", "URIs"]
-git-tree-sha1 = "14eece7a3308b4d8be910e265c724a6ba51a9798"
+git-tree-sha1 = "0fa77022fe4b511826b39c894c90daf5fce3334a"
 uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
-version = "0.9.16"
+version = "0.9.17"
 
 [[HarfBuzz_jll]]
 deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "Graphite2_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Pkg"]
@@ -571,21 +525,15 @@ uuid = "47d2ed2b-36de-50cf-bf87-49c2cf4b8b91"
 version = "0.0.4"
 
 [[HypertextLiteral]]
-git-tree-sha1 = "5efcf53d798efede8fee5b2c8b09284be359bf24"
+git-tree-sha1 = "2b078b5a615c6c0396c77810d92ee8c6f470d238"
 uuid = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
-version = "0.9.2"
+version = "0.9.3"
 
 [[IOCapture]]
 deps = ["Logging", "Random"]
 git-tree-sha1 = "f7be53659ab06ddc986428d3a9dcc95f6fa6705a"
 uuid = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
 version = "0.2.2"
-
-[[IRTools]]
-deps = ["InteractiveUtils", "MacroTools", "Test"]
-git-tree-sha1 = "95215cd0076a150ef46ff7928892bc341864c73c"
-uuid = "7869d1d1-7146-5819-86e3-90919afe41df"
-version = "0.4.3"
 
 [[IniFile]]
 deps = ["Test"]
@@ -599,9 +547,9 @@ uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 
 [[InverseFunctions]]
 deps = ["Test"]
-git-tree-sha1 = "f0c6489b12d28fb4c2103073ec7452f3423bd308"
+git-tree-sha1 = "a7254c0acd8e62f1ac75ad24d5db43f5f19f3c65"
 uuid = "3587e190-3f89-42d0-90ee-14403ec27112"
-version = "0.1.1"
+version = "0.1.2"
 
 [[IrrationalConstants]]
 git-tree-sha1 = "7fd44fd4ff43fc60815f8e764c0f352b83c49151"
@@ -649,9 +597,9 @@ uuid = "dd4b983a-f0e5-5f8d-a1b7-129d4a5fb1ac"
 version = "2.10.1+0"
 
 [[LaTeXStrings]]
-git-tree-sha1 = "c7f1c695e06c01b95a67f0cd1d34994f3e7db104"
+git-tree-sha1 = "f2355693d6778a178ade15952b7ac47a4ff97996"
 uuid = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
-version = "1.2.1"
+version = "1.3.0"
 
 [[Latexify]]
 deps = ["Formatting", "InteractiveUtils", "LaTeXStrings", "MacroTools", "Markdown", "Printf", "Requires"]
@@ -680,9 +628,9 @@ uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 
 [[Libffi_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "761a393aeccd6aa92ec3515e428c26bf99575b3b"
+git-tree-sha1 = "0b4a5d71f3e5200a7dff793393e09dfc2d874290"
 uuid = "e9f186c6-92d2-5b65-8a66-fee21dc1b490"
-version = "3.2.2+0"
+version = "3.2.2+1"
 
 [[Libgcrypt_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libgpg_error_jll", "Pkg"]
@@ -731,19 +679,19 @@ deps = ["Libdl"]
 uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
 [[LogExpFunctions]]
-deps = ["ChainRulesCore", "DocStringExtensions", "InverseFunctions", "IrrationalConstants", "LinearAlgebra"]
-git-tree-sha1 = "6193c3815f13ba1b78a51ce391db8be016ae9214"
+deps = ["ChainRulesCore", "ChangesOfVariables", "DocStringExtensions", "InverseFunctions", "IrrationalConstants", "LinearAlgebra"]
+git-tree-sha1 = "be9eef9f9d78cecb6f262f3c10da151a6c5ab827"
 uuid = "2ab3a3ac-af41-5b50-aa03-7779005ae688"
-version = "0.3.4"
+version = "0.3.5"
 
 [[Logging]]
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
 [[MacroTools]]
 deps = ["Markdown", "Random"]
-git-tree-sha1 = "5a5bc6bf062f0f95e62d0fe0a2d99699fed82dd9"
+git-tree-sha1 = "3d3e902b31198a27340d0bf00d6ac452866021cf"
 uuid = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
-version = "0.5.8"
+version = "0.5.9"
 
 [[Markdown]]
 deps = ["Base64"]
@@ -790,21 +738,11 @@ git-tree-sha1 = "7937eda4681660b4d6aeeecc2f7e1c81c8ee4e2f"
 uuid = "e7412a2a-1a6e-54c0-be00-318e2571c051"
 version = "1.3.5+0"
 
-[[OpenLibm_jll]]
-deps = ["Artifacts", "Libdl"]
-uuid = "05823500-19ac-5b8b-9628-191a04bc5112"
-
 [[OpenSSL_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "15003dcb7d8db3c6c857fda14891a539a8f2705a"
 uuid = "458c3c95-2e84-50aa-8efc-19380b2a3a95"
 version = "1.1.10+0"
-
-[[OpenSpecFun_jll]]
-deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "13652491f6856acfd2db29360e1bbcd4565d04f1"
-uuid = "efe28fd5-8261-553b-a9e1-b2916fc3738e"
-version = "0.5.5+0"
 
 [[Opus_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -825,9 +763,9 @@ version = "8.44.0+0"
 
 [[Parsers]]
 deps = ["Dates"]
-git-tree-sha1 = "f19e978f81eca5fd7620650d7dbea58f825802ee"
+git-tree-sha1 = "ae4bbcadb2906ccc085cf52ac286dc1377dceccc"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "2.1.0"
+version = "2.1.2"
 
 [[Pixman_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -852,16 +790,16 @@ uuid = "995b91a9-d308-5afd-9ec6-746e21dbc043"
 version = "1.0.15"
 
 [[Plots]]
-deps = ["Base64", "Contour", "Dates", "Downloads", "FFMPEG", "FixedPointNumbers", "GR", "GeometryBasics", "JSON", "Latexify", "LinearAlgebra", "Measures", "NaNMath", "PlotThemes", "PlotUtils", "Printf", "REPL", "Random", "RecipesBase", "RecipesPipeline", "Reexport", "Requires", "Scratch", "Showoff", "SparseArrays", "Statistics", "StatsBase", "UUIDs"]
-git-tree-sha1 = "25007065fa36f272661a0e1968761858cc880755"
+deps = ["Base64", "Contour", "Dates", "Downloads", "FFMPEG", "FixedPointNumbers", "GR", "GeometryBasics", "JSON", "Latexify", "LinearAlgebra", "Measures", "NaNMath", "PlotThemes", "PlotUtils", "Printf", "REPL", "Random", "RecipesBase", "RecipesPipeline", "Reexport", "Requires", "Scratch", "Showoff", "SparseArrays", "Statistics", "StatsBase", "UUIDs", "UnicodeFun"]
+git-tree-sha1 = "02a083caba3f73e42decb810b2e0740783022978"
 uuid = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
-version = "1.23.1"
+version = "1.24.0"
 
 [[PlutoUI]]
-deps = ["Base64", "Dates", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "UUIDs"]
-git-tree-sha1 = "4c8a7d080daca18545c56f1cac28710c362478f3"
+deps = ["AbstractPlutoDingetjes", "Base64", "Dates", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "UUIDs"]
+git-tree-sha1 = "1e0cb51e0ccef0afc01aab41dc51a3e7f781e8cb"
 uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-version = "0.7.16"
+version = "0.7.20"
 
 [[Preferences]]
 deps = ["TOML"]
@@ -887,16 +825,10 @@ uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 deps = ["Serialization"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
-[[RealDot]]
-deps = ["LinearAlgebra"]
-git-tree-sha1 = "9f0a1b71baaf7650f4fa8a1d168c7fb6ee41f0c9"
-uuid = "c1ae055f-0cd5-4b69-90a6-9a35b1a98df9"
-version = "0.1.0"
-
 [[RecipesBase]]
-git-tree-sha1 = "44a75aa7a527910ee3d1751d1f0e4148698add9e"
+git-tree-sha1 = "6bf3f380ff52ce0832ddd3a2a7b9538ed1bcca7d"
 uuid = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
-version = "1.1.2"
+version = "1.2.1"
 
 [[RecipesPipeline]]
 deps = ["Dates", "NaNMath", "PlotUtils", "RecipesBase"]
@@ -950,12 +882,6 @@ version = "1.0.1"
 deps = ["LinearAlgebra", "Random"]
 uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
-[[SpecialFunctions]]
-deps = ["ChainRulesCore", "IrrationalConstants", "LogExpFunctions", "OpenLibm_jll", "OpenSpecFun_jll"]
-git-tree-sha1 = "2d57e14cd614083f132b6224874296287bfa3979"
-uuid = "276daf66-3868-5448-9aa4-cd146d93841b"
-version = "1.8.0"
-
 [[StaticArrays]]
 deps = ["LinearAlgebra", "Random", "Statistics"]
 git-tree-sha1 = "3c76dde64d03699e074ac02eb2e8ba8254d428da"
@@ -967,15 +893,15 @@ deps = ["LinearAlgebra", "SparseArrays"]
 uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [[StatsAPI]]
-git-tree-sha1 = "1958272568dc176a1d881acb797beb909c785510"
+git-tree-sha1 = "0f2aa8e32d511f758a2ce49208181f7733a0936a"
 uuid = "82ae8749-77ed-4fe6-ae5f-f523153014b0"
-version = "1.0.0"
+version = "1.1.0"
 
 [[StatsBase]]
 deps = ["DataAPI", "DataStructures", "LinearAlgebra", "LogExpFunctions", "Missings", "Printf", "Random", "SortingAlgorithms", "SparseArrays", "Statistics", "StatsAPI"]
-git-tree-sha1 = "eb35dcc66558b2dda84079b9a1be17557d32091a"
+git-tree-sha1 = "2bb0cb32026a66037360606510fca5984ccc6b75"
 uuid = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
-version = "0.33.12"
+version = "0.33.13"
 
 [[StructArrays]]
 deps = ["Adapt", "DataAPI", "StaticArrays", "Tables"]
@@ -1019,6 +945,12 @@ uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 [[Unicode]]
 uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 
+[[UnicodeFun]]
+deps = ["REPL"]
+git-tree-sha1 = "53915e50200959667e78a92a418594b428dffddf"
+uuid = "1cfade01-22cf-5700-b092-accc4b62d6e1"
+version = "0.4.1"
+
 [[Wayland_jll]]
 deps = ["Artifacts", "Expat_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Pkg", "XML2_jll"]
 git-tree-sha1 = "3e61f0b86f90dacb0bc0e73a0c5a83f6a8636e23"
@@ -1026,10 +958,10 @@ uuid = "a2964d1f-97da-50d4-b82a-358c7fce9d89"
 version = "1.19.0+0"
 
 [[Wayland_protocols_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Wayland_jll"]
-git-tree-sha1 = "2839f1c1296940218e35df0bbb220f2a79686670"
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "66d72dc6fcc86352f01676e8f0f698562e60510f"
 uuid = "2381bf8a-dfd0-557d-9999-79630e7b1b91"
-version = "1.18.0+4"
+version = "1.23.0+0"
 
 [[XML2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libiconv_jll", "Pkg", "Zlib_jll"]
@@ -1179,18 +1111,6 @@ git-tree-sha1 = "cc4bf3fdde8b7e3e9fa0351bdeedba1cf3b7f6e6"
 uuid = "3161d3a3-bdf6-5164-811a-617609db77b4"
 version = "1.5.0+0"
 
-[[Zygote]]
-deps = ["AbstractFFTs", "ChainRules", "ChainRulesCore", "DiffRules", "Distributed", "FillArrays", "ForwardDiff", "IRTools", "InteractiveUtils", "LinearAlgebra", "MacroTools", "NaNMath", "Random", "Requires", "SpecialFunctions", "Statistics", "ZygoteRules"]
-git-tree-sha1 = "0fc9959bcabc4668c403810b4e851f6b8962eac9"
-uuid = "e88e6eb3-aa80-5325-afca-941959d7151f"
-version = "0.6.29"
-
-[[ZygoteRules]]
-deps = ["MacroTools"]
-git-tree-sha1 = "8c1a8e4dfacb1fd631745552c8db35d0deb09ea0"
-uuid = "700de1a5-db45-46bc-99cf-38207098b444"
-version = "0.2.2"
-
 [[libass_jll]]
 deps = ["Artifacts", "Bzip2_jll", "FreeType2_jll", "FriBidi_jll", "HarfBuzz_jll", "JLLWrappers", "Libdl", "Pkg", "Zlib_jll"]
 git-tree-sha1 = "5982a94fcba20f02f42ace44b9894ee2b140fe47"
@@ -1243,60 +1163,32 @@ version = "0.9.1+5"
 """
 
 # ╔═╡ Cell order:
-# ╠═49e8e6f6-0483-11eb-0a74-d94aa536c9ab
-# ╟─fccca5fc-0597-11eb-1033-a5cc3b71d854
-# ╠═5e4eabba-0483-11eb-09a4-31ae6c582d3e
-# ╠═bd7b55ae-0599-11eb-1056-ed3682fe8160
-# ╟─470048ec-0598-11eb-0d48-67357ed1f12c
-# ╟─c10838a2-0599-11eb-32e3-1579a926f9b7
-# ╠═41d8c8d0-0591-11eb-2cd7-3b53f91ef589
-# ╠═d2c4ffe2-0485-11eb-0e20-dd52446fa3a6
-# ╠═6e89822c-070b-11eb-06f3-8b8e20aaa57d
-# ╠═f47ce686-0485-11eb-2a33-4bd0b150b18b
-# ╟─5503c842-0591-11eb-0104-359b9ebd5e98
-# ╟─47067fc8-058c-11eb-224c-6fe2e470107f
-# ╟─c369c65e-0598-11eb-0a90-dd4db070c99b
-# ╟─60328136-0591-11eb-1929-b7515a8c03d9
-# ╟─d10b14c2-058c-11eb-3a43-7bca5d042969
-# ╟─ba835a96-0598-11eb-1d54-9365e3ea337f
-# ╟─681a031a-0591-11eb-2fec-8d94eca758f8
-# ╟─13467b42-058d-11eb-3023-b9d3f145335b
-# ╟─ca227ac2-0598-11eb-3a39-f1a90769ac52
-# ╟─d8276f26-0598-11eb-1626-95f87cf6de22
-# ╟─60c41848-0592-11eb-39ef-7103ae834990
-# ╟─d16723ca-0598-11eb-02f4-f1c5d45095a5
-# ╟─828cbe72-0483-11eb-33b2-7f4f37db889f
-# ╟─95dc760a-058e-11eb-2149-898b2776079f
-# ╠═acc751fb-6568-48bb-a8ad-36dddff2bd92
-# ╟─cf354af7-9aa6-45c0-998b-e47d08fe52f7
-# ╠═ea8c4ae2-2683-4085-8b07-bc96843cf9ca
-# ╠═c04a0ffe-0707-11eb-2a74-b3b258b4aec6
-# ╟─00a009a2-0599-11eb-341f-3364198e1753
-# ╟─b0cf9a40-058f-11eb-13dc-b7c35328ef2a
-# ╟─e06bff3b-5941-4757-bfb1-b31183c025a7
-# ╟─13b4ad4a-0599-11eb-0043-6bfc0eb23389
-# ╠═e944567a-0596-11eb-2cf1-75f196bab4d1
-# ╠═02673cec-0597-11eb-2db4-e9f7d9047ac0
-# ╟─358f21ca-0599-11eb-3bfb-0bb12a1465bb
-# ╟─2d7ae208-0599-11eb-1a91-277b764ad45e
-# ╟─c98b4f9a-0592-11eb-2034-5f05e792cbd2
-# ╠═be35a06c-0596-11eb-2988-61a79c7e6a87
-# ╠═a08e7230-0591-11eb-3956-fb6c2d756494
-# ╟─c2640938-0591-11eb-058c-5949d1e316d3
-# ╟─81629936-0593-11eb-3fca-afa68e2ace3d
-# ╠═a1402cbc-0593-11eb-33b4-09a0c654eefd
-# ╠═cc4209ee-0593-11eb-3762-e76539e2a455
-# ╟─a398740e-0593-11eb-2f81-c92861e080b8
-# ╠═dce25666-0594-11eb-24f9-85eba4949d1e
-# ╟─701efa2a-0596-11eb-2592-39eced2fb875
-# ╠═7c5d381a-0596-11eb-1dfe-0b7074093cd6
-# ╟─0b93638a-0595-11eb-3096-af3cc7202aa5
-# ╟─7c934678-0599-11eb-1e6b-1f2c9003509a
-# ╠═865bbb8e-0483-11eb-0622-b9a8a6ba5d4c
-# ╠═9736f388-0483-11eb-069a-0d5ed87efb73
-# ╠═f39f0106-0483-11eb-3617-5fb04388489e
-# ╠═52bacf14-0595-11eb-33c9-dd5c40125360
-# ╠═7e77e628-0707-11eb-1b2f-27b5c5819260
-# ╟─0a5783e2-0596-11eb-1e38-a5da40325159
+# ╟─d93deb54-50fb-11ec-307c-d7de39606f97
+# ╠═528edd1b-551d-4a2c-af34-14ca1d90809f
+# ╟─d07c436c-beb5-46a5-9384-01d06c9f71d8
+# ╟─fa2b1ff1-15b6-460f-b8cd-9b2e5a030427
+# ╠═a20cf90a-59d8-4702-87e4-239730188559
+# ╟─a67e44f3-3662-4520-b20c-0afbc65619a4
+# ╠═09d75da1-49a8-43f3-b29f-45f7a5a5cbbf
+# ╟─0188dbe1-da01-419f-9db3-8b468cfbe695
+# ╠═ba4988dc-a9b4-429c-9892-d2744122376b
+# ╟─61b281f7-018b-4b79-8837-134079283778
+# ╠═23afe89c-0873-49bc-97b7-3280f83915b2
+# ╠═833e7bd2-23b7-4028-a860-7b5c010656d4
+# ╠═ed526e2e-b40d-47a3-9489-7f226802e405
+# ╠═e42dec26-c912-4d40-8b12-9fc6d4097d8c
+# ╟─98e9b5ef-ea4a-4a5c-bdd1-7b3326cbdb51
+# ╟─45d8ac90-a853-4995-b8c0-e7f3e506b3de
+# ╠═30dae3fc-f7d3-4f29-9a4e-6c0a0ac10c64
+# ╟─f6b5942f-33d6-4ddb-bc41-94e3624407eb
+# ╟─88d6bb43-e34c-4404-87a1-33d16946a990
+# ╟─12325769-f176-4f92-919c-f780a510fc87
+# ╠═813b7012-30bd-42d3-afac-676ceca0be13
+# ╠═f9959afb-6c47-4157-bf21-f8c13ab803e2
+# ╠═fc083229-38b1-423d-b1f7-cb29c62e643b
+# ╟─6cda900c-3b77-4590-939b-41c9be02abef
+# ╟─9479ddff-a14b-45cb-8a52-e792295c58f1
+# ╟─8f111148-1c89-4b29-9d59-1336e2df84de
+# ╟─769ef8c7-7a71-49ce-be50-9dfa79f85ca4
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

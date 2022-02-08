@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.16.0
+# v0.17.1
 
 using Markdown
 using InteractiveUtils
@@ -130,9 +130,13 @@ function kruskal(vertices, edges)
     usf = DisjointSets(vertices)
     mst_edges = eltype(edges)[]
     mst_vertices = Set{eltype(vertices)}()
+	# sort the edges by weight
     sort!(edges)
     cost = zero(edges[1][1])
+	# for all edges
     for (w, u, v) in edges
+		# only connect subtrees not yet connected
+		# otherwise, you generate a cycle
         if !in_same_set(usf, u, v)
             push!(mst_edges, (w, u, v))
             union!(usf, u, v)
@@ -187,7 +191,7 @@ Vertices{T} = Array{T,1}
 AdjList{R,T} = Dict{T,Array{Tuple{R,T},1}}
 
 # ╔═╡ 3fef1399-0d42-4785-91cd-8db2b67fbee6
-md""""
+md"""
 Don't worry if you don't fully understand the above. It makes use of the type system and it allows us to use dispatch to select the best function.
 
 Consider the following example graph:
@@ -366,10 +370,10 @@ md"Let us plot this graph. We also have the coordinates of the cities in `cities
 # ╔═╡ 44609196-e3f2-446b-9ca9-d8741c43fb05
 md"Your turn! Use the functions above to find a minimal spanning tree for this graph."
 
-# ╔═╡ f25d22aa-287e-42d9-8631-1b17926835be
-
-
 # ╔═╡ f50f0928-7598-4e36-9a65-876a42b8982e
+
+
+# ╔═╡ 2febee75-48eb-4226-acaf-f33b36eb19bc
 
 
 # ╔═╡ d16daa50-aff5-447c-8aaf-18da9b57301d
@@ -388,7 +392,7 @@ begin
 end;
 
 # ╔═╡ bbc8bc84-98db-4b0d-b50a-182ed6208027
-md"## Some helpful graph functions"
+md"### Some helpful graph functions"
 
 # ╔═╡ 48fbc53f-4a01-4996-9761-063b5a5c8aa5
 """
@@ -481,7 +485,7 @@ end
 isconnected(edges::WeightedEdgeList) = isconnected(edges2adjlist(edges))
 
 # ╔═╡ d5cca937-ffbc-4d78-853b-1379b92b91c2
-md"## Data"
+md"### Data"
 
 # ╔═╡ 4013f2d2-7324-46c8-a186-46d2855237ee
 const tickettoride_edges = [(1, "Vancouver", "Seattle"),
@@ -805,9 +809,9 @@ version = "1.0.10+0"
 
 [[GLFW_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libglvnd_jll", "Pkg", "Xorg_libXcursor_jll", "Xorg_libXi_jll", "Xorg_libXinerama_jll", "Xorg_libXrandr_jll"]
-git-tree-sha1 = "dba1e8614e98949abfa60480b13653813d8f0157"
+git-tree-sha1 = "0c603255764a1fa0b61752d2bec14cfbd18f7fe8"
 uuid = "0656b61e-2033-5cc2-a64a-77c0f6c09b89"
-version = "3.3.5+0"
+version = "3.3.5+1"
 
 [[GR]]
 deps = ["Base64", "DelimitedFiles", "GR_jll", "HTTP", "JSON", "Libdl", "LinearAlgebra", "Pkg", "Printf", "Random", "Serialization", "Sockets", "Test", "UUIDs"]
@@ -1502,8 +1506,8 @@ version = "0.9.1+5"
 # ╟─cda14c79-7a39-4ef5-8c59-1dd2f0fac202
 # ╟─ad534796-d5a1-4c45-b362-68754db23d85
 # ╟─44609196-e3f2-446b-9ca9-d8741c43fb05
-# ╠═f25d22aa-287e-42d9-8631-1b17926835be
 # ╠═f50f0928-7598-4e36-9a65-876a42b8982e
+# ╠═2febee75-48eb-4226-acaf-f33b36eb19bc
 # ╟─d16daa50-aff5-447c-8aaf-18da9b57301d
 # ╟─454fcd33-52c0-48d8-ba15-ffb5b0249ac4
 # ╟─bbc8bc84-98db-4b0d-b50a-182ed6208027
@@ -1522,6 +1526,6 @@ version = "0.9.1+5"
 # ╟─0cf0cb00-7007-42be-a5b7-f06f6c6f3992
 # ╟─3c932fb9-8667-475c-841f-2a4d4aa4c3ae
 # ╟─b2371496-9da4-4c59-8efe-828844bc91a3
-# ╟─bf1571b3-9840-4bb0-a623-ccc53b49c177
+# ╠═bf1571b3-9840-4bb0-a623-ccc53b49c177
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

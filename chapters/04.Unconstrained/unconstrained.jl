@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.16.0
+# v0.16.4
 
 using Markdown
 using InteractiveUtils
@@ -15,6 +15,9 @@ end
 
 # ╔═╡ 2a6fa183-5c5a-4d50-a6d6-7a6cef635ddf
 using Plots, LaTeXStrings, LinearAlgebra, PlutoUI, Zygote
+
+# ╔═╡ 9b049556-d26e-4736-80bb-10cecf9aae78
+using Optim
 
 # ╔═╡ 6630572c-47e6-48ac-a2b5-d21f03f317f4
 module Solution
@@ -247,6 +250,15 @@ md"""
 Below is an example of a convex function.
 """
 
+# ╔═╡ 5cb229f3-bd38-49c0-bbe6-b16fb44dea88
+md"Play around with $x$ and $x'$:"
+
+# ╔═╡ ad412e93-deae-47c1-8b7f-81b3ea5fd749
+md"x: $(@bind x1ex Slider(-4:0.1:4, default=-3.5, show_value=true))"
+
+# ╔═╡ 46a1af4d-127b-4865-92a8-cd29b2ba0882
+md"x′: $(@bind x2ex Slider(-4:0.1:4, default=2.75, show_value=true))"
+
 # ╔═╡ 7c11ebc0-f2f4-4d50-b691-533e5b996c88
 md"
 ![Some convex (A & B) and non-convex sets (B & D).](https://github.com/MichielStock/STMO/blob/master/chapters/04.Unconstrained/Figures/convex_functions.png?raw=true)
@@ -307,6 +319,15 @@ Stated differently, for strongly convex functions there exist both a quadratic f
 
 ![For strongly convex functions, it holds that there are two constants $m$ and $M$ such that $mI\preceq\nabla^2 f(\mathbf{x}) \preceq MI$. ](https://github.com/MichielStock/STMO/blob/master/chapters/04.Unconstrained/Figures/strong_convexity.png?raw=true)
 """
+
+# ╔═╡ 468fef45-9602-4c86-9e33-8d6803024ec5
+md"m: $(@bind m Slider(0.1:0.1:3, default=1.0, show_value=true))"
+
+# ╔═╡ 6df84364-8458-4f13-aadf-df4baac0d718
+md"M: $(@bind M Slider(2:0.1:20, default=4, show_value=true))"
+
+# ╔═╡ d7fb1127-4de1-408a-89e3-6b843526dc54
+md"x: $(@bind xcent Slider(-4:0.1:4, default=1.0, show_value=true))"
 
 # ╔═╡ a48204c9-9bbb-48bc-b1c1-825431b0d0cc
 md"""
@@ -850,7 +871,7 @@ md"### Summary Newton's method
 # ╔═╡ c69f3e77-eaa9-44fa-9274-5d78e559fa1b
 md"## Quasi-Newton methods
 
-Quasi-Newton methods try to emulate the success of the Newton method, but without the high computational burden of constructing the Hessian matrix every step. One of the most popular quasi-Newton algorithms is the *Broyden-Fletcher-Goldfarb-Shanno* (BFGS) algorithm. Here, the Hessian is approximated by a symmetric rank-one matrix."
+Quasi-Newton methods try to emulate the success of the Newton method, but without the high computational burden of constructing the Hessian matrix every step. One of the most popular quasi-Newton algorithms is the *Broyden-Fletcher-Goldfarb-Shanno* (BFGS) algorithm. Here, the Hessian is approximated by a symmetric rank-one matrix. We recommend using solvers for these methods."
 
 # ╔═╡ 8467ce85-2d9b-417d-86e4-6f5f6c0c67c2
 md"""## Exercise: logistic regression
@@ -985,9 +1006,27 @@ let
 
 plot(f, -4:0.1:4, xlabel="\$f(x)\$", color=myblue, lw=2)
 
-x, x′ = -3.5, 2.75
+x, x′ = x1ex, x2ex
 scatter!([x, x′], f.([x, x′]), label="\$x, x'\$", color=mygreen)
 plot!([x, x′], f.([x, x′]), label="\$(1-\\theta)f(x)+\\theta f(x')\$", color=myred, lw=2)
+end
+
+# ╔═╡ 6847ca0a-b10c-442c-8d1c-271e3edc6956
+let
+	f(x) = 0.1x^4 - 2x + x^2
+	f′(x) = 0.4x^3 - 2 + 2x
+	f′′(x) = 1.2x^2
+
+plot(f, -4:0.1:4, xlabel="\$f(x)\$", color=myblue, lw=2)
+
+x, x′ = x1ex, x2ex
+	
+#scatter!([x, x′], f.([x, x′]), label="\$x, x'\$", color=mygreen)
+#plot!([x, x′], f.([x, x′]), label="\$(1-\\theta)f(x)+\\theta f(x')\$", color=myred, lw=2)
+
+scatter!([xcent], f.([xcent]), label="", color=myred)
+plot!(x-> f(xcent) + f′(xcent) * (x-xcent) + m/2*(x-xcent)^2, -4:0.1:4, label="lower bound")
+plot!(x-> f(xcent) + f′(xcent) * (x-xcent) + M/2*(x-xcent)^2, -4:0.1:4, label="upper bound")
 end
 
 # ╔═╡ 17c12a43-b9f9-42b0-886d-92dddf32e767
@@ -1007,9 +1046,15 @@ end
 pq = contour(-10:0.1:10, -5:0.1:5, (x1, x2) -> fquadr((x1, x2)), xlabel="\$ x_1 \$",
                 ylabel="\$ x_2 \$", title="quadratic")
 
+# ╔═╡ 4495c9bd-8c32-4d65-bb64-f65c04ea7c86
+fquadr([2, 4]), grad_fquadr([2, 4]), hess_fquadr([2, 4])
+
 # ╔═╡ 06eab55d-a514-424b-9270-a7a0e82f0847
 pnq = contour(-2:0.1:2, -1:0.1:1, (x1, x2) -> fnonquadr((x1, x2)), xlabel="\$ x_1 \$",
                 ylabel="\$ x_2 \$", title="non-quadratic")
+
+# ╔═╡ 5be74d47-7e1d-4d0e-9464-327dd5d8af30
+fnonquadr([2, 4]), grad_fnonquadr([2, 4]), hess_fnonquadr([2, 4])
 
 # ╔═╡ 5d1634c3-deff-44ae-884d-0d250ce8879c
 begin
@@ -1068,6 +1113,15 @@ let
 	pconv = plot(p1, p2);
 end
 
+# ╔═╡ f4a335c2-3baa-4905-a8a7-3e0700cc99d7
+sol = optimize(fnonquadr, [-0.5, 0.9], BFGS(), autodiff=:forward)
+
+# ╔═╡ 6104fbce-c58a-4f2d-8e86-ff3f6fb393f7
+minimum(sol)  # minimum
+
+# ╔═╡ ad547d74-03bf-4f56-98dd-9d5c8f5c6948
+sol.minimizer
+
 # ╔═╡ e1a77e7c-574d-47c7-a765-5794e9873e6a
 """
     getcancerdata()
@@ -1119,6 +1173,7 @@ DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Optim = "429524aa-4258-5aef-a3af-852621145aeb"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
@@ -1128,6 +1183,7 @@ CSV = "~0.9.4"
 DataFrames = "~1.2.2"
 HTTP = "~0.9.14"
 LaTeXStrings = "~1.2.1"
+Optim = "~1.4.1"
 Plots = "~1.22.1"
 PlutoUI = "~0.7.10"
 Zygote = "~0.6.22"
@@ -1151,6 +1207,12 @@ version = "3.3.1"
 
 [[ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
+
+[[ArrayInterface]]
+deps = ["Compat", "IfElse", "LinearAlgebra", "Requires", "SparseArrays", "Static"]
+git-tree-sha1 = "b8d49c34c3da35f220e7295659cd0bab8e739fed"
+uuid = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
+version = "3.1.33"
 
 [[Artifacts]]
 uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
@@ -1331,6 +1393,12 @@ git-tree-sha1 = "7f6ad1a7f4621b4ab8e554133dade99ebc6e7221"
 uuid = "1a297f60-69ca-5386-bcde-b61e274b549b"
 version = "0.12.5"
 
+[[FiniteDiff]]
+deps = ["ArrayInterface", "LinearAlgebra", "Requires", "SparseArrays", "StaticArrays"]
+git-tree-sha1 = "8b3c09b56acaf3c0e581c66638b85c8650ee9dca"
+uuid = "6a86dc24-6348-571c-b903-95158fe2bd41"
+version = "2.8.1"
+
 [[FixedPointNumbers]]
 deps = ["Statistics"]
 git-tree-sha1 = "335bfdceacc84c5cdf16aadc768aa5ddfc5383cc"
@@ -1373,9 +1441,9 @@ uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
 
 [[GLFW_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libglvnd_jll", "Pkg", "Xorg_libXcursor_jll", "Xorg_libXi_jll", "Xorg_libXinerama_jll", "Xorg_libXrandr_jll"]
-git-tree-sha1 = "dba1e8614e98949abfa60480b13653813d8f0157"
+git-tree-sha1 = "0c603255764a1fa0b61752d2bec14cfbd18f7fe8"
 uuid = "0656b61e-2033-5cc2-a64a-77c0f6c09b89"
-version = "3.3.5+0"
+version = "3.3.5+1"
 
 [[GR]]
 deps = ["Base64", "DelimitedFiles", "GR_jll", "HTTP", "JSON", "Libdl", "LinearAlgebra", "Pkg", "Printf", "Random", "Serialization", "Sockets", "Test", "UUIDs"]
@@ -1440,6 +1508,11 @@ deps = ["InteractiveUtils", "MacroTools", "Test"]
 git-tree-sha1 = "95215cd0076a150ef46ff7928892bc341864c73c"
 uuid = "7869d1d1-7146-5819-86e3-90919afe41df"
 version = "0.4.3"
+
+[[IfElse]]
+git-tree-sha1 = "28e837ff3e7a6c3cdb252ce49fb412c8eb3caeef"
+uuid = "615f187c-cbe4-4ef1-ba3b-2fcf58d6d173"
+version = "0.1.0"
 
 [[IniFile]]
 deps = ["Test"]
@@ -1579,6 +1652,12 @@ git-tree-sha1 = "7f3efec06033682db852f8b3bc3c1d2b0a0ab066"
 uuid = "38a345b3-de98-5d2b-a5d3-14cd9215e700"
 version = "2.36.0+0"
 
+[[LineSearches]]
+deps = ["LinearAlgebra", "NLSolversBase", "NaNMath", "Parameters", "Printf"]
+git-tree-sha1 = "f27132e551e959b3667d8c93eae90973225032dd"
+uuid = "d3d80556-e9d4-5f37-9878-2ab0fcc64255"
+version = "7.1.1"
+
 [[LinearAlgebra]]
 deps = ["Libdl"]
 uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
@@ -1629,6 +1708,12 @@ uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 [[MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
 
+[[NLSolversBase]]
+deps = ["DiffResults", "Distributed", "FiniteDiff", "ForwardDiff"]
+git-tree-sha1 = "144bab5b1443545bc4e791536c9f1eacb4eed06a"
+uuid = "d41bc354-129a-5804-8e4c-c37616107c6c"
+version = "7.8.1"
+
 [[NaNMath]]
 git-tree-sha1 = "bfe47e760d60b82b66b61d2d44128b62e3a369fb"
 uuid = "77ba4419-2d1f-58cd-9bb1-8ffee604a2e3"
@@ -1659,6 +1744,12 @@ git-tree-sha1 = "13652491f6856acfd2db29360e1bbcd4565d04f1"
 uuid = "efe28fd5-8261-553b-a9e1-b2916fc3738e"
 version = "0.5.5+0"
 
+[[Optim]]
+deps = ["Compat", "FillArrays", "LineSearches", "LinearAlgebra", "NLSolversBase", "NaNMath", "Parameters", "PositiveFactorizations", "Printf", "SparseArrays", "StatsBase"]
+git-tree-sha1 = "7863df65dbb2a0fa8f85fcaf0a41167640d2ebed"
+uuid = "429524aa-4258-5aef-a3af-852621145aeb"
+version = "1.4.1"
+
 [[Opus_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "51a08fb14ec28da2ec7a927c4337e4332c2a4720"
@@ -1675,6 +1766,12 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "b2a7af664e098055a7529ad1a900ded962bca488"
 uuid = "2f80f16e-611a-54ab-bc61-aa92de5b98fc"
 version = "8.44.0+0"
+
+[[Parameters]]
+deps = ["OrderedCollections", "UnPack"]
+git-tree-sha1 = "34c0e9ad262e5f7fc75b10a9952ca7692cfc5fbe"
+uuid = "d96e819e-fc66-5662-9728-84c9c7592b0a"
+version = "0.12.3"
 
 [[Parsers]]
 deps = ["Dates"]
@@ -1721,6 +1818,12 @@ deps = ["DataAPI", "Future"]
 git-tree-sha1 = "a193d6ad9c45ada72c14b731a318bedd3c2f00cf"
 uuid = "2dfb63ee-cc39-5dd5-95bd-886bf059d720"
 version = "1.3.0"
+
+[[PositiveFactorizations]]
+deps = ["LinearAlgebra"]
+git-tree-sha1 = "17275485f373e6673f7e7f97051f703ed5b15b20"
+uuid = "85a6dd25-e78a-55b7-8502-1745935b8125"
+version = "0.2.4"
 
 [[Preferences]]
 deps = ["TOML"]
@@ -1821,6 +1924,12 @@ git-tree-sha1 = "ad42c30a6204c74d264692e633133dcea0e8b14e"
 uuid = "276daf66-3868-5448-9aa4-cd146d93841b"
 version = "1.6.2"
 
+[[Static]]
+deps = ["IfElse"]
+git-tree-sha1 = "a8f30abc7c64a39d389680b74e749cf33f872a70"
+uuid = "aedffcd0-7271-4cad-89d0-dc628f76c6d3"
+version = "0.3.3"
+
 [[StaticArrays]]
 deps = ["LinearAlgebra", "Random", "Statistics"]
 git-tree-sha1 = "3240808c6d463ac46f1c1cd7638375cd22abbccb"
@@ -1891,6 +2000,11 @@ version = "1.3.0"
 [[UUIDs]]
 deps = ["Random", "SHA"]
 uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
+
+[[UnPack]]
+git-tree-sha1 = "387c1f73762231e86e0c9c5443ce3b4a0a9a0c2b"
+uuid = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
+version = "1.0.2"
 
 [[Unicode]]
 uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
@@ -2132,13 +2246,22 @@ version = "0.9.1+5"
 # ╟─d39503f3-ada3-4b38-9aec-21650a3d55b3
 # ╟─1484214a-5e5e-4a15-8e02-7739e47b18a6
 # ╟─73b10099-a769-48af-bb0b-6d3aa785e612
+# ╟─5cb229f3-bd38-49c0-bbe6-b16fb44dea88
+# ╟─ad412e93-deae-47c1-8b7f-81b3ea5fd749
+# ╟─46a1af4d-127b-4865-92a8-cd29b2ba0882
 # ╟─7c11ebc0-f2f4-4d50-b691-533e5b996c88
 # ╟─c7e1ee9e-6a00-47ca-a540-84029bba301a
 # ╟─421c5ff4-d7df-4340-92ab-a38f25a67090
 # ╟─3c5b595f-4b63-4036-9d01-7fb1daa60029
+# ╟─6847ca0a-b10c-442c-8d1c-271e3edc6956
+# ╟─468fef45-9602-4c86-9e33-8d6803024ec5
+# ╟─6df84364-8458-4f13-aadf-df4baac0d718
+# ╟─d7fb1127-4de1-408a-89e3-6b843526dc54
 # ╟─a48204c9-9bbb-48bc-b1c1-825431b0d0cc
 # ╟─34786d52-19e2-4c4b-ac7c-04316a400216
+# ╠═4495c9bd-8c32-4d65-bb64-f65c04ea7c86
 # ╟─06eab55d-a514-424b-9270-a7a0e82f0847
+# ╠═5be74d47-7e1d-4d0e-9464-327dd5d8af30
 # ╟─0b86ef87-db56-48ce-878f-81d8c65294b5
 # ╟─de63922b-584a-4bb9-9d9b-79e75b60cb1d
 # ╟─26063cc6-1ac3-4149-9e96-7ffcae53d57d
@@ -2177,6 +2300,10 @@ version = "0.9.1+5"
 # ╟─16aa0de1-1dfc-4168-839f-35b86eca4269
 # ╟─07d59dd2-1d0b-4795-a2c4-72d2b522c81b
 # ╟─c69f3e77-eaa9-44fa-9274-5d78e559fa1b
+# ╠═9b049556-d26e-4736-80bb-10cecf9aae78
+# ╠═f4a335c2-3baa-4905-a8a7-3e0700cc99d7
+# ╠═6104fbce-c58a-4f2d-8e86-ff3f6fb393f7
+# ╠═ad547d74-03bf-4f56-98dd-9d5c8f5c6948
 # ╟─8467ce85-2d9b-417d-86e4-6f5f6c0c67c2
 # ╠═fdf804b3-28b6-4a04-8ccf-1fa61da264c5
 # ╠═113aef04-5f2a-40ed-a520-10a8420cf4e9

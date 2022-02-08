@@ -373,6 +373,27 @@ Complete the code for solving the $n$-D quadratic system. Use it to find the min
 $$f(\mathbf{x}) = \mathbf{x}^\top\begin{bmatrix}4 & 1 \\ 1 & 2\end{bmatrix}\mathbf{x} + \begin{bmatrix}3 \\ 1\end{bmatrix}^\top\mathbf{x} + 12\,.$$
 """
 
+# ╔═╡ 07e072d1-1d44-42b9-801e-9b2209e5cf61
+	"""
+		solve_quadratic(P::AbstractMatrix, q::AbstractVector, r::Real=0)
+
+	Finds the minimizer of an N-D quadratic system.
+	P is assumed to be a symmetric positive-definite matrix.
+
+	Inputs:
+		- P, q, r: the terms of the nD quadratic system
+
+	Output:
+		- xstar: the minimizer, an (n x 1) vector
+	"""
+	function solve_quadratic(P::AbstractMatrix, q::AbstractVector, r::Real=0.0)
+		# check whether P is positive definite
+		# note, you could also discard this check, as it is often
+		# PD by design and checking this takes time...
+		@assert missing
+		return missing
+	end
+
 # ╔═╡ 6ff5822a-1c4e-491b-b215-b3a1698e2048
 let
 	P = missing
@@ -562,7 +583,7 @@ function gradient_descent(P::AbstractArray, q::AbstractVector,
 # solve the system with gradient descent
 
 # ╔═╡ 4b7fbd19-8b0f-4097-95a4-778c48833dcc
-@bind γ Slider(1:0.1:20, default=10)
+@bind γ Slider(1:0.5:20, default=10)
 
 # ╔═╡ 8c80e876-55de-414d-81d4-292231b281ad
 md"""
@@ -574,6 +595,26 @@ $$\min_{x_1,x_2}\, \frac{1}{2} (x_1^2 + \gamma x_2^2)\,$$
 
 with $\gamma$ set to $γ.
 """
+
+# ╔═╡ 8a1c4c49-bd44-4e4f-8dc0-1e68ee372382
+let
+	P = [1 0; 0 γ]
+	q = [0, 0]
+	r = 0
+	x₀ = [10.0, 1.0]
+	
+	f(x1, x2) = [x1, x2] |> x -> x' * P * x / 2 + q' * x + r
+	
+	f(x) = f(x[1], x[2])  # dispatch so it works with vectors
+
+
+	xstar, path = Solution.gradient_descent(P, q, copy(x₀), track=true)
+	
+	
+	pconv = plot(f.(path), xlabel="iteration + 1", ylabel="f(x^(k)) - f(x^*)",
+				yaxis=:log10)
+		
+end
 
 # ╔═╡ 9359bca7-f702-4b9c-a55d-a2a85bda62b7
 md"""
@@ -844,13 +885,16 @@ let
 	x₀ = [10.0, 1.0]
 	
 	f(x1, x2) = [x1, x2] |> x -> x' * P * x / 2 + q' * x + r
+	
+	f(x) = f(x[1], x[2])  # dispatch so it works with vectors
 
 
 	xstar, path = Solution.gradient_descent(P, q, copy(x₀), track=true)
 	
-	contourf(-11:0.1:11, -5:0.1:5, f, color=:speed)
+	ppath = contourf(-11:0.1:11, -5:0.1:5, f, color=:speed)
 	plot!(first.(path), last.(path) , color=myorange, label="GD", lw=2) 
 	xlabel!("x1"); ylabel!("x2")
+	
 end
 
 # ╔═╡ b3f5a694-dd90-47dd-a2e8-e238f3e8bdc7
@@ -862,11 +906,11 @@ let
 	# error xstar = 0, x₀ = 1
 	errors = [(1.0 - t * λ)^(2k) * λ * x₀ᵢ^2 for k in 0:1000, (λ, x₀ᵢ) in zip(λs, x₀)]
 	cumerrors = cumsum(errors, dims=2)
-	plot(cumerrors[:,1], fillrange=0, xscale=:log10, color=myblue, fillcolor=myblue, label="lam 1 = $(λs[1])")
-	plot!(cumerrors[:,2], fillrange=cumerrors[:,1], color=myred, fillcolor=myred, label="lam 2 = $(λs[2])")
-	plot!(cumerrors[:,3], fillrange=cumerrors[:,2], color=mygreen, fillcolor=mygreen, label="lam 3 = $(λs[3])")
-	plot!(cumerrors[:,4], fillrange=cumerrors[:,3], color=myorange, fillcolor=myorange, label="lam 4 = $(λs[4])")
-	plot!(cumerrors[:,5], fillrange=cumerrors[:,4], color=myyellow, fillcolor=myyellow, label="lam 5 = $(λs[5])")
+	plot(cumerrors[:,1], fillrange=0, xscale=:log10, color=myblue, fillcolor=myblue, label="λ₁ = $(λs[1])")
+	plot!(cumerrors[:,2], fillrange=cumerrors[:,1], color=myred, fillcolor=myred, label="λ₂ = $(λs[2])")
+	plot!(cumerrors[:,3], fillrange=cumerrors[:,2], color=mygreen, fillcolor=mygreen, label="λ₃ = $(λs[3])")
+	plot!(cumerrors[:,4], fillrange=cumerrors[:,3], color=myorange, fillcolor=myorange, label="λ₄ = $(λs[4])")
+	plot!(cumerrors[:,5], fillrange=cumerrors[:,4], color=myyellow, fillcolor=myyellow, label="λ₅ = $(λs[5])")
 	xlabel!("k+1")
 	ylabel!("f(x) - f(x*)")
 	title!("Error of gradient descent\n(cumulative eigencomponents)")
@@ -885,7 +929,7 @@ let
 
 	plot(errors, ylims=(1e-15,7), lw=2, xscale=:log10, yscale=:log10,
 				 color = [myblue myred myorange mygreen myyellow],
-				 label=[" lambda  $i = $(λs[i])" for j in 1:1, i in 1:5])
+				 label=["λ_$i = $(λs[i])" for j in 1:1, i in 1:5])
 	xlabel!("k+1")
 	ylabel!("f(x) - f(x*)")
 	title!("Error of gradient descent\n(individual contributions)")
@@ -899,7 +943,7 @@ let
 	errors = [(1 - bestt(κ))^(2k) + (1-bestt(κ) * κ)^(2k) * κ for k in 1:10000, κ in κs]
 
 	plot(errors, color = reshape(mycolors, 1, :),
-			labels = [" kappa = $κ" for i in 1:1, κ in κs],
+			labels = ["κ= $κ" for i in 1:1, κ in κs],
 			xscale=:log10, yscale=:log10, ylims=(1e-10, 100), lw=2)
 
 	κ2c(κ) = 1 - 1 / κ
@@ -948,7 +992,7 @@ let
 	plot(f.(path_gd), label="GD", color=myorange, lw=2, yaxis=:log)
 	plot!(f.(path_gdm), label="GDM", color=myblue, lw=2)
 	xlabel!("iteration + 1")
-	ylabel!("error")
+	ylabel!("f(x^(k)) - f(x^*)")
 end
 
 # ╔═╡ ed98b0d2-2493-4bb7-aceb-eabab7074c9a
@@ -1921,6 +1965,7 @@ version = "0.9.1+5"
 # ╠═14987a6a-a984-4b04-b951-2db4e79bcac5
 # ╟─00220013-46c0-4269-a85b-125255c52de1
 # ╟─16f6f2e8-90d2-499c-a5c8-e69297fb9c42
+# ╠═07e072d1-1d44-42b9-801e-9b2209e5cf61
 # ╠═6ff5822a-1c4e-491b-b215-b3a1698e2048
 # ╟─da307ee7-55ce-4978-a2d6-7cf3e42a9eca
 # ╟─dbe09c4b-7ec2-415d-b1ed-c689dca7e8d1
@@ -1934,6 +1979,7 @@ version = "0.9.1+5"
 # ╟─8c80e876-55de-414d-81d4-292231b281ad
 # ╟─4b7fbd19-8b0f-4097-95a4-778c48833dcc
 # ╟─07f1caf6-db49-4d9f-8ff1-d6e8e6f19db7
+# ╟─8a1c4c49-bd44-4e4f-8dc0-1e68ee372382
 # ╟─9359bca7-f702-4b9c-a55d-a2a85bda62b7
 # ╟─b3f5a694-dd90-47dd-a2e8-e238f3e8bdc7
 # ╟─0170ef68-cf32-46a2-ac39-ff971517dfb4

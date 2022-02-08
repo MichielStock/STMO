@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.16.4
+# v0.17.1
 
 using Markdown
 using InteractiveUtils
@@ -7,222 +7,792 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = $(esc(element))
-        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
     end
 end
 
-# ╔═╡ 49e8e6f6-0483-11eb-0a74-d94aa536c9ab
-using LinearAlgebra, Plots, Zygote, PlutoUI
+# ╔═╡ 25700c98-eebd-11ea-17eb-4398f75594e0
+using Plots, Combinatorics, PlutoUI
 
-# ╔═╡ fccca5fc-0597-11eb-1033-a5cc3b71d854
+# ╔═╡ 2f8b1a76-8247-48b2-b324-4550b7bda94b
 md"""
-# Constrained convex optimization
+# Heuristics and metaheuristics
+
+*STMO*
 
 **Michiel Stock**
-STMO
 
-## Equality constraints
+![](https://github.com/MichielStock/STMO/blob/master/chapters/10.Metaheuristics/Figures/logo.png?raw=true)
 
-Consider the following optimization problem:
-
-$$\min_{\mathbf{x}} f(\mathbf{x})$$
-$$\text{subject to } g(\mathbf{x})=0\,.$$
-
-For every point $\mathbf{x}$ on the surface $g(\mathbf{x})=0$, the gradient $\nabla g(\mathbf{x})$ is normal to this surface. This can be shown by considering a point $\mathbf{x}+\boldsymbol{\epsilon}$, also on the surface. If we make a Taylor expansion around $\mathbf{x}$, we have
-
-$$g(\mathbf{x}+\boldsymbol{\epsilon})\approx g(\mathbf{x}) + \boldsymbol{\epsilon}^\top\nabla g(\mathbf{x})\,.$$
-
-Given that both $\mathbf{x}$ and $\mathbf{x}+\boldsymbol{\epsilon}$ lie on the surface it follows that $g(\mathbf{x}+\boldsymbol{\epsilon})= g(\mathbf{x})$. In the limit that $||\boldsymbol{\epsilon}||\rightarrow 0$ we have that $\boldsymbol{\epsilon}^\top\nabla g(\mathbf{x})=0$. Because $\boldsymbol{\epsilon}$ is parallel to the surface $g(\mathbf{x})$, it follows that $\nabla g(\mathbf{x})$ is normal to the surface.
-
-We seek a point $\mathbf{x}^\star$ on the surface such that $f(\mathbf{x})$ is minimized. For such a point, it should hold that the gradient w.r.t. $f$ should be parallel to $\nabla g$. Otherwise, it would be possible to give a small 'nudge' to $\mathbf{x}^\star$ in the direction of $\nabla f$ to decrease the function value, which would indicate that $\mathbf{x}^\star$ is not a minimizer. This figures below illustrate this point.
-
-$$\nabla f(\mathbf{x}^\star) + \nu \nabla g (\mathbf{x}^\star)=0\,,$$
-with $\nu\neq 0$ called the *Lagrange multiplier*. The constrained minimization problem can also be represented by a *Lagrangian*:
-$$L(\mathbf{x}, \nu) 	\equiv f(\mathbf{x}) + \nu g(\mathbf{x})\,.$$
-The constrained stationary condition is obtained by setting $\nabla_\mathbf{x} L(\mathbf{x}, \nu) =0$, the condition $\partial  L(\mathbf{x}, \nu)/\partial \nu=0$ leads to the constraint equation $g(\mathbf{x})=0$.
-
-
+In this chapter, we will explore some more general algorithms to solve hard problems. We will start with local search and end up with some simple, though powerful metaheuristics. Since the algorithms reuse many components or can be abstracted for multiple problems, we will also illustrate Julia's dispatch system to design flexible software.
 """
 
-# ╔═╡ 5e4eabba-0483-11eb-09a4-31ae6c582d3e
-f((x1, x2)) = 2x1^2 +1.4x1*x2 + x2^2 - 0.3x1 + x1 
-
-# ╔═╡ 470048ec-0598-11eb-0d48-67357ed1f12c
-md"In addition to a $g(\mathbf{x})$, we also implement a parametric version where $g(\mathbf{x})=0$ for plotting purposes."
-
-# ╔═╡ 5503c842-0591-11eb-0104-359b9ebd5e98
-md"Show the countour of $f(\mathbf{x})$:"
-
-# ╔═╡ 47067fc8-058c-11eb-224c-6fe2e470107f
-@bind show_f_contour CheckBox()
-
-# ╔═╡ c369c65e-0598-11eb-0a90-dd4db070c99b
-show_f_contour
-
-# ╔═╡ 60328136-0591-11eb-1929-b7515a8c03d9
-md"Show the countour of $g(\mathbf{x})$:"
-
-# ╔═╡ d10b14c2-058c-11eb-3a43-7bca5d042969
-@bind show_g_contour CheckBox()
-
-# ╔═╡ ba835a96-0598-11eb-1d54-9365e3ea337f
-show_g_contour
-
-# ╔═╡ 681a031a-0591-11eb-2fec-8d94eca758f8
-md"Show the function $g(\mathbf{x})=0$:"
-
-# ╔═╡ 13467b42-058d-11eb-3023-b9d3f145335b
-@bind show_g0_constraint CheckBox()
-
-# ╔═╡ ca227ac2-0598-11eb-3a39-f1a90769ac52
-show_g0_constraint
-
-# ╔═╡ d8276f26-0598-11eb-1626-95f87cf6de22
-md"Show the gradients:"
-
-# ╔═╡ 60c41848-0592-11eb-39ef-7103ae834990
-@bind show_gradients CheckBox()
-
-# ╔═╡ d16723ca-0598-11eb-02f4-f1c5d45095a5
-show_gradients
-
-# ╔═╡ 95dc760a-058e-11eb-2149-898b2776079f
-md"t : $(@bind t Slider(2:0.01:2π, default=4.3, show_value=true))"
-
-# ╔═╡ 41d8c8d0-0591-11eb-2cd7-3b53f91ef589
-t
-
-# ╔═╡ cf354af7-9aa6-45c0-998b-e47d08fe52f7
-md"compute $\nabla f(\mathbf{x})^T \nabla g(\mathbf{x})$:"
-
-# ╔═╡ 00a009a2-0599-11eb-341f-3364198e1753
-md"We plot the objective value on the equality constraint."
-
-# ╔═╡ 13b4ad4a-0599-11eb-0043-6bfc0eb23389
-md"At the minimizer, the gradients are parallel."
-
-# ╔═╡ 358f21ca-0599-11eb-3bfb-0bb12a1465bb
+# ╔═╡ c637a44c-eebd-11ea-3d4f-9539b52a7b88
 md"""
-## Inequality constraints
+## The knapsack problem revisited
 
-The same argument can be made for inequality constraints, i.e. solving
+To illustrate our methods, we will use a slightly larger instance of the knapsack problem. It has 19 items, making it just about feasible to go over all the combinations exhaustively but interesting enough to perform a more intelligent search.
+"""
 
-$$\min_{\mathbf{x}} f(\mathbf{x})$$
-$$\text{subject to } g(\mathbf{x})\leq0\,.$$
+# ╔═╡ a912a3b8-a175-4606-bd49-7db772d46eeb
+md"For the objective, we just yield the value of the total weight does not exceed the capacity, elsewise, we output a large negative number."
 
-Here, two situations can arise:
+# ╔═╡ 15d1edbd-35f9-4e77-93ec-4302c9a34e5b
+md"""
+## Local search
 
-- **Inactive constraint**: the minimizer of $f$ lies in the region where $g(\mathbf{x}) < 0$. This corresponds to a Lagrange multiplier $\nu=0$. Note that the solution would be the same if the constraint was not present.
-- **Active constraint**: the minimizer of $f$ lies in the region where $g(\mathbf{x}) > 0$. The solution of the constrained problem will lie on the bound where $g(\mathbf{x})=0$, similar to the equality-constrained problem and corresponds to a Lagrange multiplier $\nu>0$.
+Just about any local search algorithm can be summarized by the following template code.
+"""
 
-For both cases, the product $\nu g(\mathbf{x})=0$, the solution should thus satisfy the following conditions:
-$$g(\mathbf{x}) \leq 0$$
-$$\nu \geq 0$$
-$$\nu g(\mathbf{x})=0\,.$$
-These are called the *Karush-Kuhn-Tucker* conditions.
+# ╔═╡ c9d7857b-6950-45c1-88f4-ac9c1552d194
+md"""
+Here, we have to specify:
+- `f` : the objective function (we now maximize);
+- `s₀` : the initial solution to start from;
+- `tracker` : an object to track the progress, does not do anything by default;
+- `N` : a function that defines the neighborhood;
+- `S` : a way of selecting the next solution, determines the behaviour of `choose_next`
+"""
 
-It is relatively straightforward to extend this framework towards multiple constraints (equality and inequality) by using several Lagrange multipliers.
+# ╔═╡ f78f9bc8-1b59-4242-aefd-01d1758237cf
+md"Below, we have defined two abstract types, `Neighborhood` and `Selector`. By means of type-based dispatch, the behaviour of the local search is modified. Using the function subtypes, we can access which types of neighborhoods and selectors we have provided."
+
+# ╔═╡ 51db9a9b-ba03-470e-9acd-55f5dfadf702
+md"## Hill climbing
+
+Hill climbing is basically local search where one scans the neighborhood of a solution and picks the best one to proceed. The algorithm terminates when the solution can no longer be improved. 
+"
+
+# ╔═╡ 48ce73c5-cebf-4767-bfe8-019b116263e0
+md"""
+## Simulated annealing
+
+Every step of the search, a random solution is sampled from the neighborhood. This new solution is accepted with a probability determined by its change in objective value and a temperature that is gradually decreased while running the algorithm.
 """
 
 
-# ╔═╡ 2d7ae208-0599-11eb-1a91-277b764ad45e
-md"Change the location of the constraint ($R$ is a radius of a circle)."
+# ╔═╡ cc1042c5-f870-4c3d-8df7-9d36d6f9116a
+@bind logTmin Slider(-4:1.0, show_value=true, default=-1)
 
-# ╔═╡ c98b4f9a-0592-11eb-2034-5f05e792cbd2
-md"R : $(@bind R Slider(10:0.5:25, default=16))"
+# ╔═╡ 0c730376-cea1-447b-9285-179903c1689c
+@bind logTmax Slider(1:5.0, show_value=true, default=2)
 
-# ╔═╡ bd7b55ae-0599-11eb-1056-ed3682fe8160
-g((x1, x2)) = (x1-10)^2 + (x2-17)^2 - R^2
+# ╔═╡ 4ee9f5c4-0e57-4c0d-a800-dd6d2b0d08b5
+@bind r Slider(0.01:0.01:0.99, show_value=true, default=0.8)
 
-# ╔═╡ c10838a2-0599-11eb-32e3-1579a926f9b7
-g0(t) = [R*cos(t) + 10, R*sin(t) + 17]
+# ╔═╡ 1520c3ea-bb12-489e-bb77-2de1b2249d8f
+@bind kT Slider(1:20:1000, show_value=true, default=10)
 
-# ╔═╡ d2c4ffe2-0485-11eb-0e20-dd52446fa3a6
-x = g0(t)
+# ╔═╡ d4d52b69-c7df-4437-a2a2-81917848e28c
+md"""
+## Tabu search
 
-# ╔═╡ 6e89822c-070b-11eb-06f3-8b8e20aaa57d
-f(x)
+Tabu search explores a solution's neighborhood similarly to Hill climbing. The big difference is that when a modification is done, tabu search 'taboos' that change for a certain number of steps (determined by `tabu_length`). This forces the algorithm to explore regions where the objective deteriorates, potentially escaping local minima. 
 
-# ╔═╡ f47ce686-0485-11eb-2a33-4bd0b150b18b
-g(x)
+Much flexibility is possible to design a tabu search. Here, when an item is added or removed from the knapsack, it is tabooed for a given number of iterations.
+"""
 
-# ╔═╡ acc751fb-6568-48bb-a8ad-36dddff2bd92
-x
+# ╔═╡ 678756b9-7989-4542-ae4a-98744e84cc03
+@bind tabu_length Slider(0:50, show_value=true, default=3)
 
-# ╔═╡ ea8c4ae2-2683-4085-8b07-bc96843cf9ca
-f'(x) ⋅ g'(x)
+# ╔═╡ e4b6996e-eebf-11ea-3f8d-a13ddf340bbf
+md"## Neighborhoods
 
-# ╔═╡ e944567a-0596-11eb-2cf1-75f196bab4d1
-f'(x) / norm(f'(x))
+The neighborhood defines how we can hop from one solution to the next. For our algorithms, we have to implement an iterator over all the neighbors and a function to sample a random neighbor.
 
-# ╔═╡ 02673cec-0597-11eb-2db4-e9f7d9047ac0
-g'(x) / norm(g'(x))
+Since the knapsack problem works on strings, we consider the neighborhood with one or two bits flipped, the latter implying a much larger neighborhood.
+"
 
-# ╔═╡ b0cf9a40-058f-11eb-13dc-b7c35328ef2a
-begin
-	plot(t -> f(g0(t)), 0:0.01:2π, label="f(x) where g(x)=0")
-	xlabel!("t")
-	ylabel!("objective")
-	scatter!([t], [f(g0(t))], color=:purple, label="x")
+# ╔═╡ 0da780f6-866b-48fd-976e-58962408dbb4
+abstract type Neighborhood end
+
+# ╔═╡ 9f990a70-be16-4f18-b4ac-c888e3461459
+subtypes(Neighborhood)
+
+# ╔═╡ 4cec040f-296d-4ffa-bab7-7540a5c5d412
+struct OneFlip <: Neighborhood end
+
+# ╔═╡ 252dedb6-c8a8-409e-b8e0-2f682f12c82c
+struct TwoFlip <: Neighborhood end
+
+# ╔═╡ 2929342c-6c6d-4f88-9d93-0a1057b6f031
+# simple function that flips a bit in s at postion i
+function flip!(s, i)
+	s[i] ⊻= true
+	return s
 end
 
-# ╔═╡ be35a06c-0596-11eb-2988-61a79c7e6a87
-R
+# ╔═╡ a635482d-7960-48f4-9af7-630af84b453d
+flip(s, i) = flip!(copy(s), i)
 
-# ╔═╡ a08e7230-0591-11eb-3956-fb6c2d756494
-fconstr(x) = g(x) ≤ 0.0 ? f(x) : NaN
+# ╔═╡ cf01a5f0-c118-4ef8-934f-09b50d13de99
+neighbors(s, ::OneFlip) = (flip(s, i) for i in 1:length(s))
 
-# ╔═╡ 81629936-0593-11eb-3fca-afa68e2ace3d
-@bind t_approx Slider(0.1:0.05:10.0, default=1.0)
+# ╔═╡ 0180196a-88ab-4fc1-9878-0438fe8f61bb
+neighbors(s, ::TwoFlip) = (flip!(flip(s, i), j) for i in 1:length(s) for j in 1:length(s) if i!=j)
 
-# ╔═╡ a1402cbc-0593-11eb-33b4-09a0c654eefd
-t_approx
+# ╔═╡ 636ab8ac-b59d-493f-9c4d-3ddd5ec13a78
+Base.rand(s, ::OneFlip) = flip(s, rand(1:length(s)))
 
-# ╔═╡ cc4209ee-0593-11eb-3762-e76539e2a455
-Î₋(u) = u < 0.0 ? -(1/t_approx)* log(-u) : Inf
+# ╔═╡ afdddd5c-3558-4f63-80f9-5a05e33526ce
+Base.rand(s, ::TwoFlip) = flip!(flip(s, rand(1:length(s))), rand(1:length(s)))
 
-# ╔═╡ a398740e-0593-11eb-2f81-c92861e080b8
-begin
-	plot(-3:0.001:2, Î₋, label="logarithmic barier (t=$t_approx)")
-	plot!([-3, 0, 0], [0, 0, 5], ls=:dash, label="indicator function")
-	ylims!(-2, 5)
-	xlabel!("u")
+# ╔═╡ fcef48fe-eec3-11ea-22c2-0d17b1ee9af5
+md"""## Selectors
+
+Selectors characterize a local search method by changing the behavior of `choose_next`, which yield the next solution in the searching procedure.
+"""
+
+# ╔═╡ 0492484a-eec4-11ea-091f-5146073f6824
+abstract type Selector end
+
+# ╔═╡ 8ddfd6c3-3d93-4e60-8f84-52f7df080057
+subtypes(Selector)
+
+# ╔═╡ 326afda2-5de7-4720-82c1-38c0ae8637b2
+struct BestNeighbor <: Selector end
+
+# ╔═╡ d9734596-5f7e-48b7-888e-f8a20ae83062
+struct FirstNeighbor <: Selector end
+
+# ╔═╡ 7e25e4b7-cbc8-42ad-8dc4-e6f5720f3b6e
+struct RandomImprovement <: Selector end
+
+# ╔═╡ a696ac0f-f8b4-4215-bd0b-9c8123ee7260
+struct Metropolis <: Selector
+		T::Float64  # temperature parameter
+	end
+
+# ╔═╡ fad941eb-e986-4761-bf4a-eb8e9a81a85b
+# loop over all neighbors and pick the best
+function choose_next(f, s, N::Neighborhood, S::BestNeighbor)
+	# current objective
+	obj = f(s)
+	for sn in neighbors(s, N)
+		obj, s = max((obj, s), (f(sn), sn))
+	end
+	return s
 end
 
-# ╔═╡ dce25666-0594-11eb-24f9-85eba4949d1e
-fsoft(x) = g(x) ≤ 0.0 ? t_approx * f(x) + Î₋(g(x)) : NaN
+# ╔═╡ a01d81c3-18ec-4360-be40-f4ffd4aeede9
+# pick first neighbor that improves the objective
+function choose_next(f, s, N::Neighborhood, S::FirstNeighbor)
+	# current objective
+	obj = f(s)
+	for sn in neighbors(s, N)
+		f(sn) > obj && return sn
+	end
+	return s
+end
 
-# ╔═╡ 701efa2a-0596-11eb-2592-39eced2fb875
-@bind show_soft_grads CheckBox()
+# ╔═╡ 43cabb77-3f88-4af0-94af-ccba0b0ba318
+# pick a random neighbor and select it if it improves
+function choose_next(f, s, N::Neighborhood, S::RandomImprovement)
+	# current objective
+	obj = f(s)
+	sn = rand(s, N)
+	if f(sn) > obj
+		return sn
+	else
+		return s
+	end
+end
 
-# ╔═╡ 7c5d381a-0596-11eb-1dfe-0b7074093cd6
-show_soft_grads
+# ╔═╡ 3c35e7ea-0b43-405b-bfd4-3d661dedecba
+# pick a random neighbor and select if it satisfies the Metropolis criterion
+function choose_next(f, s, N::Neighborhood, S::Metropolis)
+	# current objective
+	obj = f(s)
+	sn = rand(s, N)
+	obj_sn = f(sn)
+	if obj_sn > obj || rand() < exp(-(obj - obj_sn) / S.T)
+		return sn
+	else
+		return s
+	end
+end
 
-# ╔═╡ 7c934678-0599-11eb-1e6b-1f2c9003509a
-md"## Utilities"
+# ╔═╡ 0e46db27-3714-4889-af23-7a70a67dfe91
+md"""
+## Tracker
 
-# ╔═╡ 865bbb8e-0483-11eb-0622-b9a8a6ba5d4c
-x1min, x1max = -8.0, 15.0
+A tracker is a data structure to keep track of the search during the run of the algorithm.
+"""
 
-# ╔═╡ 9736f388-0483-11eb-069a-0d5ed87efb73
-x2min, x2max = -8.0, 12.0
+# ╔═╡ 8666d19e-eebd-11ea-11ad-93097ff088f1
+abstract type Tracker end
 
-# ╔═╡ f39f0106-0483-11eb-3617-5fb04388489e
-grads(f, x) = 0.1f'(x) |> df -> Tuple([e] for e in df)
+# ╔═╡ 8bcf1d93-b396-45c7-a58c-fb01bc56de54
+struct NoTracking <: Tracker end
 
-# ╔═╡ 52bacf14-0595-11eb-33c9-dd5c40125360
-∇fsoft(x) = g(x) ≤ 0.0 ? fsoft'(x) : [0.0, 0.0]
+# ╔═╡ 58664797-9c85-4bab-8c82-3bb743509caf
+notrack = NoTracking()
 
-# ╔═╡ 7e77e628-0707-11eb-1b2f-27b5c5819260
-# compute angle between two vectors in degrees
-angle(u, v) = acos(dot(u, v) / (norm(u) * norm(v))) |> rad2deg
+# ╔═╡ 03d55585-7ed1-4916-b1a7-ec31fff1abb1
+struct TrackSolutions{T} <: Tracker
+		solutions::Vector{T}
+		TrackSolutions(s) = new{typeof(s)}([])
+	end
 
-# ╔═╡ c04a0ffe-0707-11eb-2a74-b3b258b4aec6
-angle(f'(x), g'(x))  # close to 0, 180, or 360 degrees if stationary point
+# ╔═╡ 95c0196c-faec-45e7-996c-2dc4de617bcd
+struct TrackObj{T} <: Tracker
+		objectives::Vector{T}
+		TrackObj(T::Type=Float64) = new{T}([])
+	end
 
-# ╔═╡ 0a5783e2-0596-11eb-1e38-a5da40325159
+# ╔═╡ cddcbed2-eff5-4288-b625-3dac12e9f1c1
+track!(::NoTracking, f, s) = nothing
+
+# ╔═╡ fdf3c648-e3a6-47ee-8171-a05a7f932d8c
+track!(tracker::TrackSolutions, f, s) = push!(tracker.solutions, s)
+
+# ╔═╡ 5d9f8c95-b4e3-478b-8b1c-21f31f2fcfe0
+track!(tracker::TrackObj, f, s) = push!(tracker.objectives, f(s))
+
+# ╔═╡ 3cd3fbba-eebd-11ea-164f-b39f495dea6e
+function local_search(f, s₀, N::Neighborhood,
+						S::Selector,
+						tracker::Tracker=notrack;
+						niter=10_000)
+	s = s₀
+	track!(tracker, f, s)
+	for i in 1:niter
+		s = choose_next(f, s, N, S)
+		track!(tracker, f, s)
+	end
+	return s
+end
+
+# ╔═╡ 83429b08-d608-4f44-9ca6-67175f0df26b
+function hill_climbing(f, s₀, N::Neighborhood,
+					tracker=notrack;
+					maxiter=10_000)
+	s = s₀
+	obj = f(s)
+	track!(tracker, f, s)
+	for i in 1:maxiter
+		improved = false
+		# search all the neighboring solutions of s
+		for sn in neighbors(s, N)
+			obj_sn = f(sn)
+			if obj_sn > obj
+				s = sn
+				obj = obj_sn
+				improved = true
+			end
+		end
+		track!(tracker, f, s)
+		# break if not improved
+		!improved && break
+	end
+	return s
+end	
+
+# ╔═╡ 2541a5aa-21cf-41c3-b17d-7922cff10390
+function simulated_annealing(f, s₀, N::Neighborhood, tracker=notrack;
+				kT=100,  		# repetitions per temperature
+				r=0.95,  		# cooling rate
+				Tmax=1_000,     # maximal temperature to start
+				Tmin=1)         # minimal temperature to end
+	@assert 0 < Tmin < Tmax "Temperatures should be positive"
+	@assert 0 < r < 1 "cooling rate is between 0 and 1"
+	s = s₀
+	obj = f(s)
+	track!(tracker, f, s)
+	# current temperature
+	T = Tmax
+	while T > Tmin
+		# repeat kT times
+		for _ in 1:kT
+			sn = rand(s, N)  # random neighbor
+			obj_sn = f(sn)
+			# if the neighbor improves the solution, keep it
+			# otherwise accept with a probability determined by the
+			# Metropolis heuristic
+			if obj_sn > obj || rand() < exp(-(obj-obj_sn)/T)
+				s = sn
+				obj = obj_sn
+			end
+		end
+		track!(tracker, f, s)
+		# decay temperature
+		T *= r
+	end
+	return s
+end
+	
+
+# ╔═╡ ca863fdb-cb23-4dcf-b9d7-3c0513fac13d
+function tabu_search(f, s₀, N::Neighborhood, tracker=notrack;
+			tabu_length=10, niter=100)
+	s = s₀
+	obj = f(s)
+	track!(tracker, f, s)
+	# this list keeps track of the items that are tabooed
+	# one can only change an item in the knapsack it its tabu
+	# value does not exceed the iteration number
+	tabu_list = zeros(Int, length(s))
+	snew = similar(s)
+	for iter in 1:niter
+		# we start with objective 0, because the objective can actively become worse
+		obj = 0
+		for sn in neighbors(s, N)
+			# if any part of the neighbor is tabu, skip
+			any(tabu_list[s.!=sn] .> iter) && continue
+			obj_sn = f(sn)
+			if obj_sn > obj
+				snew .= sn
+				obj = obj_sn
+			end
+		end
+		tabu_list[s.!=snew] .= tabu_length + iter
+		s .= snew
+		track!(tracker, f, s)
+	end
+	return s
+end	
+
+# ╔═╡ ff39e011-7cbd-427a-8414-07cc1af885e0
+md"## Appendix"
+
+# ╔═╡ 9099c5e8-5110-4d32-9386-71bed0c7a495
+md"Below are two examples of the knapsack problem: small one with 19 items and a big one with 300 items."
+
+# ╔═╡ 13b06f4c-2408-4c5f-9604-9ad11caf0ed9
+knapsack_string = """
+19 31181
+1945 4990
+321 1142
+2945 7390
+4136 10372
+1107 3114
+1022 2744
+1101 3102
+2890 7280
+962 2624
+1060 3020
+805 2310
+689 2078
+1513 3926
+3878 9656
+13504 32708
+1865 4830
+667 2034
+1833 4766
+16553 40006"""
+
+# ╔═╡ b13c08a6-7209-4a9b-b1e4-b39569328a1b
+md"below is a larger example you might use:"
+
+# ╔═╡ a319305b-0632-4e9f-a378-6eadc761837a
+knapsack_string2 = """
+300 4040184
+31860 76620
+11884 28868
+10492 25484
+901 2502
+43580 104660
+9004 21908
+6700 16500
+29940 71980
+7484 18268
+5932 14564
+7900 19300
+6564 16028
+6596 16092
+8172 19844
+5324 13148
+8436 20572
+7332 17964
+6972 17044
+7668 18636
+6524 15948
+6244 15388
+635 1970
+5396 13292
+13596 32892
+51188 122676
+13684 33068
+8596 20892
+156840 375380
+7900 19300
+6460 15820
+14132 34164
+4980 12260
+5216 12932
+6276 15452
+701 2102
+3084 7868
+6924 16948
+5500 13500
+3148 7996
+47844 114788
+226844 542788
+25748 61996
+7012 17124
+3440 8580
+15580 37660
+314 1128
+2852 7204
+15500 37500
+9348 22796
+17768 42836
+16396 39692
+16540 39980
+395124 944948
+10196 24692
+6652 16204
+4848 11996
+74372 178244
+4556 11212
+4900 12100
+3508 8716
+3820 9540
+5460 13420
+16564 40028
+3896 9692
+3832 9564
+9012 21924
+4428 10956
+57796 138492
+12052 29204
+7052 17204
+85864 205628
+5068 12436
+10484 25468
+4516 11132
+3620 9140
+18052 43604
+21 542
+15804 38108
+19020 45940
+170844 408788
+3732 9364
+2920 7340
+4120 10340
+6828 16756
+26252 63204
+11676 28252
+19916 47932
+65488 156876
+7172 17644
+3772 9444
+132868 318036
+8332 20364
+5308 13116
+3780 9460
+5208 12916
+56788 136076
+7172 17644
+7868 19236
+31412 75524
+9252 22604
+12276 29652
+3712 9324
+4516 11132
+105876 253452
+20084 48468
+11492 27884
+49092 117684
+83452 199804
+71372 171044
+66572 159644
+25268 60836
+64292 154084
+21228 51156
+16812 40524
+19260 46420
+7740 18980
+5632 13964
+3256 8212
+15580 37660
+4824 11948
+59700 143100
+14500 35100
+7208 17716
+6028 14756
+75716 181332
+22364 53828
+7636 18572
+6444 15788
+5192 12884
+7388 18076
+33156 79612
+3032 7564
+6628 16156
+7036 17172
+3200 8100
+7300 17900
+4452 11004
+26364 63428
+14036 33972
+16932 40964
+5788 14276
+70476 168852
+4552 11204
+33980 81660
+19300 46500
+39628 95156
+4484 11068
+55044 131988
+574 1848
+29644 71188
+9460 23020
+106284 254468
+304 1108
+3580 8860
+6308 15516
+10492 25484
+12820 31140
+14436 34972
+5044 12388
+1155 3210
+12468 30236
+4380 10860
+9876 24052
+8752 21404
+8676 21052
+42848 102796
+22844 54988
+6244 15388
+314 1128
+314 1128
+314 1128
+314 1128
+314 1128
+314 1128
+387480 926660
+314 1128
+314 1128
+314 1128
+314 1128
+314 1128
+15996 38692
+8372 20444
+65488 156876
+304 1108
+4756 11812
+5012 12324
+304 1108
+314 1128
+314 1128
+314 1128
+314 1128
+314 1128
+314 1128
+314 1128
+304 1108
+1208 3316
+47728 114556
+314 1128
+314 1128
+314 1128
+314 1128
+314 1128
+314 1128
+104036 249172
+5248 12996
+312 1124
+24468 58836
+7716 18932
+30180 72460
+4824 11948
+1120 3140
+11496 27892
+4916 12132
+14428 34956
+24948 59996
+41100 98700
+28692 69084
+826 2352
+3073 7846
+7684 18868
+5604 13708
+17188 41476
+34828 83756
+7540 18380
+8004 19508
+2648 6796
+5124 12748
+3096 7892
+166516 398532
+13756 33212
+9980 24260
+15980 38660
+9056 22012
+5052 12404
+8212 20124
+11164 27028
+13036 31572
+23596 56892
+2028 5156
+7584 18468
+5772 14244
+4124 10348
+5368 13236
+4364 10828
+5604 13708
+8500 20700
+7676 18652
+8636 20972
+4588 11276
+4152 10404
+4860 12020
+5484 13468
+8636 20972
+5140 12780
+236380 565460
+116500 278900
+36480 87660
+16968 41036
+5232 12964
+13280 32060
+138032 330364
+9044 21988
+22028 53156
+4632 11564
+13196 31892
+65404 156708
+28940 69580
+865 2430
+45988 110276
+670 2040
+4820 11940
+41356 99212
+39844 95588
+897 2494
+4028 9956
+7924 19348
+47756 114612
+47036 112772
+25908 62316
+4516 11132
+29460 70820
+7964 19428
+16964 41028
+22196 53492
+68140 163380
+80924 193948
+63700 152700
+20860 50220
+1682 4464
+16804 40508
+3195 8090
+60348 144596
+1901 4902
+67468 161636
+4772 11844
+11196 27092
+25836 62172
+49676 119252
+6188 15276
+15588 37676"""
+
+# ╔═╡ 14531290-8906-42ca-838c-aa52ebb91ca0
+knapsack_data = split(knapsack_string, "\n") .|> s->(parse.(Int, split(s," ")))
+
+# ╔═╡ 7cf27ad2-f7ee-41df-b917-8679f8eb5eda
+const n_items, capacity = first(knapsack_data)
+
+# ╔═╡ 1eeb0f50-8b9d-4260-a61a-f8e565eab32a
+capacity
+
+# ╔═╡ cf657065-fc1d-4c3d-b344-1ddfa2e620b5
+md"A solution vector is just a binary vector of length $n_items, indicating whether to take an item or not. Let's start with an empty knapsack."
+
+# ╔═╡ 0b574bcb-ab7e-42c8-8672-7dcafeb4d342
+s₀ = zeros(Bool, n_items)
+
+# ╔═╡ 710ddf4b-ef42-4143-98da-999e6acc5653
+neighbors(s₀, OneFlip())  |> collect
+
+# ╔═╡ 2eddc3c2-e6ac-49f6-a1f5-e4c6c55b37b2
+neighbors(s₀, TwoFlip())  |> collect
+
+# ╔═╡ 844b891c-d1bc-4d90-968f-e0a9459deb87
+rand(s₀, OneFlip())
+
+# ╔═╡ 15cc6750-54b1-46d4-8936-bb8f2b7375b2
+rand(s₀, TwoFlip())
+
+# ╔═╡ ee82356d-5100-4721-a7fe-bda834340a86
+md"This problem only has 2^$n_items = $(2^n_items) combinations, feasible to enumerate:"
+
+# ╔═╡ f60691ca-a055-404f-9557-3f1cc91345f6
+const v = first.(knapsack_data[2:end])  # values
+
+# ╔═╡ 222f0fa4-a043-44ee-b9a9-647f4bdd7a39
+v # values of the items
+
+# ╔═╡ 9ef3ad77-e19c-4509-9d8f-191c74c7ad40
+const w = last.(knapsack_data[2:end])  # weights
+
+# ╔═╡ 20a0cf1f-76cf-41d7-a8dd-a7eda3ec8a29
+w # weight of the items
+
+# ╔═╡ 24693db7-3cda-4fa3-a547-777b16f3993d
+f_knapsack(s) = sum(w[s]) ≤ capacity ? sum(v[s]) : -10000
+
+# ╔═╡ 46bb926b-ec86-4834-8d3b-4537e777aa73
+f_knapsack(s₀)  # empty knapsack has a value of 0
+
+# ╔═╡ c8eeac4b-6ab0-4976-b529-911ea6a65108
+f_knapsack(ones(Bool, n_items))  # taking all the items results in a large negative cost
+
+# ╔═╡ 62339637-415d-4d9e-9113-ebdfc85c3041
+begin
+	# stores the objective through the iterations
+	local_tracker = TrackObj(Int) 
+
+	s_local = local_search(f_knapsack, copy(s₀), 
+			TwoFlip(),  # change me!
+			RandomImprovement(),  # change me!
+			local_tracker, niter=100)  # change the selector and neighborhood
+end
+
+# ╔═╡ 811337ab-970a-4cdc-90e7-ab04c5c96559
+f_knapsack(s_local)
+
+# ╔═╡ 3850f8bd-ac6f-4a62-8860-65941af59eae
+begin
+	# stores the objective through the iterations
+	hc_tracker = TrackObj(Int) 
+
+	s_hc = hill_climbing(f_knapsack, copy(s₀), OneFlip(),
+			hc_tracker)
+end
+
+# ╔═╡ 70553739-f280-4972-8c4c-ecde6bd13e06
+f_knapsack(s_hc)
+
+# ╔═╡ 014738f4-3808-4875-b8f7-858ac2f1da6f
+begin
+	# stores the objective through the iterations
+	sa_tracker = TrackObj(Int) 
+
+	s_sa = simulated_annealing(f_knapsack, copy(s₀), OneFlip(),
+			sa_tracker, Tmin=10^logTmin, Tmax=10^logTmax; r, kT)
+end
+
+# ╔═╡ ca99362b-b4ca-4c3f-9ea0-c223bd0b3cb5
+f_knapsack(s_sa)
+
+# ╔═╡ 79e6989f-32b6-4311-b375-010597999baf
+begin
+	# stores the objective through the iterations
+	tabu_tracker = TrackObj(Int) 
+
+	s_tabu = tabu_search(f_knapsack, copy(s₀), OneFlip(),
+			tabu_tracker; tabu_length)	
+end
+
+# ╔═╡ 9788b851-c62f-4aa1-8ab4-cb42befd8612
+f_knapsack(s_tabu)
+
+# ╔═╡ 5870cf14-eebe-11ea-07cd-d51bcd1fa702
 begin
 	myblue = "#304da5"
 	mygreen = "#2a9d8f"
@@ -234,81 +804,65 @@ begin
 	mycolors = [myblue, myred, mygreen, myorange, myyellow]
 end;
 
-# ╔═╡ 828cbe72-0483-11eb-33b2-7f4f37db889f
-begin
-	plot(colorbar=false)
-	show_f_contour && contourf!(x1min:0.1:x1max, x2min:0.1:x2max, (x1, x2) -> f((x1, x2)), label="f(x)", colorbar=true, color=:Blues, aspect=:equal)
-	show_g_contour && contour!(x1min:0.1:x1max, x2min:0.1:x2max, (x1, x2) -> g((x1, x2)), color=:Reds)
-	show_g0_constraint && plot!([g0(t)[1] for t in 0:0.01:2π], [g0(t)[2] for t in 0:0.01:2π], lw=2, color=:red, label="g(x)=0")
-	show_g0_constraint && scatter!([x[1]], [x[2]], label="x", color=myyellow)
-	show_gradients && quiver!([x[1]], [x[2]], quiver=grads(f, x), color=myblue)
-	show_gradients && quiver!([x[1]], [x[2]], quiver=grads(g, x), color=myorange)
-	scatter!([0], [0], label="x* (no constraint)", color=mygreen)
-	xlims!(x1min, x1max)
-	ylims!(x2min, x2max)
-	xlabel!("x1")
-	ylabel!("x2")
+# ╔═╡ 8bb6e5e4-eebd-11ea-2019-49875c096a68
+scatter(w, v, xlabel="weight", ylabel="value", label="item", color=mygreen, legend=:bottomright, title="Items of the knapsack",yscale=:log, xscale=:log)
+
+# ╔═╡ 73ca51f4-855c-41c5-a790-16edaa33415b
+if n_items ≤ 20
+	weights = Int[]
+	values = Int[]
+
+	for comb in combinations(1:n_items)
+		push!(weights, sum(w[comb]))
+		push!(values, sum(v[comb]))
+	end
+	best_obj = maximum(values[weights.≤capacity])
+	scatter(weights[weights.≤capacity], values[weights.≤capacity], alpha=0.6, label="valid solutions", color=mygreen, xlabel="weight", ylabel="objective",
+		legend=:bottomright, yscale=:log, xscale=:log)
+	scatter!(weights[weights.>capacity], values[weights.>capacity], alpha=0.6, label="invalid solutions", color=myorange)
+	vline!([capacity], label="capacity", color=myred, lw=2)
 end
 
-# ╔═╡ e06bff3b-5941-4757-bfb1-b31183c025a7
-begin
-	plot(t -> angle(f'(g0(t)), g'(g0(t))), 0:0.02:2π, label="∇f(x)^T∇g(x) where g(x)=0", legend=:topleft, color=myblue)
-	xlabel!("t")
-	ylabel!("angle in degrees")
-	scatter!([t], [angle(f'(x), g'(x))], color=myyellow, label="x")
-end
+# ╔═╡ 607730d3-b7f4-44d9-a2f0-c3fff21ababc
+best_obj  # best objective to be obtained
 
-# ╔═╡ c2640938-0591-11eb-058c-5949d1e316d3
-begin
-	contourf(x1min:0.01:x1max, x2min:0.01:x2max, (x1, x2) -> fconstr((x1, x2)), 			color=:Blues)
-	show_g_contour && contour!(x1min:0.1:x1max, x2min:0.1:x2max, (x1, x2) -> g((x1, x2)), color=:Reds)
-	contour!(x1min:0.1:x1max, x2min:0.1:x2max, (x1, x2) -> f((x1, x2)), 			color=:Blues)
-	scatter!([x[1]], [x[2]], label="x", color=myyellow)
-	scatter!([0], [0], label="x* (no constraint)", color=mygreen)
-	show_g0_constraint && plot!([g0(t)[1] for t in 0:0.01:2π], [g0(t)[2] for t in 0:0.01:2π], lw=2, color=:red, label="g(x)=0")
-	show_gradients && quiver!([x[1]], [x[2]], quiver=grads(f, x), color=myblue)
-	show_gradients && quiver!([x[1]], [x[2]], quiver=grads(g, x), color=myorange)
-	xlims!(x1min, x1max)
-	ylims!(x2min, x2max)
-end
+# ╔═╡ e294aea0-16c4-4523-b1fd-e55416c3e45c
+Plots.plot(tracker::TrackObj; kwargs...) = plot(tracker.objectives, xlabel="iteratation", label="objective", lw=2, color=myred, legend=:bottomright; kwargs...)
 
-# ╔═╡ 0b93638a-0595-11eb-3096-af3cc7202aa5
-begin
-	contourf(x1min:0.01:x1max, x2min:0.01:x2max, (x1, x2) -> fconstr((x1, x2)), 			color=:Blues)
-	
-	contour!(x1min:0.1:x1max, x2min:0.1:x2max, (x1, x2) -> f((x1, x2)), 			color=:Blues)
-	show_g_contour && contour!(x1min:0.1:x1max, x2min:0.1:x2max, (x1, x2) -> fsoft((x1, x2)), color=:Reds)
-	scatter!([x[1]], [x[2]], label="x", color=myyellow)
-	scatter!([0], [0], label="x* (no constraint)", color=mygreen)
-	show_g0_constraint && plot!([g0(t)[1] for t in 0:0.01:2π], [g0(t)[2] for t in 0:0.01:2π], lw=2, color=myred, label="g(x)=0")
-	show_soft_grads && quiver!([x for x in x1min:2:x1max for y in x2min:2:x2max], [y for x in x1min:2:x1max for y in x2min:2:x2max], quiver=(x1, x2)->-0.01.*∇fsoft((x1, x2)), color=:pink)
-	xlims!(x1min, x1max)
-	ylims!(x2min, x2max)
-end
+# ╔═╡ 90baacdf-5fba-4e81-9b05-8c3dd6c70a6c
+plot(local_tracker, title="Local search")
+
+# ╔═╡ 8a3ea40f-865e-4415-a409-2e971344f31a
+plot(hc_tracker, title="Hill climbing")
+
+# ╔═╡ d595306b-1dc7-4d32-91bf-d0ffd65d380e
+plot(sa_tracker, title="Simulated annealing")
+
+# ╔═╡ 78f34919-c0ed-4111-884f-dc76ea5edac0
+plot(tabu_tracker, title="Tabu search")
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
-LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [compat]
-Plots = "~1.23.1"
-PlutoUI = "~0.7.16"
-Zygote = "~0.6.29"
+Combinatorics = "~1.0.2"
+Plots = "~1.24.0"
+PlutoUI = "~0.7.20"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-[[AbstractFFTs]]
-deps = ["LinearAlgebra"]
-git-tree-sha1 = "485ee0867925449198280d4af84bdb46a2a404d0"
-uuid = "621f4979-c628-5d54-868e-fcf4e3e8185c"
-version = "1.0.1"
+[[AbstractPlutoDingetjes]]
+deps = ["Pkg"]
+git-tree-sha1 = "0bc60e3006ad95b4bb7497698dd7c6d649b9bc06"
+uuid = "6e696c72-6542-2067-7265-42206c756150"
+version = "1.1.1"
 
 [[Adapt]]
 deps = ["LinearAlgebra"]
@@ -337,17 +891,17 @@ git-tree-sha1 = "f2202b55d816427cd385a9a4f3ffb226bee80f99"
 uuid = "83423d85-b0ee-5818-9007-b63ccbeb887a"
 version = "1.16.1+0"
 
-[[ChainRules]]
-deps = ["ChainRulesCore", "Compat", "LinearAlgebra", "Random", "RealDot", "Statistics"]
-git-tree-sha1 = "035ef8a5382a614b2d8e3091b6fdbb1c2b050e11"
-uuid = "082447d4-558c-5d27-93f4-14fc19e9eca2"
-version = "1.12.1"
-
 [[ChainRulesCore]]
 deps = ["Compat", "LinearAlgebra", "SparseArrays"]
-git-tree-sha1 = "0541d306de71e267c1a724f84d44bbc981f287b4"
+git-tree-sha1 = "f885e7e7c124f8c92650d61b9477b9ac2ee607dd"
 uuid = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
-version = "1.10.2"
+version = "1.11.1"
+
+[[ChangesOfVariables]]
+deps = ["LinearAlgebra", "Test"]
+git-tree-sha1 = "9a1d594397670492219635b35a3d830b04730d62"
+uuid = "9e997f8a-9a97-42d5-a9f1-ce6bfc15e2c0"
+version = "0.1.1"
 
 [[ColorSchemes]]
 deps = ["ColorTypes", "Colors", "FixedPointNumbers", "Random"]
@@ -367,17 +921,16 @@ git-tree-sha1 = "417b0ed7b8b838aa6ca0a87aadf1bb9eb111ce40"
 uuid = "5ae59095-9a9b-59fe-a467-6f913c188581"
 version = "0.12.8"
 
-[[CommonSubexpressions]]
-deps = ["MacroTools", "Test"]
-git-tree-sha1 = "7b8a93dba8af7e3b42fecabf646260105ac373f7"
-uuid = "bbf7d656-a473-5ed7-a52c-81e309532950"
-version = "0.3.0"
+[[Combinatorics]]
+git-tree-sha1 = "08c8b6831dc00bfea825826be0bc8336fc369860"
+uuid = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
+version = "1.0.2"
 
 [[Compat]]
 deps = ["Base64", "Dates", "DelimitedFiles", "Distributed", "InteractiveUtils", "LibGit2", "Libdl", "LinearAlgebra", "Markdown", "Mmap", "Pkg", "Printf", "REPL", "Random", "SHA", "Serialization", "SharedArrays", "Sockets", "SparseArrays", "Statistics", "Test", "UUIDs", "Unicode"]
-git-tree-sha1 = "31d0151f5716b655421d9d75b7fa74cc4e744df2"
+git-tree-sha1 = "dce3e3fea680869eaa0b774b2e8343e9ff442313"
 uuid = "34da2185-b29b-5c13-b0c7-acf172513d20"
-version = "3.39.0"
+version = "3.40.0"
 
 [[CompilerSupportLibraries_jll]]
 deps = ["Artifacts", "Libdl"]
@@ -412,18 +965,6 @@ uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
 [[DelimitedFiles]]
 deps = ["Mmap"]
 uuid = "8bb1440f-4735-579b-a4ab-409b98df4dab"
-
-[[DiffResults]]
-deps = ["StaticArrays"]
-git-tree-sha1 = "c18e98cba888c6c25d1c3b048e4b3380ca956805"
-uuid = "163ba53b-c6d8-5494-b064-1a9d43ac40c5"
-version = "1.0.3"
-
-[[DiffRules]]
-deps = ["NaNMath", "Random", "SpecialFunctions"]
-git-tree-sha1 = "7220bc21c33e990c14f4a9a319b1d242ebc5b269"
-uuid = "b552c78f-8df3-52c6-915a-8e097449b14b"
-version = "1.3.1"
 
 [[Distributed]]
 deps = ["Random", "Serialization", "Sockets"]
@@ -463,12 +1004,6 @@ git-tree-sha1 = "d8a578692e3077ac998b50c0217dfd67f21d1e5f"
 uuid = "b22a6f82-2f65-5046-a5b2-351ab43fb4e5"
 version = "4.4.0+0"
 
-[[FillArrays]]
-deps = ["LinearAlgebra", "Random", "SparseArrays", "Statistics"]
-git-tree-sha1 = "8756f9935b7ccc9064c6eef0bff0ad643df733a3"
-uuid = "1a297f60-69ca-5386-bcde-b61e274b549b"
-version = "0.12.7"
-
 [[FixedPointNumbers]]
 deps = ["Statistics"]
 git-tree-sha1 = "335bfdceacc84c5cdf16aadc768aa5ddfc5383cc"
@@ -486,12 +1021,6 @@ deps = ["Printf"]
 git-tree-sha1 = "8339d61043228fdd3eb658d86c926cb282ae72a8"
 uuid = "59287772-0a20-5a39-b81b-1366585eb4c0"
 version = "0.4.2"
-
-[[ForwardDiff]]
-deps = ["CommonSubexpressions", "DiffResults", "DiffRules", "LinearAlgebra", "NaNMath", "Preferences", "Printf", "Random", "SpecialFunctions", "StaticArrays"]
-git-tree-sha1 = "63777916efbcb0ab6173d09a658fb7f2783de485"
-uuid = "f6369f11-7733-5829-9624-2563aa707210"
-version = "0.10.21"
 
 [[FreeType2_jll]]
 deps = ["Artifacts", "Bzip2_jll", "JLLWrappers", "Libdl", "Pkg", "Zlib_jll"]
@@ -513,15 +1042,15 @@ version = "3.3.5+1"
 
 [[GR]]
 deps = ["Base64", "DelimitedFiles", "GR_jll", "HTTP", "JSON", "Libdl", "LinearAlgebra", "Pkg", "Printf", "Random", "Serialization", "Sockets", "Test", "UUIDs"]
-git-tree-sha1 = "d189c6d2004f63fd3c91748c458b09f26de0efaa"
+git-tree-sha1 = "30f2b340c2fff8410d89bfcdc9c0a6dd661ac5f7"
 uuid = "28b8d3ca-fb5f-59d9-8090-bfdbd6d07a71"
-version = "0.61.0"
+version = "0.62.1"
 
 [[GR_jll]]
 deps = ["Artifacts", "Bzip2_jll", "Cairo_jll", "FFMPEG_jll", "Fontconfig_jll", "GLFW_jll", "JLLWrappers", "JpegTurbo_jll", "Libdl", "Libtiff_jll", "Pixman_jll", "Pkg", "Qt5Base_jll", "Zlib_jll", "libpng_jll"]
-git-tree-sha1 = "cafe0823979a5c9bff86224b3b8de29ea5a44b2e"
+git-tree-sha1 = "fd75fa3a2080109a2c0ec9864a6e14c60cca3866"
 uuid = "d2c73de3-f751-5644-a686-071e5b155ba9"
-version = "0.61.0+0"
+version = "0.62.0+0"
 
 [[GeometryBasics]]
 deps = ["EarCut_jll", "IterTools", "LinearAlgebra", "StaticArrays", "StructArrays", "Tables"]
@@ -554,9 +1083,9 @@ version = "1.0.2"
 
 [[HTTP]]
 deps = ["Base64", "Dates", "IniFile", "Logging", "MbedTLS", "NetworkOptions", "Sockets", "URIs"]
-git-tree-sha1 = "14eece7a3308b4d8be910e265c724a6ba51a9798"
+git-tree-sha1 = "0fa77022fe4b511826b39c894c90daf5fce3334a"
 uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
-version = "0.9.16"
+version = "0.9.17"
 
 [[HarfBuzz_jll]]
 deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "Graphite2_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Pkg"]
@@ -571,21 +1100,15 @@ uuid = "47d2ed2b-36de-50cf-bf87-49c2cf4b8b91"
 version = "0.0.4"
 
 [[HypertextLiteral]]
-git-tree-sha1 = "5efcf53d798efede8fee5b2c8b09284be359bf24"
+git-tree-sha1 = "2b078b5a615c6c0396c77810d92ee8c6f470d238"
 uuid = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
-version = "0.9.2"
+version = "0.9.3"
 
 [[IOCapture]]
 deps = ["Logging", "Random"]
 git-tree-sha1 = "f7be53659ab06ddc986428d3a9dcc95f6fa6705a"
 uuid = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
 version = "0.2.2"
-
-[[IRTools]]
-deps = ["InteractiveUtils", "MacroTools", "Test"]
-git-tree-sha1 = "95215cd0076a150ef46ff7928892bc341864c73c"
-uuid = "7869d1d1-7146-5819-86e3-90919afe41df"
-version = "0.4.3"
 
 [[IniFile]]
 deps = ["Test"]
@@ -599,9 +1122,9 @@ uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 
 [[InverseFunctions]]
 deps = ["Test"]
-git-tree-sha1 = "f0c6489b12d28fb4c2103073ec7452f3423bd308"
+git-tree-sha1 = "a7254c0acd8e62f1ac75ad24d5db43f5f19f3c65"
 uuid = "3587e190-3f89-42d0-90ee-14403ec27112"
-version = "0.1.1"
+version = "0.1.2"
 
 [[IrrationalConstants]]
 git-tree-sha1 = "7fd44fd4ff43fc60815f8e764c0f352b83c49151"
@@ -649,9 +1172,9 @@ uuid = "dd4b983a-f0e5-5f8d-a1b7-129d4a5fb1ac"
 version = "2.10.1+0"
 
 [[LaTeXStrings]]
-git-tree-sha1 = "c7f1c695e06c01b95a67f0cd1d34994f3e7db104"
+git-tree-sha1 = "f2355693d6778a178ade15952b7ac47a4ff97996"
 uuid = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
-version = "1.2.1"
+version = "1.3.0"
 
 [[Latexify]]
 deps = ["Formatting", "InteractiveUtils", "LaTeXStrings", "MacroTools", "Markdown", "Printf", "Requires"]
@@ -680,9 +1203,9 @@ uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 
 [[Libffi_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "761a393aeccd6aa92ec3515e428c26bf99575b3b"
+git-tree-sha1 = "0b4a5d71f3e5200a7dff793393e09dfc2d874290"
 uuid = "e9f186c6-92d2-5b65-8a66-fee21dc1b490"
-version = "3.2.2+0"
+version = "3.2.2+1"
 
 [[Libgcrypt_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libgpg_error_jll", "Pkg"]
@@ -731,19 +1254,19 @@ deps = ["Libdl"]
 uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
 [[LogExpFunctions]]
-deps = ["ChainRulesCore", "DocStringExtensions", "InverseFunctions", "IrrationalConstants", "LinearAlgebra"]
-git-tree-sha1 = "6193c3815f13ba1b78a51ce391db8be016ae9214"
+deps = ["ChainRulesCore", "ChangesOfVariables", "DocStringExtensions", "InverseFunctions", "IrrationalConstants", "LinearAlgebra"]
+git-tree-sha1 = "be9eef9f9d78cecb6f262f3c10da151a6c5ab827"
 uuid = "2ab3a3ac-af41-5b50-aa03-7779005ae688"
-version = "0.3.4"
+version = "0.3.5"
 
 [[Logging]]
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
 [[MacroTools]]
 deps = ["Markdown", "Random"]
-git-tree-sha1 = "5a5bc6bf062f0f95e62d0fe0a2d99699fed82dd9"
+git-tree-sha1 = "3d3e902b31198a27340d0bf00d6ac452866021cf"
 uuid = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
-version = "0.5.8"
+version = "0.5.9"
 
 [[Markdown]]
 deps = ["Base64"]
@@ -790,21 +1313,11 @@ git-tree-sha1 = "7937eda4681660b4d6aeeecc2f7e1c81c8ee4e2f"
 uuid = "e7412a2a-1a6e-54c0-be00-318e2571c051"
 version = "1.3.5+0"
 
-[[OpenLibm_jll]]
-deps = ["Artifacts", "Libdl"]
-uuid = "05823500-19ac-5b8b-9628-191a04bc5112"
-
 [[OpenSSL_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "15003dcb7d8db3c6c857fda14891a539a8f2705a"
 uuid = "458c3c95-2e84-50aa-8efc-19380b2a3a95"
 version = "1.1.10+0"
-
-[[OpenSpecFun_jll]]
-deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "13652491f6856acfd2db29360e1bbcd4565d04f1"
-uuid = "efe28fd5-8261-553b-a9e1-b2916fc3738e"
-version = "0.5.5+0"
 
 [[Opus_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -825,9 +1338,9 @@ version = "8.44.0+0"
 
 [[Parsers]]
 deps = ["Dates"]
-git-tree-sha1 = "f19e978f81eca5fd7620650d7dbea58f825802ee"
+git-tree-sha1 = "ae4bbcadb2906ccc085cf52ac286dc1377dceccc"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "2.1.0"
+version = "2.1.2"
 
 [[Pixman_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -852,16 +1365,16 @@ uuid = "995b91a9-d308-5afd-9ec6-746e21dbc043"
 version = "1.0.15"
 
 [[Plots]]
-deps = ["Base64", "Contour", "Dates", "Downloads", "FFMPEG", "FixedPointNumbers", "GR", "GeometryBasics", "JSON", "Latexify", "LinearAlgebra", "Measures", "NaNMath", "PlotThemes", "PlotUtils", "Printf", "REPL", "Random", "RecipesBase", "RecipesPipeline", "Reexport", "Requires", "Scratch", "Showoff", "SparseArrays", "Statistics", "StatsBase", "UUIDs"]
-git-tree-sha1 = "25007065fa36f272661a0e1968761858cc880755"
+deps = ["Base64", "Contour", "Dates", "Downloads", "FFMPEG", "FixedPointNumbers", "GR", "GeometryBasics", "JSON", "Latexify", "LinearAlgebra", "Measures", "NaNMath", "PlotThemes", "PlotUtils", "Printf", "REPL", "Random", "RecipesBase", "RecipesPipeline", "Reexport", "Requires", "Scratch", "Showoff", "SparseArrays", "Statistics", "StatsBase", "UUIDs", "UnicodeFun"]
+git-tree-sha1 = "02a083caba3f73e42decb810b2e0740783022978"
 uuid = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
-version = "1.23.1"
+version = "1.24.0"
 
 [[PlutoUI]]
-deps = ["Base64", "Dates", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "UUIDs"]
-git-tree-sha1 = "4c8a7d080daca18545c56f1cac28710c362478f3"
+deps = ["AbstractPlutoDingetjes", "Base64", "Dates", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "UUIDs"]
+git-tree-sha1 = "1e0cb51e0ccef0afc01aab41dc51a3e7f781e8cb"
 uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-version = "0.7.16"
+version = "0.7.20"
 
 [[Preferences]]
 deps = ["TOML"]
@@ -887,16 +1400,10 @@ uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 deps = ["Serialization"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
-[[RealDot]]
-deps = ["LinearAlgebra"]
-git-tree-sha1 = "9f0a1b71baaf7650f4fa8a1d168c7fb6ee41f0c9"
-uuid = "c1ae055f-0cd5-4b69-90a6-9a35b1a98df9"
-version = "0.1.0"
-
 [[RecipesBase]]
-git-tree-sha1 = "44a75aa7a527910ee3d1751d1f0e4148698add9e"
+git-tree-sha1 = "6bf3f380ff52ce0832ddd3a2a7b9538ed1bcca7d"
 uuid = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
-version = "1.1.2"
+version = "1.2.1"
 
 [[RecipesPipeline]]
 deps = ["Dates", "NaNMath", "PlotUtils", "RecipesBase"]
@@ -950,12 +1457,6 @@ version = "1.0.1"
 deps = ["LinearAlgebra", "Random"]
 uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
-[[SpecialFunctions]]
-deps = ["ChainRulesCore", "IrrationalConstants", "LogExpFunctions", "OpenLibm_jll", "OpenSpecFun_jll"]
-git-tree-sha1 = "2d57e14cd614083f132b6224874296287bfa3979"
-uuid = "276daf66-3868-5448-9aa4-cd146d93841b"
-version = "1.8.0"
-
 [[StaticArrays]]
 deps = ["LinearAlgebra", "Random", "Statistics"]
 git-tree-sha1 = "3c76dde64d03699e074ac02eb2e8ba8254d428da"
@@ -967,15 +1468,15 @@ deps = ["LinearAlgebra", "SparseArrays"]
 uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [[StatsAPI]]
-git-tree-sha1 = "1958272568dc176a1d881acb797beb909c785510"
+git-tree-sha1 = "0f2aa8e32d511f758a2ce49208181f7733a0936a"
 uuid = "82ae8749-77ed-4fe6-ae5f-f523153014b0"
-version = "1.0.0"
+version = "1.1.0"
 
 [[StatsBase]]
 deps = ["DataAPI", "DataStructures", "LinearAlgebra", "LogExpFunctions", "Missings", "Printf", "Random", "SortingAlgorithms", "SparseArrays", "Statistics", "StatsAPI"]
-git-tree-sha1 = "eb35dcc66558b2dda84079b9a1be17557d32091a"
+git-tree-sha1 = "2bb0cb32026a66037360606510fca5984ccc6b75"
 uuid = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
-version = "0.33.12"
+version = "0.33.13"
 
 [[StructArrays]]
 deps = ["Adapt", "DataAPI", "StaticArrays", "Tables"]
@@ -1019,6 +1520,12 @@ uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 [[Unicode]]
 uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 
+[[UnicodeFun]]
+deps = ["REPL"]
+git-tree-sha1 = "53915e50200959667e78a92a418594b428dffddf"
+uuid = "1cfade01-22cf-5700-b092-accc4b62d6e1"
+version = "0.4.1"
+
 [[Wayland_jll]]
 deps = ["Artifacts", "Expat_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Pkg", "XML2_jll"]
 git-tree-sha1 = "3e61f0b86f90dacb0bc0e73a0c5a83f6a8636e23"
@@ -1026,10 +1533,10 @@ uuid = "a2964d1f-97da-50d4-b82a-358c7fce9d89"
 version = "1.19.0+0"
 
 [[Wayland_protocols_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Wayland_jll"]
-git-tree-sha1 = "2839f1c1296940218e35df0bbb220f2a79686670"
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "66d72dc6fcc86352f01676e8f0f698562e60510f"
 uuid = "2381bf8a-dfd0-557d-9999-79630e7b1b91"
-version = "1.18.0+4"
+version = "1.23.0+0"
 
 [[XML2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libiconv_jll", "Pkg", "Zlib_jll"]
@@ -1179,18 +1686,6 @@ git-tree-sha1 = "cc4bf3fdde8b7e3e9fa0351bdeedba1cf3b7f6e6"
 uuid = "3161d3a3-bdf6-5164-811a-617609db77b4"
 version = "1.5.0+0"
 
-[[Zygote]]
-deps = ["AbstractFFTs", "ChainRules", "ChainRulesCore", "DiffRules", "Distributed", "FillArrays", "ForwardDiff", "IRTools", "InteractiveUtils", "LinearAlgebra", "MacroTools", "NaNMath", "Random", "Requires", "SpecialFunctions", "Statistics", "ZygoteRules"]
-git-tree-sha1 = "0fc9959bcabc4668c403810b4e851f6b8962eac9"
-uuid = "e88e6eb3-aa80-5325-afca-941959d7151f"
-version = "0.6.29"
-
-[[ZygoteRules]]
-deps = ["MacroTools"]
-git-tree-sha1 = "8c1a8e4dfacb1fd631745552c8db35d0deb09ea0"
-uuid = "700de1a5-db45-46bc-99cf-38207098b444"
-version = "0.2.2"
-
 [[libass_jll]]
 deps = ["Artifacts", "Bzip2_jll", "FreeType2_jll", "FriBidi_jll", "HarfBuzz_jll", "JLLWrappers", "Libdl", "Pkg", "Zlib_jll"]
 git-tree-sha1 = "5982a94fcba20f02f42ace44b9894ee2b140fe47"
@@ -1243,60 +1738,94 @@ version = "0.9.1+5"
 """
 
 # ╔═╡ Cell order:
-# ╠═49e8e6f6-0483-11eb-0a74-d94aa536c9ab
-# ╟─fccca5fc-0597-11eb-1033-a5cc3b71d854
-# ╠═5e4eabba-0483-11eb-09a4-31ae6c582d3e
-# ╠═bd7b55ae-0599-11eb-1056-ed3682fe8160
-# ╟─470048ec-0598-11eb-0d48-67357ed1f12c
-# ╟─c10838a2-0599-11eb-32e3-1579a926f9b7
-# ╠═41d8c8d0-0591-11eb-2cd7-3b53f91ef589
-# ╠═d2c4ffe2-0485-11eb-0e20-dd52446fa3a6
-# ╠═6e89822c-070b-11eb-06f3-8b8e20aaa57d
-# ╠═f47ce686-0485-11eb-2a33-4bd0b150b18b
-# ╟─5503c842-0591-11eb-0104-359b9ebd5e98
-# ╟─47067fc8-058c-11eb-224c-6fe2e470107f
-# ╟─c369c65e-0598-11eb-0a90-dd4db070c99b
-# ╟─60328136-0591-11eb-1929-b7515a8c03d9
-# ╟─d10b14c2-058c-11eb-3a43-7bca5d042969
-# ╟─ba835a96-0598-11eb-1d54-9365e3ea337f
-# ╟─681a031a-0591-11eb-2fec-8d94eca758f8
-# ╟─13467b42-058d-11eb-3023-b9d3f145335b
-# ╟─ca227ac2-0598-11eb-3a39-f1a90769ac52
-# ╟─d8276f26-0598-11eb-1626-95f87cf6de22
-# ╟─60c41848-0592-11eb-39ef-7103ae834990
-# ╟─d16723ca-0598-11eb-02f4-f1c5d45095a5
-# ╟─828cbe72-0483-11eb-33b2-7f4f37db889f
-# ╟─95dc760a-058e-11eb-2149-898b2776079f
-# ╠═acc751fb-6568-48bb-a8ad-36dddff2bd92
-# ╟─cf354af7-9aa6-45c0-998b-e47d08fe52f7
-# ╠═ea8c4ae2-2683-4085-8b07-bc96843cf9ca
-# ╠═c04a0ffe-0707-11eb-2a74-b3b258b4aec6
-# ╟─00a009a2-0599-11eb-341f-3364198e1753
-# ╟─b0cf9a40-058f-11eb-13dc-b7c35328ef2a
-# ╟─e06bff3b-5941-4757-bfb1-b31183c025a7
-# ╟─13b4ad4a-0599-11eb-0043-6bfc0eb23389
-# ╠═e944567a-0596-11eb-2cf1-75f196bab4d1
-# ╠═02673cec-0597-11eb-2db4-e9f7d9047ac0
-# ╟─358f21ca-0599-11eb-3bfb-0bb12a1465bb
-# ╟─2d7ae208-0599-11eb-1a91-277b764ad45e
-# ╟─c98b4f9a-0592-11eb-2034-5f05e792cbd2
-# ╠═be35a06c-0596-11eb-2988-61a79c7e6a87
-# ╠═a08e7230-0591-11eb-3956-fb6c2d756494
-# ╟─c2640938-0591-11eb-058c-5949d1e316d3
-# ╟─81629936-0593-11eb-3fca-afa68e2ace3d
-# ╠═a1402cbc-0593-11eb-33b4-09a0c654eefd
-# ╠═cc4209ee-0593-11eb-3762-e76539e2a455
-# ╟─a398740e-0593-11eb-2f81-c92861e080b8
-# ╠═dce25666-0594-11eb-24f9-85eba4949d1e
-# ╟─701efa2a-0596-11eb-2592-39eced2fb875
-# ╠═7c5d381a-0596-11eb-1dfe-0b7074093cd6
-# ╟─0b93638a-0595-11eb-3096-af3cc7202aa5
-# ╟─7c934678-0599-11eb-1e6b-1f2c9003509a
-# ╠═865bbb8e-0483-11eb-0622-b9a8a6ba5d4c
-# ╠═9736f388-0483-11eb-069a-0d5ed87efb73
-# ╠═f39f0106-0483-11eb-3617-5fb04388489e
-# ╠═52bacf14-0595-11eb-33c9-dd5c40125360
-# ╠═7e77e628-0707-11eb-1b2f-27b5c5819260
-# ╟─0a5783e2-0596-11eb-1e38-a5da40325159
+# ╟─2f8b1a76-8247-48b2-b324-4550b7bda94b
+# ╠═25700c98-eebd-11ea-17eb-4398f75594e0
+# ╟─c637a44c-eebd-11ea-3d4f-9539b52a7b88
+# ╟─8bb6e5e4-eebd-11ea-2019-49875c096a68
+# ╠═1eeb0f50-8b9d-4260-a61a-f8e565eab32a
+# ╠═222f0fa4-a043-44ee-b9a9-647f4bdd7a39
+# ╠═20a0cf1f-76cf-41d7-a8dd-a7eda3ec8a29
+# ╟─cf657065-fc1d-4c3d-b344-1ddfa2e620b5
+# ╠═0b574bcb-ab7e-42c8-8672-7dcafeb4d342
+# ╟─a912a3b8-a175-4606-bd49-7db772d46eeb
+# ╠═24693db7-3cda-4fa3-a547-777b16f3993d
+# ╠═46bb926b-ec86-4834-8d3b-4537e777aa73
+# ╠═c8eeac4b-6ab0-4976-b529-911ea6a65108
+# ╟─ee82356d-5100-4721-a7fe-bda834340a86
+# ╟─73ca51f4-855c-41c5-a790-16edaa33415b
+# ╠═607730d3-b7f4-44d9-a2f0-c3fff21ababc
+# ╟─15d1edbd-35f9-4e77-93ec-4302c9a34e5b
+# ╠═3cd3fbba-eebd-11ea-164f-b39f495dea6e
+# ╟─c9d7857b-6950-45c1-88f4-ac9c1552d194
+# ╟─f78f9bc8-1b59-4242-aefd-01d1758237cf
+# ╠═9f990a70-be16-4f18-b4ac-c888e3461459
+# ╠═8ddfd6c3-3d93-4e60-8f84-52f7df080057
+# ╠═62339637-415d-4d9e-9113-ebdfc85c3041
+# ╠═811337ab-970a-4cdc-90e7-ab04c5c96559
+# ╠═90baacdf-5fba-4e81-9b05-8c3dd6c70a6c
+# ╟─51db9a9b-ba03-470e-9acd-55f5dfadf702
+# ╠═83429b08-d608-4f44-9ca6-67175f0df26b
+# ╠═3850f8bd-ac6f-4a62-8860-65941af59eae
+# ╠═70553739-f280-4972-8c4c-ecde6bd13e06
+# ╟─8a3ea40f-865e-4415-a409-2e971344f31a
+# ╟─48ce73c5-cebf-4767-bfe8-019b116263e0
+# ╠═2541a5aa-21cf-41c3-b17d-7922cff10390
+# ╠═cc1042c5-f870-4c3d-8df7-9d36d6f9116a
+# ╠═0c730376-cea1-447b-9285-179903c1689c
+# ╠═4ee9f5c4-0e57-4c0d-a800-dd6d2b0d08b5
+# ╠═1520c3ea-bb12-489e-bb77-2de1b2249d8f
+# ╟─014738f4-3808-4875-b8f7-858ac2f1da6f
+# ╠═ca99362b-b4ca-4c3f-9ea0-c223bd0b3cb5
+# ╟─d595306b-1dc7-4d32-91bf-d0ffd65d380e
+# ╟─d4d52b69-c7df-4437-a2a2-81917848e28c
+# ╠═ca863fdb-cb23-4dcf-b9d7-3c0513fac13d
+# ╠═678756b9-7989-4542-ae4a-98744e84cc03
+# ╠═79e6989f-32b6-4311-b375-010597999baf
+# ╠═9788b851-c62f-4aa1-8ab4-cb42befd8612
+# ╟─78f34919-c0ed-4111-884f-dc76ea5edac0
+# ╟─e4b6996e-eebf-11ea-3f8d-a13ddf340bbf
+# ╠═0da780f6-866b-48fd-976e-58962408dbb4
+# ╠═4cec040f-296d-4ffa-bab7-7540a5c5d412
+# ╠═252dedb6-c8a8-409e-b8e0-2f682f12c82c
+# ╠═2929342c-6c6d-4f88-9d93-0a1057b6f031
+# ╠═a635482d-7960-48f4-9af7-630af84b453d
+# ╠═cf01a5f0-c118-4ef8-934f-09b50d13de99
+# ╠═0180196a-88ab-4fc1-9878-0438fe8f61bb
+# ╠═710ddf4b-ef42-4143-98da-999e6acc5653
+# ╠═2eddc3c2-e6ac-49f6-a1f5-e4c6c55b37b2
+# ╠═636ab8ac-b59d-493f-9c4d-3ddd5ec13a78
+# ╠═afdddd5c-3558-4f63-80f9-5a05e33526ce
+# ╠═844b891c-d1bc-4d90-968f-e0a9459deb87
+# ╠═15cc6750-54b1-46d4-8936-bb8f2b7375b2
+# ╟─fcef48fe-eec3-11ea-22c2-0d17b1ee9af5
+# ╠═0492484a-eec4-11ea-091f-5146073f6824
+# ╠═326afda2-5de7-4720-82c1-38c0ae8637b2
+# ╠═d9734596-5f7e-48b7-888e-f8a20ae83062
+# ╠═7e25e4b7-cbc8-42ad-8dc4-e6f5720f3b6e
+# ╠═a696ac0f-f8b4-4215-bd0b-9c8123ee7260
+# ╠═fad941eb-e986-4761-bf4a-eb8e9a81a85b
+# ╠═a01d81c3-18ec-4360-be40-f4ffd4aeede9
+# ╠═43cabb77-3f88-4af0-94af-ccba0b0ba318
+# ╠═3c35e7ea-0b43-405b-bfd4-3d661dedecba
+# ╟─0e46db27-3714-4889-af23-7a70a67dfe91
+# ╠═8666d19e-eebd-11ea-11ad-93097ff088f1
+# ╠═8bcf1d93-b396-45c7-a58c-fb01bc56de54
+# ╠═58664797-9c85-4bab-8c82-3bb743509caf
+# ╠═03d55585-7ed1-4916-b1a7-ec31fff1abb1
+# ╠═95c0196c-faec-45e7-996c-2dc4de617bcd
+# ╠═cddcbed2-eff5-4288-b625-3dac12e9f1c1
+# ╠═fdf3c648-e3a6-47ee-8171-a05a7f932d8c
+# ╠═5d9f8c95-b4e3-478b-8b1c-21f31f2fcfe0
+# ╠═e294aea0-16c4-4523-b1fd-e55416c3e45c
+# ╟─ff39e011-7cbd-427a-8414-07cc1af885e0
+# ╟─9099c5e8-5110-4d32-9386-71bed0c7a495
+# ╠═13b06f4c-2408-4c5f-9604-9ad11caf0ed9
+# ╟─b13c08a6-7209-4a9b-b1e4-b39569328a1b
+# ╟─a319305b-0632-4e9f-a378-6eadc761837a
+# ╠═14531290-8906-42ca-838c-aa52ebb91ca0
+# ╠═7cf27ad2-f7ee-41df-b917-8679f8eb5eda
+# ╠═f60691ca-a055-404f-9557-3f1cc91345f6
+# ╠═9ef3ad77-e19c-4509-9d8f-191c74c7ad40
+# ╟─5870cf14-eebe-11ea-07cd-d51bcd1fa702
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
