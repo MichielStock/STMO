@@ -5,3 +5,7 @@ On this page, you can find the projects of the previous years. The notebooks are
 ## 2021-2022
 
 The projects are listed [here](2021-2022/readme.md).
+
+## 2020- 2022
+
+The projects are listed [here](2020-2021/readme.md).
