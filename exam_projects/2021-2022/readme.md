@@ -11,7 +11,7 @@
 |Jietse Verweirder & Jordi Verbruggen | [Genetic algorithms](geneticalgorithms.jl.html) |
 | Shauny Van Hoye | [Superevolution](SuperEvolution.jl.html) | 
 |Menno Van Damme | [RNA folder](RNAfolder.jl.html) |
-|Lieselore Collier | [multi-objective optimization (for RNA-seq deconvolution)](MOO.jl.html)|
+|Lieselore Collier | [Multi-objective optimization (for RNA-seq deconvolution)](MOO.jl.html)|
 |Natalie Thomas| [Ant Colony Optimization](antcolony.jl.html) |
 | Peter Merseburger | [Improving gradient descent by adressing gradient starvation](gradientstarvation.jl.html)|
 | Ian Engels & Faust Schotte | [Finding design patterns in phage lytic proteins using evolutionairy algorithms](Pattern_Detection_Engels_Ian_Schotte_Faust.jl.html) |
