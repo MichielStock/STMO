@@ -28,6 +28,14 @@ As of 2020, we have moved this course from Python to the new [Julia programming 
 10. Heuristics and metaheuristics
 11. Travelling Salesman Problem
 
+## Exam project
+
+For your final exam, you will have to create a didactical or scientific project related to optimization (either theoretical or applied). The goal is being able to write scientific software.
+
+You can check the instructions [here](project_instructions.md). It will be discussed in detail in class.
+
+Check out previous projects [here](exam_projects/readme.md).
+
 ## Using this repo
 
 As of 2021, we migrated from Jupyter notebooks to [Pluto](https://github.com/fonsp/Pluto.jl) notebooks. The folder `chapters/` contains notebooks. You can also find them on Ufora together with the slides etc, so you don't need to keep track of this repo.
