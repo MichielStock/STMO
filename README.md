@@ -16,11 +16,11 @@ As of 2020, we have moved this course from Python to the new [Julia programming 
 
 ## Course content
 
-1. Intro to Julia and bracket search
-2. Quadratic optimization
-3. Automatic differentiation
-4. Unconstrained convex optimization
-5. Constrained convex optimization
+1. [Intro to Julia](chapters/00.Introduction/simple_search.jl.html) and [bracket search](chapters/01.Brackets/brackets.jl.html)
+2. [Quadratic optimization](chapters/02.Quadratic/quadratic.jl.html)
+3. [Automatic differentiation](chapters/03.AutoDiff/autodiff.jl.html)
+4. [Unconstrained convex optimization](chapters/04.Unconstrained/unconstrained.jl.html)
+5. [Constrained convex optimization](chapters/05.Constrained/constrained.jl.html) and [Lagrange](chapters/05.Constrained/lagrange.jl.html)
 6. Optimal transportation
 7. Minimum spanning trees
 8. Shortest path problems

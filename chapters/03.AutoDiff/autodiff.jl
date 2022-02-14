@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.16.4
+# v0.17.1
 
 using Markdown
 using InteractiveUtils
@@ -7,8 +7,9 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = $(esc(element))
-        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
     end
 end
@@ -68,9 +69,6 @@ $$f(x) = \log x + \frac{\sin x}{x}$$
 # ╔═╡ e6a55456-fe6f-11ea-328c-47fedb388194
 md"**Assignment**: implement this function. (or another one)"
 
-# ╔═╡ 2be8656c-f2b3-11ea-2244-5740c807deff
-f(x) = log(x) + sin(x) / x
-
 # ╔═╡ f7cd052e-f2bb-11ea-239a-47966e96e909
 md"We will evaluate this function in `a`=$2."
 
@@ -79,9 +77,6 @@ a = 2.0
 
 # ╔═╡ 60058dbe-1514-4139-bb97-66b40fe47306
 md"For the record:"
-
-# ╔═╡ 21882f0e-8d54-41ae-84c6-7637ccc52c46
-f(a)
 
 # ╔═╡ 401df7a4-f2b3-11ea-12a1-e9b46bcfcf1b
 md"""
@@ -115,35 +110,11 @@ Disadvantages:
 # ╔═╡ 5db7350a-f2b3-11ea-293d-ffc572e0dbe8
 @variables x  # define variable
 
-# ╔═╡ d5edd644-fe7c-11ea-2aa8-c772ea2f1bde
-f(x)
-
 # ╔═╡ 76ba97fe-b7c4-467b-85ae-9067ebcc8b14
 Dx = Differential(x)  # differential operator
 
-# ╔═╡ 64b28e4a-f2b3-11ea-0fc0-7d37b4794686
-Dx(f(x))
-
-# ╔═╡ 8a4a8499-af01-46ea-8196-fb2d718d0d17
-df_sym = expand_derivatives(Dx(f(x)))  # this expands the derviatve operator
-
 # ╔═╡ 92b65737-9ad7-422e-955c-e9adacd2032b
 md"We can build this expression in a function:"
-
-# ╔═╡ a38e2cce-851c-4065-8947-1926fa9ca5b4
-df = build_function(df_sym, x) |> eval  #builds an expression and turns it into a function
-
-# ╔═╡ 684ff7f4-f2b3-11ea-14f7-7d3f329ecd79
-df(a)
-
-# ╔═╡ 2ca60bca-f2b4-11ea-0fec-c50f4e306536
-true_diff = df(a);  # save for checking
-
-# ╔═╡ 7a6a18de-f2b3-11ea-1b3d-ef7a2b1b0434
-if !ismissing(f(a))
-plot(f, 1, 10, label="\$f(x)\$", xlabel="\$x\$", lw=2, color=:green)
-plot!(df, 1, 10, label="\$f'(x)\$", lw=2, color=:orange)
-end
 
 # ╔═╡ 67e7ea4d-0b76-4247-b22d-e20c8280f046
 md"You can play with this dynamically:"
@@ -154,14 +125,8 @@ md"You can play with this dynamically:"
 # ╔═╡ 732ad756-1707-48e7-9bfb-10707e64b118
 n
 
-# ╔═╡ c8a5c6f8-4ca1-4c7e-9cc1-d2e5c9e9da59
-symexpr = (x + 2)^n / (x+2)
-
 # ╔═╡ c67f8b3f-0561-4f47-ade8-3c79d7920ae1
 md"Derivative:"
-
-# ╔═╡ 997ec642-a865-4c97-9aa1-d4d9df9e1dd0
-expand_derivatives(Dx(symexpr)) |> simplify
 
 # ╔═╡ 913234a2-f2b3-11ea-3501-e3bfc54f91fe
 md"""
@@ -189,12 +154,6 @@ $$f'(x)\approx \frac{\text{Im}(f(x +ih))}{h}$$
 # ╔═╡ 0238579a-fe70-11ea-0968-0f11ae9557db
 md"**Assignment**: Implement these functions. Hint `im` is the imaginary unit: i.e."
 
-# ╔═╡ 9ecd1cd6-8412-4fe1-9d79-676f9830ec2c
-imag_number = 2 + 3im  # im is a special type of number
-
-# ╔═╡ af02692c-c1be-4f7c-a09f-fbd88b0c4bd8
-real(imag_number), imag(imag_number) # extract real and imaginary parts
-
 # ╔═╡ eef066e0-f2b3-11ea-3cfa-5f35ebf13f76
 diff_fordiff(f, x; h=1e-10) = missing
 
@@ -203,15 +162,6 @@ diff_centrdiff(f, x; h=1e-10) = missing
 
 # ╔═╡ f54ee2b2-f2b3-11ea-24e8-f556ab9e3b85
 diff_complstep(f, x; h=1e-10) = missing
-
-# ╔═╡ 08a565e0-f2b4-11ea-2ab6-f5f3a1b3c22d
-diff_fordiff(f, a)
-
-# ╔═╡ 1055a996-f2b4-11ea-14d2-6116cbbaa6ba
-diff_centrdiff(f, a)
-
-# ╔═╡ 13db037a-f2b4-11ea-2a38-bd7c1c60f7d9
-diff_complstep(f, a)
 
 # ╔═╡ 4f42234e-f2b4-11ea-2c86-93449b8dc60b
 md"""
@@ -250,9 +200,6 @@ significand(num)
 
 # ╔═╡ cfb07cc6-f2b4-11ea-08a7-dd0b13d15b5e
 md"These can be used to reconstrunct the number."
-
-# ╔═╡ d56b74f2-f2b4-11ea-12b4-5f54d4999b38
-sign(num) * significand(num) * 2^exponent(num)
 
 # ╔═╡ d9f2d114-f2b4-11ea-32b0-43fa1a872a97
 md"The *machine precision* of a number can be retained using `eps`. This is the relative error."
@@ -307,56 +254,17 @@ $$\nabla f(\mathbf{x})^\intercal \mathbf{d} \approx \frac{f(\mathbf{x}+h\cdot\ma
 $$\nabla^2 f(\mathbf{x}) \mathbf{d} \approx \frac{\nabla f(\mathbf{x}+h\cdot\mathbf{d}) - \nabla f(\mathbf{x}-h\cdot\mathbf{d})}{2h}$$
 """
 
-# ╔═╡ 688a1f40-f2b5-11ea-3fa8-ebb735323ddd
-grad_vect(f, x, d; h=1e-10) = (f(x .+ h * d) - f(x .- h * d)) / (2h)
-
 # ╔═╡ e5c12243-70ad-4e52-9bab-aae432203e21
 md"Generate an example"
-
-# ╔═╡ 6d6da8ba-f2b5-11ea-1064-df27ecea7d13
-dvect = randn(10) / 10
-
-# ╔═╡ 6fd08e42-f2b5-11ea-36e6-d7ff10412e2b
-xvect = 2rand(10)
-
-# ╔═╡ 9a87095e-f2b5-11ea-334e-57a637e20c43
-A = randn(10, 10) |> A -> (A * A' + I) / 100  # make sym and PD
 
 # ╔═╡ 67e9fa88-ff03-11ea-1177-c34331398d6c
 md"$$g(\mathbf{x}) = \exp(-\mathbf{x}^\intercal A\mathbf{x})$$"
 
-# ╔═╡ 75ae48fe-f2b5-11ea-0614-912091cbfb6a
-g(x) = exp(- sum(x .* (A * x)))
-
 # ╔═╡ 8a738272-f2b5-11ea-2de6-f9ae6b30a466
 md"Correct gradient and Hessian (by hand)"
 
-# ╔═╡ 7b95d73c-f2b5-11ea-1b29-858f7b6c99bf
-∇g(x) = -2g(x) * A * x
-
-# ╔═╡ 836ca94a-f2b5-11ea-07e0-bd830f810fba
-∇²g(x) = -2g(x) * A - 2A * x * ∇g(x)'
-
-# ╔═╡ 8fe85430-f2b5-11ea-3fe7-5d9a0db03932
-g(xvect)
-
-# ╔═╡ b372c25c-f2b5-11ea-1c55-e5045e0dc5b7
-∇g(xvect)
-
-# ╔═╡ b6e48b12-f2b5-11ea-3bf2-81e5b2a3dc98
-∇g(xvect)' * dvect
-
-# ╔═╡ b455e8ac-fe7f-11ea-1a8a-db85d11ccba7
-grad_vect(g, xvect, dvect)
-
 # ╔═╡ c2924514-fe7f-11ea-2b01-81e9e0e1c491
 h = 1e-10
-
-# ╔═╡ cd2821c4-fe7f-11ea-0c41-8feab49be07a
-∇²g(xvect) * dvect
-
-# ╔═╡ bebbd674-f2b5-11ea-19c6-4fe1257b0277
-(∇g(xvect + h * dvect) - ∇g(xvect - h * dvect)) / 2h
 
 # ╔═╡ d6c6d4ea-f2b7-11ea-0b41-d7f629cdcd2f
 md"""
@@ -419,18 +327,8 @@ Dual(2.0, 3.0)
 # ╔═╡ 0aba93a6-f2b8-11ea-1461-d96878b7a5c1
 md"Let's implement some basic rules showing linearity."
 
-# ╔═╡ 4a6270a3-a271-40da-84d0-28247f287c22
-2.0 + 3.0ϵ  # now this works!
-
-# ╔═╡ 272bdcca-aeb1-405f-8251-33f13cddbdc5
-(2.0+3.0ϵ) / (5.0+8.0ϵ)
-
 # ╔═╡ 3f5a58da-f2b8-11ea-3ab0-5db5e9199bb1
 md"And some more advanced ones, based on differentiation."
-
-# ╔═╡ 48e5da96-f2b8-11ea-0108-2104f2c8ac24
-# you can derive this directly from the definition!
-Base.:/(a::Dual, b::Dual) = Dual(a.v / b.v, (a.vdot * b.v - a.v * b.vdot) / b.v^2)
 
 # ╔═╡ eaacb5a5-c748-4223-98e4-be73d3f2086f
 
@@ -450,35 +348,11 @@ Base.:exp(a::Dual) = missing
 # ╔═╡ 36a2ca10-f2b8-11ea-0fae-53b552c76115
 Base.:log(a::Dual) = missing
 
-# ╔═╡ 4ee45daa-f2b8-11ea-10ea-f929853879b1
-f(Dual(a, 1.0))  # works when rules are provided
-
 # ╔═╡ 555c8d88-f2b8-11ea-34d8-a17ce87ccdc1
 md"This directly works for vectors!"
 
-# ╔═╡ 59eee760-f2b8-11ea-29f6-732292e2f95d
-q(x) = 10.0 * x[1] * x[2] + x[1] * x[1] + sin(x[1]) / x[2]
-
-# ╔═╡ 5ccd625e-f2b8-11ea-38c1-098e2f31ce53
-q([1, 2])
-
-# ╔═╡ 60b52f6e-f2b8-11ea-2afc-4be2d4ae3e19
-q(Dual.([1, 2], [1, 0]))  # partial wrt x1
-
-# ╔═╡ 63d5e0be-f2b8-11ea-16e8-d9528b4e8945
-q(Dual.([1, 2], [0, 1]))  # partial wrt x2
-
 # ╔═╡ 6971e7e6-f2b8-11ea-2a76-9dda6b1455b6
 md"In practice, we prefer to use a package to do this."
-
-# ╔═╡ 723fe4ca-f2b8-11ea-1440-a9e1cd213b66
-ForwardDiff.derivative(f, a)
-
-# ╔═╡ 76284520-f2b8-11ea-077e-43167cc7484c
-ForwardDiff.gradient(g, xvect)
-
-# ╔═╡ 85a5c518-f2b8-11ea-2e12-25d16a12e7c8
-ForwardDiff.gradient(q, [1, 2])
 
 # ╔═╡ 8a254852-f2b8-11ea-142d-71bb270a5c01
 md"""
@@ -507,33 +381,17 @@ Reverse differentiation:
 # ╔═╡ a041fbf8-f2b8-11ea-28ba-0772497c649f
 md"Constructing the derivative or gradient can be done by appending `'` to the function."
 
-# ╔═╡ 9b5db398-f2b8-11ea-00bc-77de99792925
-f'(a)  # that's it
-
 # ╔═╡ bdce5964-f2b8-11ea-03d1-57705d295040
 md"More verbose, but exactly the same:"
-
-# ╔═╡ c6728784-f2b8-11ea-12b5-d7eb039d77ce
-Zygote.gradient(f, a)  # returns a tuple, since you can differentiate w.r.t. multiple arguments
 
 # ╔═╡ e1057afe-fe6e-11ea-27fe-6def4d8e1f2d
 md"This works for function with multiple inputs."
 
-# ╔═╡ eb76e252-fe6e-11ea-0939-c51ff3c73827
-Zygote.gradient((x1, x2) -> (x1^2 + x2^2 - 0.1x1*x2) / (x1 + 1.0),
-					0.2, 0.3) 
-
 # ╔═╡ d6d310ee-f2b8-11ea-24e1-3b405f071545
 md"Fuctions with vectorial input."
 
-# ╔═╡ d3ae2c14-f2b8-11ea-1ac2-fb5e0b4b8500
-g'(xvect)
-
 # ╔═╡ dbb1e68c-f2b8-11ea-1220-6f5715822e3d
 md"Finding the Hessian:"
-
-# ╔═╡ df557ed2-f2b8-11ea-22ee-e1c90a2655bf
-Zygote.hessian(g, xvect)
 
 # ╔═╡ ee52d2b8-f2b8-11ea-15c4-19e9f2ad10e2
 md"""
@@ -585,6 +443,170 @@ struct NegEntropy{T<:Number} <: Regularizer
     γ::T
 end
 
+# ╔═╡ 501a0db3-538a-43f3-a769-158c824bca31
+md"For example, consider two sequences and the Hamming distance."
+
+# ╔═╡ ca64df96-082a-40dd-b82c-64016257fcab
+s, t = "aattcaa", "atctaca"
+
+# ╔═╡ ba43bc8b-27d6-490d-971e-7e440b991cfb
+θ = [sᵢ==tᵢ for sᵢ in s, tᵢ in t]
+
+# ╔═╡ 2d7dbec3-82eb-41f8-a959-b458e136d18c
+heatmap(θ, flipy=true, yticks=(1:length(s), s), xticks=(1:length(t), t), title="theta")
+
+# ╔═╡ 8586855b-2ad7-4fe4-af1a-2a6f1dd052b3
+@bind logγ Slider(-8:0.2:4, default=-4)
+
+# ╔═╡ 8877c563-d10a-41e4-be8b-546d27623b67
+γ = exp(logγ)
+
+# ╔═╡ a73e4d59-34f4-412f-afa4-f3b66244b35e
+γ
+
+# ╔═╡ 9ecd1cd6-8412-4fe1-9d79-676f9830ec2c
+imag_number = 2 + 3im  # im is a special type of number
+
+# ╔═╡ af02692c-c1be-4f7c-a09f-fbd88b0c4bd8
+real(imag_number), imag(imag_number) # extract real and imaginary parts
+
+# ╔═╡ d56b74f2-f2b4-11ea-12b4-5f54d4999b38
+sign(num) * significand(num) * 2^exponent(num)
+
+# ╔═╡ 6fd08e42-f2b5-11ea-36e6-d7ff10412e2b
+xvect = 2rand(10)
+
+# ╔═╡ 4a6270a3-a271-40da-84d0-28247f287c22
+2.0 + 3.0ϵ  # now this works!
+
+# ╔═╡ 48e5da96-f2b8-11ea-0108-2104f2c8ac24
+# you can derive this directly from the definition!
+Base.:/(a::Dual, b::Dual) = Dual(a.v / b.v, (a.vdot * b.v - a.v * b.vdot) / b.v^2)
+
+# ╔═╡ 2be8656c-f2b3-11ea-2244-5740c807deff
+f(x) = log(x) + sin(x) / x
+
+# ╔═╡ 21882f0e-8d54-41ae-84c6-7637ccc52c46
+f(a)
+
+# ╔═╡ d5edd644-fe7c-11ea-2aa8-c772ea2f1bde
+f(x)
+
+# ╔═╡ 64b28e4a-f2b3-11ea-0fc0-7d37b4794686
+Dx(f(x))
+
+# ╔═╡ 8a4a8499-af01-46ea-8196-fb2d718d0d17
+df_sym = expand_derivatives(Dx(f(x)))  # this expands the derviatve operator
+
+# ╔═╡ a38e2cce-851c-4065-8947-1926fa9ca5b4
+df = build_function(df_sym, x) |> eval  #builds an expression and turns it into a function
+
+# ╔═╡ 684ff7f4-f2b3-11ea-14f7-7d3f329ecd79
+df(a)
+
+# ╔═╡ 2ca60bca-f2b4-11ea-0fec-c50f4e306536
+true_diff = df(a);  # save for checking
+
+# ╔═╡ 7a6a18de-f2b3-11ea-1b3d-ef7a2b1b0434
+if !ismissing(f(a))
+plot(f, 1, 10, label="\$f(x)\$", xlabel="\$x\$", lw=2, color=:green)
+plot!(df, 1, 10, label="\$f'(x)\$", lw=2, color=:orange)
+end
+
+# ╔═╡ 08a565e0-f2b4-11ea-2ab6-f5f3a1b3c22d
+diff_fordiff(f, a)
+
+# ╔═╡ 1055a996-f2b4-11ea-14d2-6116cbbaa6ba
+diff_centrdiff(f, a)
+
+# ╔═╡ 13db037a-f2b4-11ea-2a38-bd7c1c60f7d9
+diff_complstep(f, a)
+
+# ╔═╡ 4ee45daa-f2b8-11ea-10ea-f929853879b1
+f(Dual(a, 1.0))  # works when rules are provided
+
+# ╔═╡ 723fe4ca-f2b8-11ea-1440-a9e1cd213b66
+ForwardDiff.derivative(f, a)
+
+# ╔═╡ 9b5db398-f2b8-11ea-00bc-77de99792925
+f'(a)  # that's it
+
+# ╔═╡ c6728784-f2b8-11ea-12b5-d7eb039d77ce
+Zygote.gradient(f, a)  # returns a tuple, since you can differentiate w.r.t. multiple arguments
+
+# ╔═╡ c8a5c6f8-4ca1-4c7e-9cc1-d2e5c9e9da59
+symexpr = (x + 2)^n / (x+2)
+
+# ╔═╡ 997ec642-a865-4c97-9aa1-d4d9df9e1dd0
+expand_derivatives(Dx(symexpr)) |> simplify
+
+# ╔═╡ 688a1f40-f2b5-11ea-3fa8-ebb735323ddd
+grad_vect(f, x, d; h=1e-10) = (f(x .+ h * d) - f(x .- h * d)) / (2h)
+
+# ╔═╡ 6d6da8ba-f2b5-11ea-1064-df27ecea7d13
+dvect = randn(10) / 10
+
+# ╔═╡ 9a87095e-f2b5-11ea-334e-57a637e20c43
+A = randn(10, 10) |> A -> (A * A' + I) / 100  # make sym and PD
+
+# ╔═╡ 75ae48fe-f2b5-11ea-0614-912091cbfb6a
+g(x) = exp(- sum(x .* (A * x)))
+
+# ╔═╡ 8fe85430-f2b5-11ea-3fe7-5d9a0db03932
+g(xvect)
+
+# ╔═╡ b455e8ac-fe7f-11ea-1a8a-db85d11ccba7
+grad_vect(g, xvect, dvect)
+
+# ╔═╡ 76284520-f2b8-11ea-077e-43167cc7484c
+ForwardDiff.gradient(g, xvect)
+
+# ╔═╡ d3ae2c14-f2b8-11ea-1ac2-fb5e0b4b8500
+g'(xvect)
+
+# ╔═╡ df557ed2-f2b8-11ea-22ee-e1c90a2655bf
+Zygote.hessian(g, xvect)
+
+# ╔═╡ 7b95d73c-f2b5-11ea-1b29-858f7b6c99bf
+∇g(x) = -2g(x) * A * x
+
+# ╔═╡ b372c25c-f2b5-11ea-1c55-e5045e0dc5b7
+∇g(xvect)
+
+# ╔═╡ b6e48b12-f2b5-11ea-3bf2-81e5b2a3dc98
+∇g(xvect)' * dvect
+
+# ╔═╡ 836ca94a-f2b5-11ea-07e0-bd830f810fba
+∇²g(x) = -2g(x) * A - 2A * x * ∇g(x)'
+
+# ╔═╡ cd2821c4-fe7f-11ea-0c41-8feab49be07a
+∇²g(xvect) * dvect
+
+# ╔═╡ bebbd674-f2b5-11ea-19c6-4fe1257b0277
+(∇g(xvect + h * dvect) - ∇g(xvect - h * dvect)) / 2h
+
+# ╔═╡ 272bdcca-aeb1-405f-8251-33f13cddbdc5
+(2.0+3.0ϵ) / (5.0+8.0ϵ)
+
+# ╔═╡ 59eee760-f2b8-11ea-29f6-732292e2f95d
+q(x) = 10.0 * x[1] * x[2] + x[1] * x[1] + sin(x[1]) / x[2]
+
+# ╔═╡ 5ccd625e-f2b8-11ea-38c1-098e2f31ce53
+q([1, 2])
+
+# ╔═╡ 60b52f6e-f2b8-11ea-2afc-4be2d4ae3e19
+q(Dual.([1, 2], [1, 0]))  # partial wrt x1
+
+# ╔═╡ 63d5e0be-f2b8-11ea-16e8-d9528b4e8945
+q(Dual.([1, 2], [0, 1]))  # partial wrt x2
+
+# ╔═╡ 85a5c518-f2b8-11ea-2e12-25d16a12e7c8
+ForwardDiff.gradient(q, [1, 2])
+
+# ╔═╡ eb76e252-fe6e-11ea-0939-c51ff3c73827
+Zygote.gradient((x1, x2) -> (x1^2 + x2^2 - 0.1x1*x2) / (x1 + 1.0),
+					0.2, 0.3) 
+
 # ╔═╡ a9961630-08be-48f8-b1cc-4a9d67dfc519
 function max_argmax(Ω::NegEntropy, x)
     γ = Ω.γ
@@ -622,46 +644,6 @@ function ∇needleman_wunsch(Ω::Regularizer, θ, (cˢ, cᵗ))
                      Q[i+2,j+1,3] * E[i+2,j+1]
     end
     return v, E[2:n+1,2:m+1]  # value and gradient
-end
-
-# ╔═╡ 501a0db3-538a-43f3-a769-158c824bca31
-md"For example, consider two sequences and the Hamming distance."
-
-# ╔═╡ ca64df96-082a-40dd-b82c-64016257fcab
-s, t = "aattcaa", "atctaca"
-
-# ╔═╡ ba43bc8b-27d6-490d-971e-7e440b991cfb
-θ = [sᵢ==tᵢ for sᵢ in s, tᵢ in t]
-
-# ╔═╡ 2d7dbec3-82eb-41f8-a959-b458e136d18c
-heatmap(θ, flipy=true, yticks=(1:length(s), s), xticks=(1:length(t), t), title="theta")
-
-# ╔═╡ 378500c1-9f19-4111-82cf-5a57c30d66ef
-cˢ, cᵗ = 0.1ones(length(s)), 0.1ones(length(t))
-
-# ╔═╡ 8586855b-2ad7-4fe4-af1a-2a6f1dd052b3
-@bind logγ Slider(-8:0.2:4, default=-4)
-
-# ╔═╡ 8877c563-d10a-41e4-be8b-546d27623b67
-γ = exp(logγ)
-
-# ╔═╡ a73e4d59-34f4-412f-afa4-f3b66244b35e
-γ
-
-# ╔═╡ 6707fd27-78f6-4663-b95d-a016d2c44c3b
-# alignment value and score
-v, E = ∇needleman_wunsch(NegEntropy(γ), θ, (cˢ, cᵗ))
-
-# ╔═╡ 014ec92c-f2b8-11ea-3986-8d74a8c2458d
-begin
-	Base.:+(a::Dual, b::Dual) = Dual(a.v + b.v, a.vdot + b.vdot)
-	Base.:-(a::Dual, b::Dual) = Dual(a.v - b.v, a.vdot - b.vdot)
-	Base.:-(a::Dual, b::Real) = Dual(a.v - b, a.vdot)
-	Base.:-(a::Dual) = Dual(-a.v, -a.vdot)
-	Base.:*(a::Dual, b::Dual) = Dual(a.v * b.v, a.v * b.vdot + b.v * a.vdot)
-	Base.:+(c::Real, b::Dual) = Dual(c + b.v, b.vdot)
-	Base.:*(v::Real, b::Dual) = Dual(v, 0.0) * b
-	Base.:*(a::Dual, b::Real) = v * a	
 end
 
 # ╔═╡ 18e151c4-0b0e-485b-81d2-f18a2dd4592d
@@ -915,6 +897,25 @@ begin
 	ylabel!("absolute error")
 end
 
+# ╔═╡ 014ec92c-f2b8-11ea-3986-8d74a8c2458d
+begin
+	Base.:+(a::Dual, b::Dual) = Dual(a.v + b.v, a.vdot + b.vdot)
+	Base.:-(a::Dual, b::Dual) = Dual(a.v - b.v, a.vdot - b.vdot)
+	Base.:-(a::Dual, b::Real) = Dual(a.v - b, a.vdot)
+	Base.:-(a::Dual) = Dual(-a.v, -a.vdot)
+	Base.:*(a::Dual, b::Dual) = Dual(a.v * b.v, a.v * b.vdot + b.v * a.vdot)
+	Base.:+(c::Real, b::Dual) = Dual(c + b.v, b.vdot)
+	Base.:*(v::Real, b::Dual) = Dual(v, 0.0) * b
+	Base.:*(a::Dual, b::Real) = v * a	
+end
+
+# ╔═╡ 378500c1-9f19-4111-82cf-5a57c30d66ef
+cˢ, cᵗ = 0.1ones(length(s)), 0.1ones(length(t))
+
+# ╔═╡ 6707fd27-78f6-4663-b95d-a016d2c44c3b
+# alignment value and score
+v, E = ∇needleman_wunsch(NegEntropy(γ), θ, (cˢ, cᵗ))
+
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
@@ -982,9 +983,9 @@ version = "1.0.8+0"
 
 [[Cairo_jll]]
 deps = ["Artifacts", "Bzip2_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "JLLWrappers", "LZO_jll", "Libdl", "Pixman_jll", "Pkg", "Xorg_libXext_jll", "Xorg_libXrender_jll", "Zlib_jll", "libpng_jll"]
-git-tree-sha1 = "f2202b55d816427cd385a9a4f3ffb226bee80f99"
+git-tree-sha1 = "4b859a208b2397a7a623a03449e4636bdb17bcf2"
 uuid = "83423d85-b0ee-5818-9007-b63ccbeb887a"
-version = "1.16.1+0"
+version = "1.16.1+1"
 
 [[ChainRules]]
 deps = ["ChainRulesCore", "Compat", "LinearAlgebra", "Random", "Statistics"]
@@ -1240,9 +1241,9 @@ version = "0.21.0+0"
 
 [[Glib_jll]]
 deps = ["Artifacts", "Gettext_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Libiconv_jll", "Libmount_jll", "PCRE_jll", "Pkg", "Zlib_jll"]
-git-tree-sha1 = "7bf67e9a481712b3dbe9cb3dac852dc4b1162e02"
+git-tree-sha1 = "a32d672ac2c967f3deb8a81d828afc739c838a06"
 uuid = "7746bdde-850d-59dc-9ae8-88ece973131d"
-version = "2.68.3+0"
+version = "2.68.3+2"
 
 [[Graphite2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1263,9 +1264,9 @@ version = "0.9.14"
 
 [[HarfBuzz_jll]]
 deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "Graphite2_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Pkg"]
-git-tree-sha1 = "8a954fed8ac097d5be04921d595f741115c1b2ad"
+git-tree-sha1 = "129acf094d168394e80ee1dc4bc06ec835e510a3"
 uuid = "2e76f6c2-a576-52d4-95c1-20adfe4de566"
-version = "2.8.1+0"
+version = "2.8.1+1"
 
 [[IRTools]]
 deps = ["InteractiveUtils", "MacroTools", "Test"]
@@ -1377,9 +1378,9 @@ uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 
 [[Libffi_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "761a393aeccd6aa92ec3515e428c26bf99575b3b"
+git-tree-sha1 = "0b4a5d71f3e5200a7dff793393e09dfc2d874290"
 uuid = "e9f186c6-92d2-5b65-8a66-fee21dc1b490"
-version = "3.2.2+0"
+version = "3.2.2+1"
 
 [[Libgcrypt_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libgpg_error_jll", "Pkg"]
