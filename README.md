@@ -21,12 +21,12 @@ As of 2020, we have moved this course from Python to the new [Julia programming 
 3. [Automatic differentiation](chapters/03.AutoDiff/autodiff.jl.html)
 4. [Unconstrained convex optimization](chapters/04.Unconstrained/unconstrained.jl.html)
 5. [Constrained convex optimization](chapters/05.Constrained/constrained.jl.html) and [Lagrange](chapters/05.Constrained/lagrange.jl.html)
-6. Optimal transportation
-7. Minimum spanning trees
-8. Shortest path problems
-9. NP-hard problems
-10. Heuristics and metaheuristics
-11. Travelling Salesman Problem
+6. [Optimal transportation](chapters/06.OptimalTransport/optimal_transportation.jl.html)
+7. [Minimum spanning trees](chapters/07.MST/mst.jl.html)
+8. [Shortest path problems](chapters/08.ShortestPath/shortestpath.jl.html)
+9. [NP-hard problems](chapters/09.NP-Complete/np-complete.jl.html)
+10. Heuristics and metaheuristics (notebooks on [PSO](chapters/10.Metaheuristics/PSO.jl.html) and [searching methods](chapters/00.Introduction/simple_search.jl.html))
+11. [Travelling Salesman Problem](chapters/11.TSP/tsp.jl.html)
 
 ## Exam project
 
