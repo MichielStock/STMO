@@ -20,3 +20,4 @@
 | Milan Langhendries | [Q-learning](Qlearningfinal.jl.html) |
 | Thiemen Mussche | [Levenberg-Marquardt algorithm](LevenbergMarquardt.jl.html)
 | Hayoung Kim & Anna Merckx | [Fractals and the Newton method](NewtonFractals.jl.html) |
+| Simon Tavernier | [SAT solvers](SATsolver.html) |
